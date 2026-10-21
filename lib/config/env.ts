@@ -5,6 +5,14 @@ function toBool(v: unknown): boolean {
   return v === true || v === 'true' || v === '1';
 }
 
+const pairFields = [
+  ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
+  ['QSTASH_URL', 'QSTASH_TOKEN'],
+  ['QSTASH_CURRENT_SIGNING_KEY', 'QSTASH_NEXT_SIGNING_KEY'],
+  ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'],
+  ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
+] as const;
+
 const serverEnvSchema = z.object({
   DATABASE_URL: z.url('DATABASE_URL must be a valid URL'),
   DATABASE_URL_UNPOOLED: z.url('DATABASE_URL_UNPOOLED must be a valid URL').optional(),
@@ -62,6 +70,21 @@ const serverEnvSchema = z.object({
   SASTRAM_GEMINI_KEY: z.string().optional(),
   HOSTNAME: z.string().default('localhost'),
   PORT: z.coerce.number().int().positive().default(3000),
+}).superRefine((data, ctx) => {
+  // Half-configured integrations are worse than absent ones: they can boot
+  // successfully and then fail at the first request/job. Reject them at the
+  // single environment seam instead of scattering checks across services.
+  for (const [first, second] of pairFields) {
+    const hasFirst = Boolean(data[first]);
+    const hasSecond = Boolean(data[second]);
+    if (hasFirst === hasSecond) continue;
+
+    ctx.addIssue({
+      code: 'custom',
+      path: [hasFirst ? second : first],
+      message: `${first} and ${second} must be configured together`,
+    });
+  }
 });
 
 const fullyClientSafeSchema = z.object({
