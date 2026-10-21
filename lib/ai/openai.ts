@@ -19,8 +19,36 @@ import {
 import { THREAD_DNA_SYSTEM_PROMPT, CONFLICT_SYSTEM_PROMPT } from './prompts';
 import { getLangChainService } from '@/lib/services/ai-langchain';
 
+type ModerationResponse = {
+  results?: Array<{
+    flagged?: boolean;
+    categories?: Record<string, boolean>;
+    category_scores?: Record<string, number>;
+  }>;
+};
+
+const IMAGE_MODERATION_CATEGORIES = [
+  'sexual',
+  'sexual/minors',
+  'harassment',
+  'harassment/threatening',
+  'hate',
+  'hate/threatening',
+  'illicit/violent',
+  'self-harm',
+  'self-harm/intent',
+  'self-harm/instructions',
+  'violence',
+  'violence/graphic',
+];
+
+function clampConfidence(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
+
 export class OpenAIService implements AIService {
   private readonly baseUrl = 'https://api.openai.com/v1/chat/completions';
+  private readonly moderationUrl = 'https://api.openai.com/v1/moderations';
   private readonly headers: Record<string, string>;
   private readonly model: string;
 
@@ -290,7 +318,67 @@ export class OpenAIService implements AIService {
     }
   }
 
-  async moderateImageContent(): Promise<ImageModerationResult> {
-    return { classification: 'UNKNOWN', confidence: 0, reason: 'OpenAI image moderation not implemented' };
+  async moderateImageContent(imageUrl: string, signal?: AbortSignal): Promise<ImageModerationResult> {
+    try {
+      const data = await withRetry(
+        async (retrySignal) => {
+          const response = await fetch(this.moderationUrl, {
+            method: 'POST',
+            headers: this.headers,
+            body: JSON.stringify({
+              // The multimodal moderator handles image-only input; chat models
+              // are not a substitute for a policy classifier.
+              model: 'omni-moderation-latest',
+              input: [{ type: 'image_url', image_url: { url: imageUrl } }],
+            }),
+            signal: retrySignal,
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => response.statusText);
+            throw new Error(`OpenAI moderation ${response.status}: ${errorText}`);
+          }
+
+          return (await response.json()) as ModerationResponse;
+        },
+        3,
+        300,
+        15_000,
+        signal
+      );
+
+      const result = data.results?.[0];
+      if (!result) {
+        return { classification: 'UNKNOWN', confidence: 0, reason: 'Moderation returned no result' };
+      }
+
+      const scores = result.category_scores ?? {};
+      const flaggedCategories = IMAGE_MODERATION_CATEGORIES.filter(
+        (category) => result.categories?.[category] === true
+      );
+      const highestScore = clampConfidence(
+        Math.max(0, ...Object.values(scores).filter((score) => typeof score === 'number'))
+      );
+
+      if (result.flagged || flaggedCategories.length > 0) {
+        return {
+          classification: 'NSFW',
+          confidence: highestScore,
+          reason:
+            flaggedCategories.length > 0
+              ? `Flagged categories: ${flaggedCategories.join(', ')}`
+              : 'Image violated OpenAI moderation policy',
+        };
+      }
+
+      return {
+        classification: 'SAFE',
+        confidence: clampConfidence(1 - highestScore),
+        reason: 'No policy violations detected',
+      };
+    } catch (error) {
+      logger.warn('[OpenAIService.moderateImageContent] moderation failed, returning UNKNOWN', { error });
+      return { classification: 'UNKNOWN', confidence: 0, reason: 'Image moderation unavailable' };
+    }
   }
 }
