@@ -19,7 +19,9 @@ function extractErrorStack(rawError: unknown): string | undefined {
 
 export function withErrorHandling(handler: ApiHandler): ApiHandler {
   return async (request, context) => {
-    const requestId = generateRequestId();
+    // proxy.ts assigns the request id before the route runs; reuse it so
+    // access logs, error logs, and response bodies share one correlation id.
+    const requestId = request.headers.get('x-request-id') ?? generateRequestId();
 
     try {
       const handlerResponse = await handler(request, context);
