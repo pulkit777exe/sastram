@@ -6,6 +6,7 @@ import { Redis } from "@upstash/redis";
 import { fail, HTTP_STATUS } from "@/lib/utils/api-response";
 import { rateLimit } from "@/lib/services/rate-limit";
 import { getRequestIp } from "@/lib/utils/request-ip";
+import { APP_VERSION } from "@/lib/config/app-version";
 
 type ServiceStatus = "ok" | "not_configured" | "error";
 
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
   const checks = {
     status: "ok",
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version ?? "unknown",
+    version: APP_VERSION,
     uptime: process.uptime(),
     services: {
       database: "unknown",
@@ -105,6 +106,7 @@ export async function GET(request: NextRequest) {
   const allHealthy = Object.values(checks.services).every(
     (s) => s === "ok" || s === "not_configured"
   );
+  checks.status = allHealthy ? "ok" : "degraded";
 
   return NextResponse.json(checks, {
     status: allHealthy ? HTTP_STATUS.OK : HTTP_STATUS.SERVICE_UNAVAILABLE,

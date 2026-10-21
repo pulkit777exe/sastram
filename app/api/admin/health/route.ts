@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/middleware/moderation';
 import { ok, withErrorHandling } from '@/lib/utils/api-response';
+import { APP_VERSION } from '@/lib/config/app-version';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export const GET = withErrorHandling(async () => {
   return NextResponse.json(
     ok({
       timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version ?? 'unknown',
+      version: APP_VERSION,
       uptime,
       uptimeHuman: formatUptime(uptime),
       memory: {
