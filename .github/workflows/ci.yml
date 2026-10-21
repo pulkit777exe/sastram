@@ -112,6 +112,38 @@ jobs:
           RESEND_TEMPLATE_THREAD_SUMMARY: ci_placeholder
           RESEND_TEMPLATE_PASSWORD_RESET: ci_placeholder
           RESEND_TEMPLATE_WELCOME: ci_placeholder
+      # Exercise the production-only rules (HTTPS, CRON_SECRET, paired
+      # integrations, direct migration URL) that dev/test envs don't hit.
+      - name: Production readiness configuration
+        run: NODE_ENV=production bun run check:prod
+        env:
+          DATABASE_URL: "postgresql://user:pass@ep-example-pooler.us-east-2.aws.neon.tech/sastram?sslmode=require&pgbouncer=true"
+          DATABASE_URL_UNPOOLED: "postgresql://user:pass@ep-example.us-east-2.aws.neon.tech/sastram?sslmode=require"
+          BETTER_AUTH_SECRET: ci_secret_that_is_long_enough_32chars
+          BETTER_AUTH_URL: https://sastram.example
+          NEXT_PUBLIC_APP_URL: https://sastram.example
+          CRON_SECRET: ci_cron_secret_long_enough_32chars
+          GEMINI_API_KEY: skip
+          OPENAI_API_KEY: skip
+          RESEND_API_KEY: re_ci_placeholder_key
+          RESEND_FROM: "CI <ci@test.local>"
+          RESEND_TEMPLATE_OTP: ci_placeholder
+          RESEND_TEMPLATE_INVITATION: ci_placeholder
+          RESEND_TEMPLATE_THREAD_SUMMARY: ci_placeholder
+          RESEND_TEMPLATE_PASSWORD_RESET: ci_placeholder
+          RESEND_TEMPLATE_WELCOME: ci_placeholder
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # The production image is what actually ships for self-hosted deploys.
+      # Building it here catches Dockerfile/standalone-output regressions that
+      # `next build` on the runner cannot.
+      - run: docker build --target runner -t sastram:ci .
+        env:
+          DOCKER_BUILDKIT: '1'
 
   e2e:
     runs-on: ubuntu-latest
