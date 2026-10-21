@@ -32,8 +32,10 @@ const SECRET_KEYWORDS = [
   'cred',
 ];
 
-// Simple email shape — masked, not dropped, so login flows stay debuggable.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Matches addresses on their own or embedded in a log message such as
+// "Queued email job for user@example.com". Masked, not dropped, so login
+// flows stay debuggable.
+const EMAIL_ANYWHERE_RE = /[^\s@]+@[^\s@]+\.[^\s@]+/g;
 
 // JWT-like token pattern: three dot-separated base64url segments (header.payload.signature)
 // Each segment has a minimum length to avoid false positives on short strings
@@ -67,10 +69,6 @@ function isLongOpaqueToken(value: string): boolean {
   return LONG_OPAQUE_RE.test(value);
 }
 
-function isEmail(value: string): boolean {
-  return EMAIL_RE.test(value);
-}
-
 function scrubString(value: string): string {
   const withoutBearer = value.replace(BEARER_RE, 'Bearer [REDACTED]');
 
@@ -78,12 +76,7 @@ function scrubString(value: string): string {
     return REDACTED;
   }
 
-  const isEmailValue = isEmail(withoutBearer);
-  if (isEmailValue) {
-    return withoutBearer.replace(EMAIL_RE, maskEmail);
-  }
-
-  return withoutBearer;
+  return withoutBearer.replace(EMAIL_ANYWHERE_RE, maskEmail);
 }
 
 // Nothing reaches console without passing through here — logs end up in Vercel/Sentry,
@@ -172,7 +165,9 @@ class Logger {
     if (level === 'debug' && !isDevelopment) return;
 
     const prefix = `[${new Date().toISOString()}] [${level.toUpperCase()}]`;
-    CONSOLE_BY_LEVEL[level](prefix, message, safeContext(args));
+    // The message is often interpolated (e.g. recipients, thread titles), so
+    // it must go through the same scrubber as structured context.
+    CONSOLE_BY_LEVEL[level](prefix, scrubString(message), safeContext(args));
   }
 
   debug(message: string, ...args: unknown[]) {

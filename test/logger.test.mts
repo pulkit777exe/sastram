@@ -79,6 +79,16 @@ describe('Logger', () => {
       expect(scrub('jane.doe@example.com')).to.equal('j*******@example.com');
     });
 
+    it('masks emails embedded in log messages', () => {
+      expect(scrub('Queued email job (welcome) for jane.doe@example.com')).to.equal(
+        'Queued email job (welcome) for j*******@example.com'
+      );
+    });
+
+    it('masks every email in a message', () => {
+      expect(scrub('a@b.com invited c@d.com')).to.equal('a*@b.com invited c*@d.com');
+    });
+
     it('does not alter non-email strings', () => {
       expect(scrub('no email here')).to.equal('no email here');
     });
