@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getEnv } from '@/lib/config/env';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { getRequestIp } from '@/lib/utils/request-ip';
 
 const PUBLIC_PATHS = [
   '/',
@@ -92,24 +93,6 @@ const PRODUCTION_HEADERS = {
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
 };
 
-function getClientIp(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) {
-    const parts = forwarded.split(',');
-    const first = parts[0];
-    if (first) {
-      const trimmed = first.trim();
-      if (trimmed) return trimmed;
-    }
-    return 'unknown';
-  }
-  const cfIp = request.headers.get('cf-connecting-ip');
-  if (cfIp) return cfIp;
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) return realIp;
-  return 'unknown';
-}
-
 function applySecurityHeaders(response: NextResponse, nonce: string): NextResponse {
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
@@ -153,7 +136,7 @@ export default async function proxy(request: NextRequest) {
   // server-side via getSession().
 
   if (!isPublic && getEnv().RATE_LIMIT_ENABLED) {
-    const ip = getClientIp(request);
+    const ip = getRequestIp(request);
     const key = `proxy:${ip}:${pathname}`;
     const { success } = await rateLimit({ key, type: 'api' });
     if (!success) {

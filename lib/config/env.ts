@@ -40,7 +40,7 @@ const serverEnvSchema = z.object({
   QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
   QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
   RATE_LIMIT_ENABLED: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).transform(toBool).default(true),
-  CONTENT_MODERATION_ENABLED: z.coerce.boolean().default(false),
+  CONTENT_MODERATION_ENABLED: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).transform(toBool).default(false),
   SENTRY_DSN: z.string().optional(),
   SENTRY_ORG: z.string().optional(),
   SENTRY_PROJECT: z.string().optional(),
