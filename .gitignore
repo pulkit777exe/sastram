@@ -57,6 +57,7 @@ docs/*
 !docs/ARCHITECTURE-REVIEW.md
 !docs/VIEW-TRANSITIONS-SPEC.md
 !docs/PROMOTION_SYSTEM.md
+!docs/DEPLOYMENT.md
 !docs/adr/
 !docs/adr/**
 !docs/plans/

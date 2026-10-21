@@ -58,9 +58,11 @@ bun dev
 docker compose up
 ```
 
-Starts PostgreSQL and the Next.js app. See [CONTRIBUTING.md](./CONTRIBUTING.md) for full environment setup.
+Starts PostgreSQL, applies migrations, then starts the Next.js app. The app container is not marked healthy until `/api/health/live` responds. See [CONTRIBUTING.md](./CONTRIBUTING.md) for full environment setup.
 
-## Production Checks
+## Production
+
+See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the release order, probes, scheduled jobs, backups, and rollback.
 
 ```bash
 bun typecheck
@@ -69,7 +71,7 @@ bun build
 NODE_ENV=production bun check:prod
 ```
 
-`bun check:prod` validates required production environment variables, URL shape, and infrastructure pairs.
+`bun check:prod` validates required production environment variables, URL shape, and infrastructure pairs. Liveness is `/api/health/live`; readiness is `/api/health`.
 
 ## Testing
 

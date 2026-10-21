@@ -45,6 +45,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Public env vars are baked into the client bundle at build time.
+        NEXT_PUBLIC_APP_URL: http://localhost:3001
     ports:
       - "3001:3000"
     init: true
