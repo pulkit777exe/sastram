@@ -10,7 +10,7 @@ export interface BlobStore {
 }
 
 export interface ImageModerator {
-  moderate(blobUrl: string, category: FileCategory): Promise<ImageModerationResult>;
+  moderate(blobUrl: string, category: FileCategory, context?: { userId?: string }): Promise<ImageModerationResult>;
 }
 
 export interface AttachmentsDeps {

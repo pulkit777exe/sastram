@@ -4,7 +4,7 @@ import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-respon
 import { isSafePublicUrl } from '@/lib/services/content-safety';
 import { fetchPublicUrl, UnsafeUrlError } from '@/lib/services/safe-fetch';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { getRequestIp } from '@/lib/utils/request-ip';
+import { requireSessionOrThrow } from '@/modules/auth';
 
 const querySchema = z.object({ url: z.string().url() });
 
@@ -73,8 +73,10 @@ function parseOg(html: string, url: string) {
 }
 
 export const GET = withErrorHandling(async (request: NextRequest) => {
-  const ip = getRequestIp(request);
-  const rl = await rateLimit({ key: `link-preview:${ip}`, type: 'api' });
+  // This endpoint triggers a paid Exa livecrawl and outbound fetches. Keep it
+  // behind auth so it cannot be used as an anonymous proxy/spend sink.
+  const session = await requireSessionOrThrow();
+  const rl = await rateLimit({ key: `link-preview:${session.user.id}`, type: 'api' });
   if (!rl.success) return NextResponse.json(fail('RATE_LIMITED', 'Too many link previews'), { status: HTTP_STATUS.RATE_LIMITED });
   const { searchParams } = new URL(request.url);
   const rawUrl = searchParams.get('url');
@@ -92,7 +94,9 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       const res = await fetch('https://api.exa.ai/contents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': exaKey },
-        body: JSON.stringify({ urls: [url], text: { maxCharacters: 8000 }, livecrawl: 'preferred' }),
+        // No livecrawl on a user-controlled URL: it is an unbounded paid fetch
+        // and duplicates the DNS-pinned fetch below.
+        body: JSON.stringify({ urls: [url], text: { maxCharacters: 8000 }, livecrawl: 'never' }),
         signal: AbortSignal.timeout(5000),
       });
       if (res.ok) {

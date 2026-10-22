@@ -28,6 +28,8 @@ export class NoOpAIService implements AIService {
     return 0;
   }
   async moderateImageContent(): Promise<ImageModerationResult> {
-    return { classification: 'SAFE', confidence: 0, reason: 'AI service not configured' };
+    // Moderation is fail-closed: no provider means the image is unverified, not
+    // safe. The upload path deletes the blob when it sees UNKNOWN.
+    return { classification: 'UNKNOWN', confidence: 0, reason: 'AI service not configured' };
   }
 }

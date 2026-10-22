@@ -2,7 +2,6 @@ export { createThreadAction, deleteThreadAction, loadThreadMessages } from './ac
 
 export {
   listThreads,
-  getThreadBySlug,
   createThread,
   deleteThread,
   getThreadWithFullContext,

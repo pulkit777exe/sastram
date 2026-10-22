@@ -47,7 +47,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
 
   // Deep Module: single seam hides validate→sniff→ext→put→moderate→rollback.
   // Previously 60 lines duplicated in /api/messages; now one call, atomic batch.
-  const uploadedFiles = await store(files, { kind: 'message' });
+  const uploadedFiles = await store(files, { kind: 'message', userId: session.user.id });
 
   const response = { files: uploadedFiles };
   const validatedResponse = uploadResponseSchema.safeParse(response);

@@ -31,11 +31,20 @@ export const GET = withErrorHandling(async (_request: NextRequest, context?: { p
     orderBy: { createdAt: 'desc' },
     take: 20,
   });
-  const forkedFrom = await prisma.thread.findUnique({
+  const relation = await prisma.thread.findUnique({
     where: { id: threadId },
-    select: { forkedFromId: true, forkedFrom: { select: { id: true, name: true, slug: true, description: true } } },
+    select: { forkedFromId: true },
   });
-  return NextResponse.json(ok({ forks, forkedFrom: forkedFrom?.forkedFrom ?? null }));
+  // The parent may have been private/restricted all along, or made private
+  // after the fork. Never expose its name/description to a viewer who cannot
+  // read it just because the fork is visible.
+  const forkedFrom = relation?.forkedFromId
+    ? await prisma.thread.findFirst({
+        where: { id: relation.forkedFromId, deletedAt: null, ...filter },
+        select: { id: true, name: true, slug: true, description: true },
+      })
+    : null;
+  return NextResponse.json(ok({ forks, forkedFrom }));
 });
 
 export const POST = withErrorHandling(async (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {

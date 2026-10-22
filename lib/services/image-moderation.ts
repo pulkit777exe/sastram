@@ -2,8 +2,8 @@ import { del } from '@vercel/blob';
 import { aiService } from '@/lib/ai';
 import { env } from '@/lib/config/env';
 import { consumeQuota } from '@/lib/services/daily-quota';
-import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { AiCallPath } from '@/lib/services/ai-cost-classification';
+import { consumeSpendCap } from '@/lib/services/ai-spend-cap';
+import { AiCallPath, classifyAiCallCost } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
 
 export type ImageModerationResult = {
@@ -17,9 +17,8 @@ export type ImageModerationResult = {
  *
  * Returns `{ allowed: true }` when the image passes or moderation is disabled.
  * Returns `{ allowed: false, reason }` when the image is rejected — the blob is
- * deleted by this function, not the caller.
- * Returns `{ allowed: true, flagged: true }` when the classification is UNKNOWN
- * (the upload route treats this differently from the messages route).
+ * deleted by this function, not the caller. An UNKNOWN classification is a
+ * rejection: provider uncertainty must not turn into an unmoderated upload.
  *
  * If the check itself crashes (spend cap, provider outage), the blob is deleted
  * before rethrowing so an unmoderated file is never left publicly reachable.
@@ -43,19 +42,26 @@ async function handleNsfwImage(blobUrl: string, reason: string): Promise<ImageMo
 
 export async function moderateImageUpload(
   blobUrl: string,
-  fileCategory: string
+  fileCategory: string,
+  userId?: string
 ): Promise<ImageModerationResult> {
   if (shouldSkipModeration(fileCategory)) {
     return { allowed: true };
   }
 
   try {
-    const quotaResult = await consumeQuota('image', {});
+    // Per-user quota: one account must not be able to drain a shared daily
+    // moderation budget and block uploads for everyone else. The global AI
+    // spend cap still bounds total provider cost.
+    const quotaResult = await consumeQuota('image', { userId: userId ?? '' });
     if (!quotaResult.allowed) {
       return handleQuotaExceeded(blobUrl);
     }
 
-    const spendCap = await enforceAiSpendCap(AiCallPath.IMAGE_MODERATION);
+    // IMAGE_MODERATION is a cheap tier, but at scale it is still real spend.
+    // Consume directly so many accounts cannot bypass the global daily cap.
+    const imageCost = classifyAiCallCost(AiCallPath.IMAGE_MODERATION).estimatedCostUsd;
+    const spendCap = await consumeSpendCap(imageCost);
     if (!spendCap.allowed) {
       await del(blobUrl);
       return { allowed: false, reason: 'AI spend cap reached — image moderation unavailable until UTC midnight reset.' };
@@ -67,7 +73,8 @@ export async function moderateImageUpload(
     }
 
     if (moderationResult.classification === 'UNKNOWN') {
-      return { allowed: true, flagged: true };
+      // Fail closed: an unclassified image is not a safe image.
+      return handleNsfwImage(blobUrl, moderationResult.reason || 'image could not be verified');
     }
 
     return { allowed: true };

@@ -2,7 +2,7 @@
 // External Seam: sanitize() + store()  (see service.ts for invariants, types.ts for error modes)
 // Internal Seams (private): BlobStore, ImageModerator via ports.ts adapters
 
-import type { AttachmentKind } from './types';
+import type { AttachmentKind, StoreOptions } from './types';
 import { storeDefault } from './service';
 
 export { sanitize, createAttachments, storeDefault as store } from './service';
@@ -12,22 +12,22 @@ export { InMemoryBlobStore, vercelBlobStore } from './adapters/vercel-blob';
 export { aiModerator, FakeModerator, FakeModeratorFactory } from './adapters/ai-moderation';
 
 // Ergonomic aliases — same Seam, same singleton behind storeDefault
-export function postAttachments(files: File[]) {
-  return storeDefault(files, { kind: 'message' });
+export function postAttachments(files: File[], userId?: string) {
+  return storeDefault(files, { kind: 'message', userId });
 }
 
-export function uploadAttachments(files: File[], opts?: { kind?: AttachmentKind }) {
+export function uploadAttachments(files: File[], opts?: StoreOptions) {
   return storeDefault(files, opts);
 }
 
 // Single-file helper for avatar/banner (maxFiles 1 enforced)
 export async function uploadProfileImage(
   file: File,
-  opts: { folder: 'avatars' | 'banners' }
+  opts: { folder: 'avatars' | 'banners'; userId?: string }
 ): Promise<{ url: string }> {
   let kind: AttachmentKind = 'banner';
   if (opts.folder === 'avatars') kind = 'avatar';
-  const [stored] = await storeDefault([file], { kind });
+  const [stored] = await storeDefault([file], { kind, userId: opts.userId });
   if (!stored) throw new Error('Failed to store profile image');
   return { url: stored.url };
 }

@@ -13,6 +13,8 @@ export type AttachmentKind = 'message' | 'avatar' | 'banner';
 
 export type StoreOptions = {
   kind?: AttachmentKind;
+  /** Attribution for per-user moderation quotas; required for image uploads. */
+  userId?: string;
 };
 
 export class AttachmentError extends AppError {

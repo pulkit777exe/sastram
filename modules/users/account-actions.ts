@@ -28,7 +28,9 @@ export const changePasswordAction = createServerAction(
     if (!session) return NOT_AUTHENTICATED;
     try {
       await auth.api.changePassword({
-        body: { currentPassword, newPassword, revokeOtherSessions: false },
+        // A password change must invalidate stolen/shared sessions; otherwise
+        // the old session keeps full account access after the credential rotates.
+        body: { currentPassword, newPassword, revokeOtherSessions: true },
         headers: await headers(),
       });
       return actionSuccess({ ok: true });

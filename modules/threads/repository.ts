@@ -6,7 +6,6 @@
 
 export {
   listThreads,
-  getThreadBySlug,
   type ListThreadsParams,
   type PaginatedThreads,
 } from './threads-core/repository';

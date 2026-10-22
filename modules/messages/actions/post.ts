@@ -13,7 +13,7 @@ import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-
 import { moderateIncomingMessage } from './moderation-hooks';
 import { createMentionsForMessage } from './mentions';
 import { queueAiInlineIfRequested } from './ai-inline';
-import { requireWriteOrThrow } from '@/lib/thread-access';
+import { filterReadableUserIds, requireWriteOrThrow } from '@/lib/thread-access';
 import { validatePollExpiry } from '@/modules/polls/validate';
 import { createServerAction, type ActionResult } from '@/lib/utils/server-action';
 import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
@@ -200,8 +200,23 @@ export const postMessage = createServerAction(
   { schema: postMessageSchema, actionName: 'postMessage' },
   async (input): Promise<ActionResult<PostMessageData>> => {
     const { content, threadId, parentId, clientStreams } = input;
+
+    // Authorize before doing any mention resolution. Otherwise an unauthenticated
+    // caller can force user lookups and, worse, have arbitrary IDs emailed a
+    // private thread's name/preview. Rate limit first so authorization DB work
+    // is not an unbounded spam target.
+    const session = await requireSession();
+
+    const withinRateLimit = await checkRateLimit(session.user.id);
+    if (!withinRateLimit) return actionFailure('RATE_LIMITED', 'Rate limit exceeded. Please slow down.');
+
+    const threadAccess = await requireWriteOrThrow(threadId, session.user.id, session.user.role);
+
     const rawMentions = await gatherMentionIds(content, input.mentions);
-    const mentions = await filterValidMentionIds(rawMentions);
+    const validMentions = await filterValidMentionIds(rawMentions);
+    // Subscription/invitation state can change, so re-check every mentioned
+    // user against the thread's current access set before persisting/emailing.
+    const mentions = await filterReadableUserIds(threadAccess, validMentions);
     const parentIdValue = parentId ?? undefined;
 
     const validation = createMessageWithAttachmentsSchema.safeParse({
@@ -222,11 +237,6 @@ export const postMessage = createServerAction(
       return actionFailure('VALIDATION_ERROR', expiryError);
     }
 
-    const session = await requireSession();
-    await requireWriteOrThrow(threadId, session.user.id, session.user.role);
-
-    const withinRateLimit = await checkRateLimit(session.user.id);
-    if (!withinRateLimit) return actionFailure('RATE_LIMITED', 'Rate limit exceeded. Please slow down.');
     if (mentions.length > MAX_MENTIONS) {
       return actionFailure('VALIDATION_ERROR', `A message can include at most ${MAX_MENTIONS} mentions.`);
     }

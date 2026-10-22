@@ -20,6 +20,7 @@ import {
   requireManageOrThrow,
 } from '@/lib/thread-access';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
+import { moderateThreadContent } from '@/lib/services/moderation';
 import { rateLimit } from '@/lib/services/rate-limit';
 
 const PAGE_SIZE = 50;
@@ -45,7 +46,10 @@ function splitPollOptions(raw: string): string[] {
 const createThreadInput = z.object({
   title: z.string().min(3).max(120),
   description: z.string().max(480).optional().or(z.literal('')),
-  initialMessage: z.string().optional(),
+  initialMessage: z
+    .string()
+    .max(10000, 'Initial message must be 10000 characters or fewer')
+    .optional(),
   pollQuestion: z.string().min(1).max(500).optional().or(z.literal('')),
   // Poll options arrive as a newline-separated textarea value from the form.
   pollOptions: z.string().transform(splitPollOptions).optional().or(z.literal('')),
@@ -67,6 +71,16 @@ export const createThreadAction = createServerAction(
     const safeInitial = initialMessage ? sanitizeUserContent(initialMessage).sanitized : initialMessage;
     const safePollQ = pollQuestion ? sanitizeUserContent(pollQuestion).sanitized : pollQuestion;
     const safePollOpts = pollOptions ? pollOptions.map((o) => sanitizeUserContent(o).sanitized) : pollOptions;
+
+    const moderation = await moderateThreadContent({
+      content: [safeTitle, safeDesc, safeInitial, safePollQ, ...(safePollOpts ?? [])]
+        .filter(Boolean)
+        .join('\n\n'),
+      authorId: session.user.id,
+    });
+    if (!moderation.success) {
+      throw new AppError(moderation.reason ?? 'Thread blocked by content filter', 'FORBIDDEN', 403);
+    }
 
     const expiryError =
       pollExpiresAt instanceof Date
@@ -141,6 +155,15 @@ export const updateThreadAction = createServerAction(
 
     const safeTitle = sanitizeUserContent(title).sanitized.trim().slice(0, 120);
     const safeDesc = description ? sanitizeUserContent(description).sanitized.trim().slice(0, 480) : null;
+
+    const moderation = await moderateThreadContent({
+      content: [safeTitle, safeDesc].filter(Boolean).join('\n\n'),
+      authorId: session.user.id,
+      threadId,
+    });
+    if (!moderation.success) {
+      throw new AppError(moderation.reason ?? 'Thread blocked by content filter', 'FORBIDDEN', 403);
+    }
 
     const updated = await updateThreadDomain({
       threadId,

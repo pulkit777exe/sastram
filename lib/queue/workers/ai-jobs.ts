@@ -46,21 +46,26 @@ async function getForkedContext(threadId: string): Promise<JobMessageData[]> {
     if (thread?.forkedFromId) {
       const source = await prisma.thread.findUnique({
         where: { id: thread.forkedFromId },
-        select: { aiSummary: true, description: true, name: true },
+        select: { aiSummary: true, description: true, name: true, visibility: true },
       });
-      if (source?.aiSummary) {
+      // Only a public parent's summary/description/messages are safe to feed
+      // into a fork summary. A private source would otherwise be paraphrased
+      // into content that the fork's readers can see.
+      if (source?.visibility === 'PUBLIC' && source.aiSummary) {
         extra.push({ id: thread.forkedFromId, content: `Original thread "${source.name}" summary: ${source.aiSummary.slice(0, 2000)}`, senderId: null, createdAt: new Date() } as unknown as JobMessageData);
-      } else if (source?.description) {
+      } else if (source?.visibility === 'PUBLIC' && source.description) {
         extra.push({ id: thread.forkedFromId, content: `Original thread "${source.name}": ${source.description.slice(0, 1000)}`, senderId: null, createdAt: new Date() } as unknown as JobMessageData);
       }
-      const sourceMessages = await prisma.message.findMany({
-        where: { threadId: thread.forkedFromId, deletedAt: null },
-        select: { id: true, content: true, senderId: true, createdAt: true },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-      });
-      for (const m of sourceMessages.reverse()) {
-        extra.push({ id: m.id, content: `[Forked context] ${m.content.slice(0, 800)}`, senderId: m.senderId, createdAt: m.createdAt } as JobMessageData);
+      if (source?.visibility === 'PUBLIC') {
+        const sourceMessages = await prisma.message.findMany({
+          where: { threadId: thread.forkedFromId, deletedAt: null },
+          select: { id: true, content: true, senderId: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        });
+        for (const m of sourceMessages.reverse()) {
+          extra.push({ id: m.id, content: `[Forked context] ${m.content.slice(0, 800)}`, senderId: m.senderId, createdAt: m.createdAt } as JobMessageData);
+        }
       }
     }
     // For external forks, description contains "Forked from https://..."

@@ -5,7 +5,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction } from '@/lib/utils/server-action';
 import { searchMentionUsersSchema } from '@/modules/messages/schemas';
-import { requireReadOrThrow } from '@/lib/thread-access';
+import { filterReadableUserIds, requireReadOrThrow } from '@/lib/thread-access';
 import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
 import { ROUTES } from '@/lib/config/routes';
 import { actionSuccess } from '@/lib/utils/server-action';
@@ -66,9 +66,15 @@ export async function createMentionsForMessage({
 }) {
   if (mentions.length === 0) return;
 
+  const thread = await prisma.thread.findFirst({
+    where: { id: threadId, deletedAt: null },
+    select: { name: true, slug: true, visibility: true, createdBy: true },
+  });
+  if (!thread) return;
+
   // Validate mentionIds exist and are not soft-deleted — prevents FK errors and mention injection.
   // Skipped when the caller validated at the module seam (same request, same ids).
-  const validIds =
+  const existingIds =
     mentionsValidated === true
       ? mentions
       : (
@@ -77,6 +83,14 @@ export async function createMentionsForMessage({
             select: { id: true },
           })
         ).map((u) => u.id);
+  if (existingIds.length === 0) return;
+
+  // Never persist or email a mention for someone who cannot read the thread.
+  // This is the last line of defence even when the caller set mentionsValidated.
+  const validIds = await filterReadableUserIds(
+    { threadId, createdBy: thread.createdBy, visibility: thread.visibility },
+    existingIds
+  );
   if (validIds.length === 0) return;
 
   const mentionerName = mentionedBy.name?.trim() || 'A user';
@@ -86,13 +100,6 @@ export async function createMentionsForMessage({
   const linkUrl = threadSlug ? `${ROUTES.THREAD(threadSlug)}?focus=${messageId}` : null;
   const notifications = buildMentionNotifications(validIds, mentionerName, messageId, threadId, linkUrl);
   await sideEffects.createBulkNotifications(notifications);
-
-  const thread = await prisma.thread.findFirst({
-    where: { id: threadId, deletedAt: null },
-    select: { name: true, slug: true },
-  });
-
-  if (!thread) return;
 
   const threadUrl = `${process.env.NEXT_PUBLIC_APP_URL}${ROUTES.THREAD(thread.slug)}`;
   const mentionedUsers = await prisma.user.findMany({
@@ -122,17 +129,16 @@ export const searchMentionUsers = createServerAction(
     const session = await requireSession(false);
 
     try {
-      await requireReadOrThrow(threadId, session.user.id, session.user.role);
+      const threadAccess = await requireReadOrThrow(threadId, session.user.id, session.user.role);
 
-      const users = await prisma.user.findMany({
+      // Name-only search: matching by email turns the picker into an account
+      // enumeration oracle. Candidate IDs are then filtered by thread access so
+      // the picker does not offer people who cannot read a private thread.
+      const candidates = await prisma.user.findMany({
         where: {
           deletedAt: null,
-          name: { not: null },
           id: { not: session.user.id },
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { email: { contains: query, mode: 'insensitive' } },
-          ],
+          name: { contains: query, mode: 'insensitive' },
         },
         select: {
           id: true,
@@ -140,8 +146,12 @@ export const searchMentionUsers = createServerAction(
           image: true,
         },
         orderBy: { followerCount: 'desc' },
-        take: 5,
+        take: 20,
       });
+      const readableIds = new Set(
+        await filterReadableUserIds(threadAccess, candidates.map((user) => user.id))
+      );
+      const users = candidates.filter((user) => readableIds.has(user.id)).slice(0, 5);
 
       const mapped = users.flatMap((user) => {
         if (!user.name) return [];

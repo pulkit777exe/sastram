@@ -66,16 +66,31 @@ export async function forkThreadDomain({
   const baseSlug = buildThreadSlug(rawTitle);
   const slug = await ensureUniqueSlug(baseSlug, sideEffects);
 
+  // A fork starts with the source's visibility; a public fork of a private or
+  // restricted thread would publish metadata the viewer only sees through an
+  // invitation. Refuse that transition explicitly instead of silently copying.
+  const resolvedVisibility = visibility ?? source.visibility;
+  if (source.visibility !== 'PUBLIC' && resolvedVisibility === 'PUBLIC') {
+    throw new AppError('A fork of a non-public thread cannot be public', 'FORBIDDEN', 403);
+  }
+
+  // Description and tags are part of the source thread's private context.
+  // Only carry them across when the source itself is public; otherwise the
+  // fork starts clean and cannot leak them if its visibility changes later.
+  const copySourceMetadata = source.visibility === 'PUBLIC';
+
   const forked = await forkThread({
     name: rawTitle,
-    description: source.description,
+    description: copySourceMetadata ? source.description : null,
     slug,
     createdBy: userId,
     forkedFromId: source.id,
-    visibility: visibility ?? 'PUBLIC',
+    visibility: resolvedVisibility,
   });
 
-  await sideEffects.copyThreadTags(source.id, forked.id);
+  if (copySourceMetadata) {
+    await sideEffects.copyThreadTags(source.id, forked.id);
+  }
 
   return { id: forked.id, slug: forked.slug };
 }

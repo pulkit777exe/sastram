@@ -102,8 +102,13 @@ async function uploadOne(key: string, file: File, storage: BlobStore): Promise<s
   return url;
 }
 
-async function moderateOne(url: string, category: FileCategory, moderator: ImageModerator) {
-  const modResult = await moderator.moderate(url, category);
+async function moderateOne(
+  url: string,
+  category: FileCategory,
+  moderator: ImageModerator,
+  userId?: string
+) {
+  const modResult = await moderator.moderate(url, category, { userId });
   if (!modResult.allowed) {
     const { errorCode, statusCode } = getErrorCode(modResult);
     throw new AttachmentError(modResult.reason ?? 'Image rejected', errorCode, statusCode);
@@ -140,7 +145,7 @@ export function createAttachments(deps: AttachmentsDeps = { storage: vercelBlobS
         const entry: StoredFile = { url, type: category, name: file.name, size: file.size };
         uploaded.push(entry);
         if (category === 'IMAGE' || category === 'GIF') {
-          const modResult = await moderateOne(url, category, deps.moderator);
+          const modResult = await moderateOne(url, category, deps.moderator, opts.userId);
           if (modResult.flagged) entry.flagged = true;
         }
       }

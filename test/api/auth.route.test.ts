@@ -70,7 +70,7 @@ describe('Auth Service', function () {
 
       try {
         expect(() => require('@/lib/services/auth')).to.throw(
-          'Google OAuth requires both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET'
+          /GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured together/
         );
       } finally {
         if (originalId !== undefined) {
@@ -104,7 +104,7 @@ describe('Auth Service', function () {
 
       try {
         expect(() => require('@/lib/services/auth')).to.throw(
-          'GitHub OAuth requires both GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET'
+          /GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET must be configured together/
         );
       } finally {
         if (originalId !== undefined) {
@@ -174,9 +174,14 @@ describe('Auth Service', function () {
     });
 
     it('should not log OTP in production mode', async function () {
-      const originalEnv = process.env.NODE_ENV;
+      const mutableEnv = process.env as Record<string, string | undefined>;
+      const originalEnv = mutableEnv.NODE_ENV;
+      const originalQstashDev = mutableEnv.QSTASH_DEV;
 
-      (process.env as unknown as Record<string, string | undefined>).NODE_ENV = 'production';
+      mutableEnv.NODE_ENV = 'production';
+      // The real production validator rejects QSTASH_DEV; keep the simulated
+      // production environment internally consistent.
+      mutableEnv.QSTASH_DEV = 'false';
 
       try {
         const { auth } = await import('@/lib/services/auth');
@@ -187,11 +192,17 @@ describe('Auth Service', function () {
         if (otpPlugin && typeof otpPlugin === 'object' && 'options' in otpPlugin) {
           const opts = otpPlugin.options as Record<string, unknown>;
           if (typeof opts.sendVerificationOTP === 'function') {
-            await (opts.sendVerificationOTP as (args: unknown) => Promise<void>)({
-              email: 'test@example.com',
-              otp: '654321',
-              type: 'sign-in',
-            });
+            try {
+              await (opts.sendVerificationOTP as (args: unknown) => Promise<void>)({
+                email: 'test@example.com',
+                otp: '654321',
+                type: 'sign-in',
+              });
+            } catch {
+              // This test asserts logging only. In the simulated production
+              // environment the QStash publish can fail (loopback destination),
+              // and production correctly rethrows instead of reporting success.
+            }
 
             expect(infoStub.calledWithMatch(/654321/)).to.equal(false);
             expect(debugStub.calledWithMatch(/654321/)).to.equal(false);
@@ -200,9 +211,14 @@ describe('Auth Service', function () {
       } finally {
         // Assigning undefined would store the string "undefined" — delete instead.
         if (originalEnv === undefined) {
-          delete (process.env as unknown as Record<string, string | undefined>).NODE_ENV;
+          delete mutableEnv.NODE_ENV;
         } else {
-          (process.env as unknown as Record<string, string | undefined>).NODE_ENV = originalEnv;
+          mutableEnv.NODE_ENV = originalEnv;
+        }
+        if (originalQstashDev === undefined) {
+          delete mutableEnv.QSTASH_DEV;
+        } else {
+          mutableEnv.QSTASH_DEV = originalQstashDev;
         }
       }
     });

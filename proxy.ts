@@ -1,9 +1,11 @@
 import { HTTP_STATUS } from '@/lib/utils/api-response';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { getSessionCookie } from 'better-auth/cookies';
 import { getEnv } from '@/lib/config/env';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { getRequestIp } from '@/lib/utils/request-ip';
+import { normalizeRequestId } from '@/lib/infrastructure/logger';
 
 const PUBLIC_PATHS = [
   '/',
@@ -24,6 +26,8 @@ const PUBLIC_PATHS = [
   '/api/jobs',
   '/api/link-preview',
   '/api/upload',
+  // Sentry tunnel (next.config.ts rewrites /monitoring -> Sentry ingest).
+  '/monitoring',
 ];
 
 function isPublicPath(pathname: string): boolean {
@@ -71,7 +75,7 @@ export function buildCsp(nonce: string): string {
     "object-src 'none'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https://*.blob.vercel-storage.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
-    "connect-src 'self' http://localhost:3000 ws://localhost:3000 https://*.better-auth.com https://api.gemini.google.com https://api.openai.com https://api.exa.ai https://api.tavily.com https://*.upstash.io",
+    `connect-src 'self'${isProd ? '' : ' http://localhost:3000 ws://localhost:3000'} https://*.better-auth.com https://api.gemini.google.com https://api.openai.com https://api.exa.ai https://api.tavily.com https://*.upstash.io`,
     "font-src 'self' data: https://fonts.gstatic.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
@@ -113,11 +117,14 @@ function applySecurityHeaders(response: NextResponse, nonce: string): NextRespon
 
 export default async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+  const requestId = normalizeRequestId(request.headers.get('x-request-id'));
   const nonce = crypto.randomUUID().replace(/-/g, '');
 
   const isPublic = isPublicPath(pathname);
-  const sessionCookie = request.cookies.get('better-auth.session_token');
+  // Better Auth prefixes cookies with __Secure- when useSecureCookies is on
+  // (production). Hard-coding the unprefixed name locks every real deployment
+  // out; this helper understands both forms.
+  const sessionCookie = getSessionCookie(request);
 
   if (!sessionCookie && !isPublic && !isPublicThreadPath(pathname)) {
     const loginUrl = new URL('/login', request.url);
@@ -135,6 +142,19 @@ export default async function proxy(request: NextRequest) {
   // /dashboard → /login. The login page now handles the redirect
   // server-side via getSession().
 
+  // Public endpoints normally enforce their own limits. The Sentry tunnel is
+  // the exception: it must accept unauthenticated POSTs and would otherwise be
+  // an unbounded relay into the Sentry quota.
+  if (pathname === '/monitoring' && getEnv().RATE_LIMIT_ENABLED) {
+    const ip = getRequestIp(request);
+    const { success } = await rateLimit({ key: `monitoring:${ip}`, type: 'api' });
+    if (!success) {
+      const response = NextResponse.json({ error: 'Too Many Requests' }, { status: HTTP_STATUS.RATE_LIMITED });
+      response.headers.set('x-request-id', requestId);
+      return applySecurityHeaders(response, nonce);
+    }
+  }
+
   if (!isPublic && getEnv().RATE_LIMIT_ENABLED) {
     const ip = getRequestIp(request);
     const key = `proxy:${ip}:${pathname}`;
@@ -147,9 +167,12 @@ export default async function proxy(request: NextRequest) {
   }
 
   const unsafeMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
-  // Exempt QStash webhook (no Origin) — it has its own timingSafe signature verification
+  // Exempt machine-to-machine endpoints: QStash has its own timing-safe
+  // signature check, and Sentry's tunnel is same-origin but may use sendBeacon
+  // without an Origin header.
   const isQStashWebhook = pathname === '/api/jobs';
-  if (unsafeMethods.includes(request.method) && !isQStashWebhook) {
+  const isSentryTunnel = pathname === '/monitoring';
+  if (unsafeMethods.includes(request.method) && !isQStashWebhook && !isSentryTunnel) {
     const origin = request.headers.get('origin');
     const referer = request.headers.get('referer');
     const appUrl = new URL(getEnv().NEXT_PUBLIC_APP_URL);

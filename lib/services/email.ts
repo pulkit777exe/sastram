@@ -31,7 +31,13 @@ export async function sendEmail({
   data,
 }: EmailOptions) {
   const payload: EmailJobData = { to, subject, text, from, type, metadata, templateId, data };
-  await enqueueJob('email', payload);
+  const enqueued = await enqueueJob('email', payload);
+  if (!enqueued.ok) {
+    // Inline execution can fail without throwing (e.g. Resend error, no
+    // handler). Surface it — otherwise OTP/sign-in callers report success and
+    // the user never receives a code.
+    throw new Error(`Failed to enqueue ${type} email`);
+  }
 
   let recipients: string;
   if (Array.isArray(to)) {

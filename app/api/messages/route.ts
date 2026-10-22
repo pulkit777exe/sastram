@@ -52,7 +52,13 @@ function validateFormInputs(formData: FormData): { threadId: string; rawContent:
   return { threadId, rawContent, files };
 }
 
-async function buildPostFormData(formData: FormData, threadId: string, rawContent: string, files: File[]): Promise<FormData> {
+async function buildPostFormData(
+  formData: FormData,
+  threadId: string,
+  rawContent: string,
+  files: File[],
+  userId: string
+): Promise<FormData> {
   const content = sanitize(rawContent || '');
   const postFormData = new FormData();
   if (content) postFormData.append('content', content);
@@ -65,7 +71,7 @@ async function buildPostFormData(formData: FormData, threadId: string, rawConten
   if (existingAttachments) {
     postFormData.append('attachments', existingAttachments);
   } else if (files.length > 0) {
-    const uploadedAttachments = await store(files, { kind: 'message' });
+    const uploadedAttachments = await store(files, { kind: 'message', userId });
     postFormData.append('attachments', JSON.stringify(uploadedAttachments));
   }
   return postFormData;
@@ -110,9 +116,18 @@ export async function POST(request: NextRequest) {
     if (validated instanceof NextResponse) return validated;
     const { threadId, rawContent, files } = validated;
 
+    if (files.length > 0) {
+      const uploadLimit = await rateLimit({ key: `upload:${session.user.id}`, type: 'upload' });
+      if (!uploadLimit.success) {
+        return NextResponse.json(fail('RATE_LIMITED', 'Too many uploads. Please try again later.'), {
+          status: HTTP_STATUS.RATE_LIMITED,
+        });
+      }
+    }
+
     await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 
-    const postFormData = await buildPostFormData(formData, threadId, rawContent, files);
+    const postFormData = await buildPostFormData(formData, threadId, rawContent, files, session.user.id);
 
     const result = await postMessage(postFormData);
     void trackNeonRequest();

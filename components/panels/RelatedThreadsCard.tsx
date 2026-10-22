@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getSession } from '@/modules/auth';
 import { getRelatedThreads } from '@/modules/threads';
 import type { ThreadDNA } from '@/lib/schemas/thread-dna';
 import { DetailCard } from '@/components/ui/detail-card';
@@ -12,7 +13,9 @@ function formatSimilarity(score: number): string {
 }
 
 export default async function RelatedThreadsCard({ threadId }: RelatedThreadsCardProps) {
-  const related = await getRelatedThreads(threadId);
+  const session = await getSession();
+  if (!session) return null;
+  const related = await getRelatedThreads(threadId, session.user.id, session.user.role);
 
   if (related.length === 0) {
     return null;

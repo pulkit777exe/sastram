@@ -2,6 +2,8 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { slugify } from '@/lib/utils/slug';
 import { countActiveUsersByThread } from '@/modules/threads/threads-core/repository';
+import { visibilityFilter } from '@/lib/thread-access';
+import type { Role } from '@prisma/client';
 
 const withThreadCount = { _count: { select: { threads: true } } };
 
@@ -90,24 +92,29 @@ export async function listAllTags(params?: { page?: number; pageSize?: number; s
   };
 }
 
-export async function getTagBySlug(slug: string) {
+export async function getTagBySlug(slug: string, viewerId?: string, viewerRole?: Role | null) {
   try {
     const tag = await prisma.threadTag.findUnique({
       where: { slug },
-      include: withThreadCount,
+      select: { id: true, name: true, slug: true, color: true, createdAt: true },
     });
     if (!tag) return null;
-    return { ...tag, threadCount: tag._count.threads };
+    const filter = await visibilityFilter(viewerId, viewerRole);
+    const threadCount = await prisma.thread.count({
+      where: { tags: { some: { tagId: tag.id } }, deletedAt: null, ...filter },
+    });
+    return { ...tag, threadCount };
   } catch (error) {
     logger.error('[getTagBySlug]', error);
     return null;
   }
 }
 
-export async function getThreadsByTag(tagId: string) {
+export async function getThreadsByTag(tagId: string, viewerId?: string, viewerRole?: Role | null) {
   try {
+    const filter = await visibilityFilter(viewerId, viewerRole);
     const threads = await prisma.thread.findMany({
-      where: { tags: { some: { tagId } }, deletedAt: null },
+      where: { tags: { some: { tagId } }, deletedAt: null, ...filter },
       select: {
         id: true,
         slug: true,

@@ -71,7 +71,10 @@ export const auth = betterAuth({
     provider: 'postgresql',
   }),
   advanced: {
-    useSecureCookies: process.env.NODE_ENV === 'production',
+    // Match the actual public scheme. A local Compose stack runs NODE_ENV=
+    // production over http://localhost; forcing Secure there makes login
+    // silently fail. Hosted production is https (enforced by check:prod).
+    useSecureCookies: env.NEXT_PUBLIC_APP_URL.startsWith('https://'),
     ipAddress: {
       ipv6Subnet: 128,
     },
@@ -151,9 +154,9 @@ export const auth = betterAuth({
           logger.info(`Successfully sent ${otpType} OTP to ${email}`);
         } catch (otpSendError) {
           logger.error(`Failed to send ${otpType} OTP to ${email}:`, otpSendError);
-          if (process.env.NODE_ENV !== 'production') {
-            logger.debug(`[DEV FALLBACK] ${otpType} OTP for ${email}: ***${otp.slice(-2)}`);
-          }
+          // Never tell the client an OTP was sent when delivery failed. Better
+          // Auth turns this into a 500 so the user can retry.
+          throw otpSendError;
         }
       },
     }),

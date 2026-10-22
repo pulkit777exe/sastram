@@ -168,7 +168,7 @@ export class MLClassifier {
     confidence: number;
     categories: string[];
   }> {
-    if (!env.CONTENT_MODERATION_ENABLED || !env.GEMINI_API_KEY) {
+    if (!env.CONTENT_MODERATION_ENABLED) {
       return {
         action: 'ALLOW',
         severity: 'LOW',
@@ -177,11 +177,36 @@ export class MLClassifier {
       };
     }
 
+    // Match the provider actually used by aiService. Checking Gemini
+    // unconditionally silently disabled ML moderation on OpenAI deployments.
+    const providerKey = env.AI_PROVIDER === 'gemini' ? env.GEMINI_API_KEY : env.OPENAI_API_KEY;
+    if (!providerKey) {
+      // Fail safe: regex moderation still ran, but an enabled ML layer with no
+      // key is reduced coverage, not a clean bill of health.
+      return {
+        action: 'REVIEW',
+        severity: 'LOW',
+        confidence: 0,
+        categories: ['provider-not-configured'],
+      };
+    }
+
     try {
-      // Moderation is classified CHEAP so the cost gate always passes, but the
-      // spend still has to be accounted against the global daily cap.
+      // Moderation is classified CHEAP so the cost gate normally passes, but
+      // production fails closed when the shared spend counter is unavailable.
+      // Do not call the provider in that case; surface the reduced coverage as
+      // REVIEW instead of silently pretending the content was classified.
       const moderationCost = classifyAiCallCost(AiCallPath.TEXT_TOXICITY_MODERATION).estimatedCostUsd;
-      await consumeSpendCap(moderationCost);
+      const spendCap = await consumeSpendCap(moderationCost);
+      if (!spendCap.allowed) {
+        logger.warn('[moderation] AI spend cap unavailable/reached — skipping ML classification');
+        return {
+          action: 'REVIEW',
+          severity: 'LOW',
+          confidence: 0,
+          categories: ['spend-cap-unavailable'],
+        };
+      }
 
       const recentSlice = context.recentHistory.slice(-RECENT_HISTORY_FOR_TOXICITY);
       const formattedHistory = recentSlice.map((m) => `User ${m.senderId ?? 'unknown'}: ${m.content}`);
@@ -273,6 +298,48 @@ export class ContextualAnalyzer {
       return { shouldEscalate: false };
     }
   }
+}
+
+/**
+ * Synchronous moderation for content that is not a Message yet (thread title,
+ * description, initial post). Reuses the regex + ML classifiers but skips the
+ * rate-limit filter, which callers already apply. Returns success=false only
+ * for terminal blocks; REVIEW/FLAG remain allowed until a pending-thread state
+ * exists in the schema.
+ */
+export async function moderateThreadContent(args: {
+  content: string;
+  authorId: string;
+  threadId?: string;
+}): Promise<ModerationResult> {
+  const message: MessageLike = {
+    content: args.content,
+    authorId: args.authorId,
+    threadId: args.threadId ?? 'new-thread',
+  };
+  const context: ConversationContext = {
+    threadId: message.threadId,
+    participantIds: [args.authorId],
+    recentHistory: [],
+  };
+
+  const regexResult = await new RegexFilter().check(message);
+  if (!regexResult.success && regexResult.action === 'BLOCK') {
+    return regexResult;
+  }
+
+  const mlResult = await new MLClassifier().analyze(message, context);
+  if (mlResult.action === 'BLOCK') {
+    return {
+      success: false,
+      action: 'BLOCK',
+      severity: mlResult.severity,
+      confidence: mlResult.confidence,
+      reason: `ML analysis: ${mlResult.categories.join(', ')}`,
+    };
+  }
+
+  return { success: true, action: 'ALLOW' };
 }
 
 export class MessageModerationPipeline {

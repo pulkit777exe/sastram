@@ -11,10 +11,10 @@ export default async function TagDetailPage({ params }: { params: { slug: string
   const session = await getSession();
   if (!session) return null;
 
-  const tag = await getTagBySlug(slug);
+  const tag = await getTagBySlug(slug, session.user.id, session.user.role);
   if (!tag) notFound();
 
-  const threads = await getThreadsByTag(tag.id);
+  const threads = await getThreadsByTag(tag.id, session.user.id, session.user.role);
   const threadLabel = tag.threadCount === 1 ? 'thread' : 'threads';
 
   return (

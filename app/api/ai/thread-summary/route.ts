@@ -52,7 +52,20 @@ async function fetchSummaryMessages(threadId: string) {
     where: { threadId, deletedAt: null },
     take: getEnv().AI_ANALYSIS_MESSAGE_LIMIT,
     orderBy: { createdAt: 'asc' },
-    include: { sender: true },
+    // The queue payload leaves the process. Never forward full sender rows
+    // (email, role, status, preferences) to QStash for a summarization prompt.
+    select: {
+      id: true,
+      content: true,
+      senderId: true,
+      threadId: true,
+      parentId: true,
+      depth: true,
+      isAiResponse: true,
+      createdAt: true,
+      updatedAt: true,
+      sender: { select: { id: true, name: true, image: true } },
+    },
   });
 }
 

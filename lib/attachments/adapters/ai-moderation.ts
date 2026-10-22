@@ -3,10 +3,14 @@ import { moderateImageUpload, type ImageModerationResult } from '@/lib/services/
 import type { ImageModerator } from '../ports';
 
 export const aiModerator: ImageModerator = {
-  async moderate(blobUrl: string, category: FileCategory): Promise<ImageModerationResult> {
+  async moderate(
+    blobUrl: string,
+    category: FileCategory,
+    context?: { userId?: string }
+  ): Promise<ImageModerationResult> {
     // moderateImageUpload is authoritative: owns quota, spend cap, AI call,
     // and blob deletion on NSFW/UNKNOWN edge + crash-before-rethrow.
-    return moderateImageUpload(blobUrl, category);
+    return moderateImageUpload(blobUrl, category, context?.userId);
   },
 };
 

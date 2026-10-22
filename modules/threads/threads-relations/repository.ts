@@ -1,7 +1,8 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, type Role } from '@prisma/client';
 import { parseThreadDna, type ThreadDNA } from '@/lib/schemas/thread-dna';
+import { visibilityFilter } from '@/lib/thread-access';
 
 const SIMILARITY_THRESHOLD = 0.7;
 const MAX_RELATED_THREADS = 5;
@@ -174,7 +175,11 @@ export async function findRelatedThreads(threadId: string): Promise<RelatedThrea
   }
 }
 
-export async function getRelatedThreads(threadId: string): Promise<RelatedThread[]> {
+export async function getRelatedThreads(
+  threadId: string,
+  viewerId?: string,
+  viewerRole?: Role | null
+): Promise<RelatedThread[]> {
   const relations = await prisma.threadRelation.findMany({
     where: { sourceThreadId: threadId },
     include: {
@@ -183,14 +188,30 @@ export async function getRelatedThreads(threadId: string): Promise<RelatedThread
     orderBy: { similarity: 'desc' },
     take: MAX_RELATED_THREADS,
   });
+  if (relations.length === 0) return [];
 
-  return relations.map((relation) => ({
-    id: relation.target.id,
-    name: relation.target.name,
-    slug: relation.target.slug,
-    similarity: relation.similarity,
-    threadDna: parseThreadDna(relation.target.threadDna),
-  }));
+  // Relations are computed globally; the target may be private even though the
+  // source is readable. Re-check every target against the viewer's visibility.
+  const filter = await visibilityFilter(viewerId, viewerRole);
+  const visibleTargets = await prisma.thread.findMany({
+    where: {
+      id: { in: relations.map((relation) => relation.target.id) },
+      deletedAt: null,
+      ...filter,
+    },
+    select: { id: true },
+  });
+  const visibleIds = new Set(visibleTargets.map((target) => target.id));
+
+  return relations
+    .filter((relation) => visibleIds.has(relation.target.id))
+    .map((relation) => ({
+      id: relation.target.id,
+      name: relation.target.name,
+      slug: relation.target.slug,
+      similarity: relation.similarity,
+      threadDna: parseThreadDna(relation.target.threadDna),
+    }));
 }
 
 export async function updateAllThreadRelations(): Promise<{

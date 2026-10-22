@@ -156,7 +156,9 @@ export async function GET(
   // once in the route; no worker is involved.
   const guard = await guardAiRoute(request, {
     path: AiCallPath.AI_REPLY_STREAM,
-    quota: null,
+    // Mirror the non-streaming route: without this, looping the SSE endpoint
+    // bypasses the per-user AI quota entirely.
+    quota: { kind: 'analysis' },
     threadId,
     rateLimitScope: 'ai-reply-stream',
     sse: true,

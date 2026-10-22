@@ -3,26 +3,29 @@ import { env } from '@/lib/config/env';
 
 const MAX_CONTENT_LENGTH = 10000;
 
-const SAFE_URL_RE = /^https:\/\//;
-
 function isBlobDomainUrl(value: string): boolean {
-  const blobUrl = env.BLOB_URL;
-  if (blobUrl && value.startsWith(blobUrl)) return true;
-  // Vercel Blob URLs always contain blob.vercel-storage.com or vercel-blob
-  return value.includes('blob.vercel-storage.com') || value.includes('vercel-blob');
-}
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return false;
 
-function isSafeUrl(value: string): boolean {
-  if (value.includes('..') || value.includes('\\')) return false;
-  if (!SAFE_URL_RE.test(value)) return false;
-  return isBlobDomainUrl(value);
+    // When the deployment pins its Blob origin, compare the full origin — a
+    // substring check would accept https://evil.example/?blob.vercel-storage.com.
+    if (env.BLOB_URL) {
+      return parsed.origin === new URL(env.BLOB_URL).origin;
+    }
+
+    const host = parsed.hostname.toLowerCase();
+    return host === 'blob.vercel-storage.com' || host.endsWith('.blob.vercel-storage.com');
+  } catch {
+    return false;
+  }
 }
 
 export const attachmentInputSchema = z.object({
   url: z
     .string()
     .url('Invalid attachment URL')
-    .refine(isSafeUrl, 'URL must be a Vercel Blob URL (https://*.public.blob.vercel-storage.com)'),
+    .refine(isBlobDomainUrl, 'URL must be a Vercel Blob URL (https://*.public.blob.vercel-storage.com)'),
   type: z.enum(['IMAGE', 'GIF', 'FILE', 'VIDEO', 'PDF']),
   name: z.string().nullable(),
   size: z.number().int().positive('File size must be positive').nullable(),

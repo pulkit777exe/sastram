@@ -1,8 +1,8 @@
 import { Prisma, Role } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { cache } from 'react';
-import { buildThreadDTO, buildThreadDetailDTO } from '@/modules/threads/service';
-import type { ThreadDetail, ThreadRecord, ThreadSummary } from '@/modules/threads/types';
+import { buildThreadDTO } from '@/modules/threads/service';
+import type { ThreadRecord, ThreadSummary } from '@/modules/threads/types';
 import { visibilityFilter } from '@/lib/thread-access';
 
 export interface ListThreadsParams {
@@ -191,27 +191,4 @@ export const listThreads = cache(
   }
 );
 
-export const getThreadBySlug = cache(async (slug: string): Promise<ThreadDetail | null> => {
-  const row = await prisma.thread.findFirst({
-    where: { slug, deletedAt: null },
-    include: {
-      _count: {
-        select: {
-          subscriptions: true,
-        },
-      },
-    },
-  });
 
-  if (!row) return null;
-
-  const activeUsers = await countActiveUsersByThread([row.id]);
-
-  return buildThreadDetailDTO(
-    row as ThreadRecord,
-    row.messageCount,
-    activeUsers.get(row.id) ?? 0,
-    row.aiSummary,
-    row._count.subscriptions
-  );
-});

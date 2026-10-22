@@ -16,6 +16,7 @@ import { actionFailure, actionSuccess, type ActionErrorCode } from '@/lib/utils/
 import { paginationSchema, userIdSchema } from '@/lib/utils/validation-common';
 import { verifyPassword } from 'better-auth/crypto';
 import { sanitizeUserContent, isSafePublicUrl } from '@/lib/services/content-safety';
+import { rateLimit } from '@/lib/services/rate-limit';
 
 const fileSchema = z.object({
   file: z.custom<File>((val) => val instanceof File),
@@ -125,8 +126,14 @@ async function uploadProfileImage(
 ) {
   try {
     const session = await requireSession();
+    // Profile images share the same bucket/global image-moderation quota as
+    // message attachments; without a per-user limit one account can drain it.
+    const uploadLimit = await rateLimit({ key: `upload:${session.user.id}`, type: 'upload' });
+    if (!uploadLimit.success) {
+      throw new AppError('Too many uploads. Please try again later.', 'RATE_LIMITED', 429);
+    }
     const kind = resolveAttachmentKind(folder);
-    const [stored] = await store([file], { kind });
+    const [stored] = await store([file], { kind, userId: session.user.id });
 
     await prisma.user.update({
       where: { id: session.user.id },

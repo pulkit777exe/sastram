@@ -2,6 +2,8 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { crossReference } from '@/modules/ai-search/synthesis';
 import { createKeyedLlm } from '@/lib/ai/text';
+import { checkAiGuards } from '@/lib/ai/guard';
+import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
 import { canAccessThread } from '@/lib/thread-access';
 import Link from 'next/link';
@@ -48,7 +50,20 @@ export default async function CanvasPage({
     try {
       const geminiKey = process.env.SASTRAM_GEMINI_KEY ?? process.env.GEMINI_API_KEY ?? '';
       const openaiKey = process.env.OPENAI_API_KEY;
-      if (geminiKey) {
+      // A GET page can be refreshed indefinitely. Run the same quota + spend
+      // gate as the API routes before spending money on a cross-reference.
+      const guard = await checkAiGuards(AiCallPath.FORUM_SEARCH_CROSS_REFERENCE, session.user.id, {
+        quota: { kind: 'analysis' },
+      });
+      if (!guard.ok) {
+        diff = {
+          conflictDetected: false,
+          description: guard.rejection.message,
+          sideA: left.name,
+          sideB: right.name,
+          ranked: [left, right].map((t) => ({ title: t.name, tier: 2, domain: 'sastram.local' })),
+        };
+      } else if (geminiKey) {
         const leftSrc = {
           id: left.id,
           title: left.name,
