@@ -15,14 +15,30 @@ function todayKey(): string {
 }
 
 /**
+ * In development a missing Redis should not block work. In production the
+ * spend cap is the last line of defence after the readiness probe; silently
+ * allowing every AI request would turn an Upstash outage into an unbounded
+ * provider bill.
+ */
+function unavailablePolicy(): { allowed: boolean; remaining: number } {
+  if (process.env.NODE_ENV === 'production') {
+    return { allowed: false, remaining: 0 };
+  }
+  return { allowed: true, remaining: -1 };
+}
+
+/**
  * Check-and-increment in one Lua round trip, so concurrent callers can't both
  * squeeze past the limit. Call this before doing AI work, not after.
  */
 export async function consumeSpendCap(costUsd: number = 0.01): Promise<{ allowed: boolean; remaining: number }> {
   const r = getUpstashRedis();
   if (!r) {
-    logger.warn('[consumeSpendCap] Redis unavailable, allowing request (fail-open for spend cap)');
-    return { allowed: true, remaining: -1 };
+    const policy = unavailablePolicy();
+    logger.error(
+      `[consumeSpendCap] Redis unavailable — ${policy.allowed ? 'allowing' : 'denying'} request (fail-${policy.allowed ? 'open' : 'closed'})`
+    );
+    return policy;
   }
 
   const key = todayKey();
@@ -40,8 +56,9 @@ export async function consumeSpendCap(costUsd: number = 0.01): Promise<{ allowed
       remaining: Math.max(0, DAILY_DOLLAR_LIMIT - result),
     };
   } catch (error) {
-    logger.error('[consumeSpendCap] Redis error', error);
-    return { allowed: true, remaining: -1 };
+    const policy = unavailablePolicy();
+    logger.error(`[consumeSpendCap] Redis error — ${policy.allowed ? 'allowing' : 'denying'} request`, error);
+    return policy;
   }
 }
 
@@ -69,7 +86,8 @@ export async function enforceAiSpendCap(path: AiCallPath): Promise<{ allowed: bo
  * spend has already reached the cap without consuming any of it. Crons use
  * this for fan-out pre-flight; the consuming call happens once per unit of
  * work in the enqueued worker (ADR-0001: workers consume, fan-out only reads).
- * Fail-open on Redis errors, like every other spend gate.
+ * Production fails closed when the counter cannot be read; development stays
+ * fail-open so offline work is not blocked.
  */
 export async function checkAiSpendCap(path: AiCallPath): Promise<{ allowed: boolean; remaining: number }> {
   const classification = classifyAiCallCost(path);
@@ -79,8 +97,11 @@ export async function checkAiSpendCap(path: AiCallPath): Promise<{ allowed: bool
 
   const r = getUpstashRedis();
   if (!r) {
-    logger.warn('[checkAiSpendCap] Redis unavailable, allowing request (fail-open for spend cap)');
-    return { allowed: true, remaining: -1 };
+    const policy = unavailablePolicy();
+    logger.error(
+      `[checkAiSpendCap] Redis unavailable — ${policy.allowed ? 'allowing' : 'denying'} request (fail-${policy.allowed ? 'open' : 'closed'})`
+    );
+    return policy;
   }
 
   try {
@@ -97,8 +118,9 @@ export async function checkAiSpendCap(path: AiCallPath): Promise<{ allowed: bool
       remaining: Math.max(0, DAILY_DOLLAR_LIMIT - used),
     };
   } catch (error) {
-    logger.error('[checkAiSpendCap] Redis error', error);
-    return { allowed: true, remaining: -1 };
+    const policy = unavailablePolicy();
+    logger.error(`[checkAiSpendCap] Redis error — ${policy.allowed ? 'allowing' : 'denying'} request`, error);
+    return policy;
   }
 }
 

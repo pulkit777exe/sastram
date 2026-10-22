@@ -28,15 +28,21 @@ function required(name: string, minLength = 1) {
 function requireHttps(name: string) {
   // Deployment check: schema owns URL validity; only the prod-https rule
   // lives here since local dev is legitimately http.
-  let ok = true;
+  const value = env[name];
+  let ok = Boolean(value);
   try {
-    if (env[name] && env.NODE_ENV === 'production') {
-      ok = new URL(env[name] as string).protocol === 'https:';
+    if (value && env.NODE_ENV === 'production') {
+      ok = new URL(value).protocol === 'https:';
     }
   } catch {
     ok = false;
   }
-  checks.push({ name: `${name}-https`, ok, message: `${name} must use https in production`, severity: 'error' });
+  checks.push({
+    name: `${name}-https`,
+    ok,
+    message: `${name} must be set to an https URL in production`,
+    severity: 'error',
+  });
 }
 
 function pair(name: string, a: string, b: string) {
@@ -74,6 +80,7 @@ if (!schemaResult.success) {
 // Prod crons must be authenticated; local dev may omit CRON_SECRET entirely
 // (schema leaves it optional), so this stays a deployment check.
 required('CRON_SECRET', 32);
+required('NEXT_PUBLIC_APP_URL');
 
 requireHttps('BETTER_AUTH_URL');
 requireHttps('NEXT_PUBLIC_APP_URL');
@@ -81,6 +88,25 @@ requireHttps('NEXT_PUBLIC_APP_URL');
 pair('upstash-rest', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN');
 pair('qstash-signing', 'QSTASH_CURRENT_SIGNING_KEY', 'QSTASH_NEXT_SIGNING_KEY');
 pair('qstash-publish', 'QSTASH_URL', 'QSTASH_TOKEN');
+// Streamlit-style single-process deploys can run without Redis, but a
+// production deployment must have shared rate limits/quotas. Without this,
+// every serverless instance gets its own limiter and spend cap.
+required('UPSTASH_REDIS_REST_URL');
+required('UPSTASH_REDIS_REST_TOKEN');
+
+const usesQstash = Boolean(env.QSTASH_URL || env.QSTASH_TOKEN);
+checks.push({
+  name: 'qstash-receiver',
+  ok: !usesQstash || Boolean(env.QSTASH_CURRENT_SIGNING_KEY && env.QSTASH_NEXT_SIGNING_KEY),
+  message: 'QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY are required when publishing to QStash',
+  severity: 'error',
+});
+checks.push({
+  name: 'qstash-dev',
+  ok: env.QSTASH_DEV !== 'true' && env.QSTASH_DEV !== '1',
+  message: 'QSTASH_DEV must be disabled in production',
+  severity: 'error',
+});
 
 warning(
   'auth-url-match',
@@ -94,11 +120,19 @@ if (env.AI_PROVIDER === 'openai') {
 } else {
   aiProviderKeyOk = Boolean(env.GEMINI_API_KEY);
 }
-warning(
-  'ai-provider-key',
-  aiProviderKeyOk,
-  `AI_PROVIDER=${env.AI_PROVIDER ?? 'gemini'} has no matching provider key; AI features will be disabled`,
-);
+const moderationOptedOut =
+  env.CONTENT_MODERATION_ENABLED === 'false' || env.CONTENT_MODERATION_ENABLED === '0';
+const moderationEnabled = !moderationOptedOut;
+checks.push({
+  name: 'ai-moderation-provider-key',
+  ok: aiProviderKeyOk || !moderationEnabled,
+  message: moderationEnabled
+    ? `AI_PROVIDER=${env.AI_PROVIDER ?? 'gemini'} has no matching provider key; content moderation is enabled (the production default) and readiness would stay degraded`
+    : 'Content moderation is disabled; no AI provider key is required',
+  // Production defaults moderation on, so a missing key is a release blocker,
+  // not a warning that operators can miss.
+  severity: moderationEnabled ? 'error' : 'warning',
+});
 
 const databaseUrl = env.DATABASE_URL ?? '';
 const isNeon = databaseUrl.includes('neon.tech');

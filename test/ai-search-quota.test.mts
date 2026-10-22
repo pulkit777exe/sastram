@@ -1,6 +1,10 @@
 import { expect } from 'chai';
 import { consumeQuota } from '@/lib/services/daily-quota';
-import { getSecondsUntilUtcMidnight, getUpstashRedis } from '@/lib/infrastructure/redis-upstash';
+import {
+  getSecondsUntilUtcMidnight,
+  getUpstashRedis,
+  resetUpstashRedis,
+} from '@/lib/infrastructure/redis-upstash';
 
 describe('AI Search Quota', function () {
   this.timeout(10_000);
@@ -42,6 +46,31 @@ describe('AI Search Quota', function () {
 
       const second = await consumeQuota('search', userId);
       expect(second.remaining).to.be.at.most(first.remaining);
+    });
+
+    it('fails closed when Redis is unavailable in production', async () => {
+      const mutableEnv = process.env as Record<string, string | undefined>;
+      const savedUrl = mutableEnv.UPSTASH_REDIS_REST_URL;
+      const savedToken = mutableEnv.UPSTASH_REDIS_REST_TOKEN;
+      const savedNodeEnv = mutableEnv.NODE_ENV;
+
+      delete mutableEnv.UPSTASH_REDIS_REST_URL;
+      delete mutableEnv.UPSTASH_REDIS_REST_TOKEN;
+      mutableEnv.NODE_ENV = 'production';
+      resetUpstashRedis();
+
+      try {
+        const result = await consumeQuota('search', 'prod-quota-test-user');
+        expect(result).to.deep.equal({ allowed: false, remaining: 0 });
+      } finally {
+        if (savedUrl === undefined) delete mutableEnv.UPSTASH_REDIS_REST_URL;
+        else mutableEnv.UPSTASH_REDIS_REST_URL = savedUrl;
+        if (savedToken === undefined) delete mutableEnv.UPSTASH_REDIS_REST_TOKEN;
+        else mutableEnv.UPSTASH_REDIS_REST_TOKEN = savedToken;
+        if (savedNodeEnv === undefined) delete mutableEnv.NODE_ENV;
+        else mutableEnv.NODE_ENV = savedNodeEnv;
+        resetUpstashRedis();
+      }
     });
   });
 });

@@ -79,6 +79,14 @@ describe('Rate Limiting Service', () => {
         expect(decideLimiterMode(true, null, false)).to.equal('open');
       });
 
+      it('Redis unconfigured in production => in-memory (never unlimited)', () => {
+        expect(decideLimiterMode(true, null, false, true)).to.equal('in-memory');
+      });
+
+      it('rate limiting explicitly disabled in production => open', () => {
+        expect(decideLimiterMode(false, null, false, true)).to.equal('open');
+      });
+
       it('Redis CONFIGURED but client unavailable => in-memory (NOT open)', () => {
         // This is the real "Redis down / network partitioned" path. Must NOT
         // be 'open' — otherwise rate limiting silently disappears.

@@ -56,6 +56,15 @@ function handlePolicy(policy: QuotaErrorPolicy, key: string, limit: number): Quo
   }
 }
 
+/**
+ * Production must never let a Redis outage remove per-user/global AI quotas.
+ * Development keeps the configured policy so offline work and tests remain
+ * usable without Upstash.
+ */
+function effectivePolicy(policy: QuotaErrorPolicy): QuotaErrorPolicy {
+  return process.env.NODE_ENV === 'production' ? 'failClosed' : policy;
+}
+
 async function checkQuota(
   key: string,
   limit: number,
@@ -65,8 +74,9 @@ async function checkQuota(
 ): Promise<QuotaResult> {
   const r = getUpstashRedis();
   if (!r) {
-    logger.warn(`[${logPrefix}] Redis unavailable, applying "${onRedisUnavailable}" policy`);
-    return handlePolicy(onRedisUnavailable, key, limit);
+    const policy = effectivePolicy(onRedisUnavailable);
+    logger.error(`[${logPrefix}] Redis unavailable, applying "${policy}" policy`);
+    return handlePolicy(policy, key, limit);
   }
   try {
     const ttlSeconds = getSecondsUntilUtcMidnight();
@@ -77,8 +87,9 @@ async function checkQuota(
     const remaining = Math.max(0, limit - result);
     return { allowed: true, remaining };
   } catch (error) {
-    logger.error(`[${logPrefix}] Redis error`, error);
-    return handlePolicy(onRedisError, key, limit);
+    const policy = effectivePolicy(onRedisError);
+    logger.error(`[${logPrefix}] Redis error, applying "${policy}" policy`, error);
+    return handlePolicy(policy, key, limit);
   }
 }
 
@@ -110,10 +121,12 @@ const QUOTAS: Record<QuotaKind, QuotaSpec> = {
     logPrefix: 'ai_analysis',
   },
   image: {
-    buildKey: (_params, date) => `img_moderation:global:${date}`,
-    limit: 50,
-    onRedisUnavailable: 'failOpen',
-    onRedisError: 'failOpen',
+    // Per-user so one account cannot exhaust a shared global budget. Provider
+    // spend is separately bounded by the global AI spend cap.
+    buildKey: ({ userId }, date) => `img_moderation:${userId || 'anonymous'}:${date}`,
+    limit: 20,
+    onRedisUnavailable: 'inMemory',
+    onRedisError: 'inMemory',
     logPrefix: 'img_moderation',
   },
   search: {

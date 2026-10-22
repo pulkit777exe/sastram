@@ -100,11 +100,16 @@ export type LimiterMode = 'open' | 'in-memory' | 'redis';
 export function decideLimiterMode(
   rateLimitEnabled: boolean,
   r: Redis | null,
-  redisConfigured: boolean
+  redisConfigured: boolean,
+  isProduction = false
 ): LimiterMode {
   if (!rateLimitEnabled) return 'open';
   if (!r) {
-    if (redisConfigured) return 'in-memory';
+    // Production must not fall through to an unlimited limiter when Upstash is
+    // missing/misconfigured. Per-instance limiting is weak on serverless, but
+    // it still enforces the bucket and the readiness probe will keep traffic
+    // out until Redis is restored.
+    if (redisConfigured || isProduction) return 'in-memory';
     return 'open';
   }
   return 'redis';
@@ -125,7 +130,7 @@ function createInMemoryLimiterWithWarning(
   config: { points: number; duration: number }
 ): RateLimiter {
   logger.error(
-    `Rate limit: Redis is configured but the client could not be created for bucket "${bucket}". Degrading to per-instance in-memory limiting (weaker on serverless).`
+    `Rate limit: Redis is unavailable for bucket "${bucket}". Degrading to per-instance in-memory limiting (weaker on serverless).`
   );
   return new InMemoryRateLimiter(config.points, config.duration);
 }
@@ -178,7 +183,12 @@ export function getOrCreateLimiter(
 
   const redisConfigured = Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN);
 
-  const mode = decideLimiterMode(env.RATE_LIMIT_ENABLED, r, redisConfigured);
+  const mode = decideLimiterMode(
+    env.RATE_LIMIT_ENABLED,
+    r,
+    redisConfigured,
+    process.env.NODE_ENV === 'production'
+  );
 
   let limiter: RateLimiter;
 

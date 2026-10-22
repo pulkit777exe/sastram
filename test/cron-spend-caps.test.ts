@@ -141,6 +141,33 @@ describe('checkAiSpendCap (no consumption)', () => {
     expect(result).to.deep.equal({ allowed: true, remaining: -1 });
   });
 
+  it('fails closed when Redis is unavailable in production', async () => {
+    const mutableEnv = process.env as Record<string, string | undefined>;
+    const savedNodeEnv = mutableEnv.NODE_ENV;
+    mutableEnv.NODE_ENV = 'production';
+
+    try {
+      stubModule(loggerModulePath, {
+        logger: { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined },
+      });
+      stubModule(redisModulePath, {
+        getUpstashRedis: () => null,
+        getSecondsUntilUtcMidnight: () => 3600,
+        CHECK_AND_INCRBY_FLOAT_EXPIRE_LUA: 'return 1',
+        withRedisTimeout: (promise: Promise<unknown>) => promise,
+      });
+      delete require.cache[spendCapModulePath];
+
+      const { checkAiSpendCap } = require(spendCapModulePath) as SpendCapModule;
+      const result = await checkAiSpendCap(AiCallPath.DAILY_DIGEST);
+
+      expect(result).to.deep.equal({ allowed: false, remaining: 0 });
+    } finally {
+      if (savedNodeEnv === undefined) delete mutableEnv.NODE_ENV;
+      else mutableEnv.NODE_ENV = savedNodeEnv;
+    }
+  });
+
   it('cheap paths are always allowed without touching Redis', async () => {
     const { mod, getStub } = loadSpendCap(5);
 

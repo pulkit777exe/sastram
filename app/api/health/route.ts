@@ -11,8 +11,6 @@ import { APP_VERSION } from "@/lib/config/app-version";
 type ServiceStatus = "ok" | "not_configured" | "error";
 
 const HEALTH_CHECK_TIMEOUT_MS = 750;
-const HEALTHY_CACHE_CONTROL = "public, max-age=10, stale-while-revalidate=30";
-const UNHEALTHY_CACHE_CONTROL = "no-store, max-age=0";
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -41,7 +39,10 @@ async function checkDatabase(): Promise<ServiceStatus> {
 
 async function checkRedis(): Promise<ServiceStatus> {
   if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
-    return "not_configured";
+    // Shared rate limits, quotas, and AI spend caps fail closed without Redis.
+    // That is tolerable locally, but a production instance is not safe to
+    // route traffic to, so surface it as degraded.
+    return env.NODE_ENV === "production" ? "error" : "not_configured";
   }
 
   try {
@@ -64,6 +65,14 @@ function checkAi(): ServiceStatus {
     }
     if (aiKey) {
       return "ok";
+    }
+    // Production defaults to content moderation on. Without the matching
+    // provider key the text classifier would silently skip ML moderation, so
+    // do not let a load balancer route traffic to this instance. Operators
+    // who intentionally run regex-only moderation must opt out explicitly.
+    if (env.NODE_ENV === "production" && env.CONTENT_MODERATION_ENABLED) {
+      logger.error("[health] content moderation is enabled but no AI provider key is configured");
+      return "error";
     }
     return "not_configured";
   } catch (err) {
@@ -111,9 +120,9 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(checks, {
     status: allHealthy ? HTTP_STATUS.OK : HTTP_STATUS.SERVICE_UNAVAILABLE,
     headers: {
-      // Healthy probes are cacheable so CDN hits don't re-probe DB/Redis;
-      // degraded responses must never be cached.
-      "Cache-Control": allHealthy ? HEALTHY_CACHE_CONTROL : UNHEALTHY_CACHE_CONTROL,
+      // A load balancer must never act on a cached "ready" after the database
+      // goes away, so readiness is always uncached.
+      "Cache-Control": "no-store, max-age=0",
     },
   });
 }

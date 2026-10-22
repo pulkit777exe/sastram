@@ -47,8 +47,14 @@ const serverEnvSchema = z.object({
   QSTASH_TOKEN: z.string().optional(),
   QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
   QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
+  QSTASH_DAILY_CAP: z.coerce.number().int().positive().default(450),
   RATE_LIMIT_ENABLED: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).transform(toBool).default(true),
-  CONTENT_MODERATION_ENABLED: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).transform(toBool).default(false),
+  // Fail safe by default in production; local development opts out so tests
+  // and offline work do not call a provider.
+  CONTENT_MODERATION_ENABLED: z
+    .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
+    .transform(toBool)
+    .default(process.env.NODE_ENV === 'production'),
   SENTRY_DSN: z.string().optional(),
   SENTRY_ORG: z.string().optional(),
   SENTRY_PROJECT: z.string().optional(),
@@ -85,6 +91,38 @@ const serverEnvSchema = z.object({
       message: `${first} and ${second} must be configured together`,
     });
   }
+
+  // Publishing to QStash is useless without the signing keys that let the
+  // receiver verify deliveries. Require the full set at boot instead of
+  // accepting every job and then rejecting every webhook at runtime.
+  // QSTASH_DEV runs work inline, so publish credentials cannot be used and the
+  // keys are not needed until the deployment switches back to real QStash.
+  const hasQstashPublishCredentials = !data.QSTASH_DEV && Boolean(data.QSTASH_URL || data.QSTASH_TOKEN);
+  if (hasQstashPublishCredentials) {
+    for (const signingKey of ['QSTASH_CURRENT_SIGNING_KEY', 'QSTASH_NEXT_SIGNING_KEY'] as const) {
+      if (!data[signingKey]) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [signingKey],
+          message: `${signingKey} is required when QSTASH_URL/QSTASH_TOKEN are configured`,
+        });
+      }
+    }
+  }
+
+  // QSTASH_DEV makes the queue run inline; it must never be enabled in a
+  // production deployment where jobs need to outlive the request. `next build`
+  // also sets NODE_ENV=production while loading the local developer `.env`
+  // (which legitimately enables QSTASH_DEV), so only enforce this at runtime.
+  const isProductionRuntime =
+    process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE !== 'phase-production-build';
+  if (isProductionRuntime && data.QSTASH_DEV) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['QSTASH_DEV'],
+      message: 'QSTASH_DEV must be false in production',
+    });
+  }
 });
 
 const fullyClientSafeSchema = z.object({
@@ -98,6 +136,8 @@ const fullyClientSafeSchema = z.object({
     .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
     .transform(toBool)
     .default(true),
+  // Browser Sentry must use a public DSN: Next only inlines NEXT_PUBLIC_*.
+  NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

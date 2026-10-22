@@ -125,12 +125,12 @@ export async function runGuardedAi<T>(
 }
 
 /**
- * One fail-open, read-only spend check per path for crons, run concurrently
- * (one Redis RTT for the whole fan-out). Consumes nothing — enqueued workers
- * consume their own per-execution estimate via `runGuardedWorker` (ADR-0001
- * stayed: routes that run work synchronously still pass `alreadyBilled`). Each
- * path is isolated so one Redis failure never blocks the others; failures
- * allow (fail-open).
+ * One read-only spend check per path for crons, run concurrently (one Redis
+ * RTT for the whole fan-out). Consumes nothing — enqueued workers consume
+ * their own per-execution estimate via `runGuardedWorker` (ADR-0001 stayed:
+ * routes that run work synchronously still pass `alreadyBilled`). Each path is
+ * isolated so one Redis failure never blocks the others; production fails
+ * closed, development stays fail-open.
  */
 export async function checkCronSpendCaps(paths: AiCallPath[]): Promise<Record<string, CronSpendCap>> {
   const entries = await Promise.all(
@@ -138,8 +138,15 @@ export async function checkCronSpendCaps(paths: AiCallPath[]): Promise<Record<st
       try {
         return [path, await checkAiSpendCap(path)];
       } catch (error) {
-        logger.warn(`[cron] spend cap check failed for ${path}, allowing (fail-open)`, error);
-        return [path, { allowed: true, remaining: -1 }];
+        const fallback =
+          process.env.NODE_ENV === 'production'
+            ? { allowed: false, remaining: 0 }
+            : { allowed: true, remaining: -1 };
+        logger.warn(
+          `[cron] spend cap check failed for ${path} — ${fallback.allowed ? 'allowing' : 'denying'} (fail-${fallback.allowed ? 'open' : 'closed'})`,
+          error
+        );
+        return [path, fallback];
       }
     })
   );
