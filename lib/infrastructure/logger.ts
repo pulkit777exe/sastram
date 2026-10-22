@@ -1,11 +1,21 @@
 import crypto from 'crypto';
+import { getRequestId } from '@/lib/observability/request-context';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
+const LEVEL_ORDER: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 };
 
 export function generateRequestId(): string {
   return `req_${crypto.randomBytes(12).toString('base64url')}`;
+}
+
+// Correlation ids can arrive from a client/proxy. Accept only an opaque token
+// so log lines and response headers cannot be forged with control characters.
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
+
+export function normalizeRequestId(candidate: string | null | undefined): string {
+  return candidate && REQUEST_ID_PATTERN.test(candidate) ? candidate : generateRequestId();
 }
 
 const REDACTED = '[REDACTED]';
@@ -160,14 +170,29 @@ const CONSOLE_BY_LEVEL: Record<LogLevel, (...args: unknown[]) => void> = {
   error: console.error,
 };
 
+function configuredLevel(): LogLevel {
+  const raw = process.env.LOG_LEVEL;
+  if (raw === 'debug' || raw === 'info' || raw === 'warn' || raw === 'error') {
+    return raw;
+  }
+  return isDevelopment ? 'debug' : 'info';
+}
+
 class Logger {
+  private readonly level = configuredLevel();
+
   private log(level: LogLevel, message: string, ...args: unknown[]) {
-    if (level === 'debug' && !isDevelopment) return;
+    if (LEVEL_ORDER[level] < LEVEL_ORDER[this.level]) return;
 
     const prefix = `[${new Date().toISOString()}] [${level.toUpperCase()}]`;
     // The message is often interpolated (e.g. recipients, thread titles), so
     // it must go through the same scrubber as structured context.
-    CONSOLE_BY_LEVEL[level](prefix, scrubString(message), safeContext(args));
+    const context = safeContext(args);
+    const requestId = getRequestId();
+    if (requestId && context && typeof context === 'object' && !Array.isArray(context)) {
+      (context as Record<string, unknown>).requestId = requestId;
+    }
+    CONSOLE_BY_LEVEL[level](prefix, scrubString(message), context);
   }
 
   debug(message: string, ...args: unknown[]) {

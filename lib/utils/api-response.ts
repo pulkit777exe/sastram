@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleError } from './errors';
-import { logger, generateRequestId } from '@/lib/infrastructure/logger';
+import { logger, normalizeRequestId } from '@/lib/infrastructure/logger';
+import { runWithRequestContext } from '@/lib/observability/request-context';
 
 type ApiHandler = (
   request: NextRequest,
@@ -21,40 +22,42 @@ export function withErrorHandling(handler: ApiHandler): ApiHandler {
   return async (request, context) => {
     // proxy.ts assigns the request id before the route runs; reuse it so
     // access logs, error logs, and response bodies share one correlation id.
-    const requestId = request.headers.get('x-request-id') ?? generateRequestId();
+    const requestId = normalizeRequestId(request.headers.get('x-request-id'));
 
-    try {
-      const handlerResponse = await handler(request, context);
-      handlerResponse.headers.set('x-request-id', requestId);
-      return handlerResponse;
-    } catch (rawError) {
-      const normalizedError = handleError(rawError);
-      const userMessage = normalizedError.message;
-      const httpStatus = normalizedError.statusCode;
+    return runWithRequestContext(requestId, async () => {
+      try {
+        const handlerResponse = await handler(request, context);
+        handlerResponse.headers.set('x-request-id', requestId);
+        return handlerResponse;
+      } catch (rawError) {
+        const normalizedError = handleError(rawError);
+        const userMessage = normalizedError.message;
+        const httpStatus = normalizedError.statusCode;
 
-      let errorCode: string;
-      if (normalizedError.code !== undefined && normalizedError.code.length > 0) {
-        errorCode = normalizedError.code;
-      } else {
-        errorCode = 'INTERNAL_ERROR';
+        let errorCode: string;
+        if (normalizedError.code !== undefined && normalizedError.code.length > 0) {
+          errorCode = normalizedError.code;
+        } else {
+          errorCode = 'INTERNAL_ERROR';
+        }
+
+        const logMessage = extractErrorMessage(rawError);
+        const logStack = extractErrorStack(rawError);
+
+        logger.error(`API Error: ${errorCode}`, {
+          requestId,
+          error: logMessage,
+          stack: logStack,
+          path: request.nextUrl.pathname,
+        });
+
+        const errorBody = fail(errorCode, userMessage, undefined, requestId);
+        return NextResponse.json(errorBody, {
+          status: httpStatus,
+          headers: { 'x-request-id': requestId },
+        });
       }
-
-      const logMessage = extractErrorMessage(rawError);
-      const logStack = extractErrorStack(rawError);
-
-      logger.error(`API Error: ${errorCode}`, {
-        requestId,
-        error: logMessage,
-        stack: logStack,
-        path: request.nextUrl.pathname,
-      });
-
-      const errorBody = fail(errorCode, userMessage, undefined, requestId);
-      return NextResponse.json(errorBody, {
-        status: httpStatus,
-        headers: { 'x-request-id': requestId },
-      });
-    }
+    });
   };
 }
 

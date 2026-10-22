@@ -1,4 +1,5 @@
 import { logger } from '@/lib/infrastructure/logger';
+import { runWithRequestContext } from '@/lib/observability/request-context';
 import { z } from 'zod';
 import { AppError, handleError } from './errors';
 
@@ -62,6 +63,20 @@ export interface ServerActionOptions<In, Raw = In> {
  */
 export type ServerAction<Raw, Out = unknown> = (args?: Raw | FormData) => Promise<ActionResult<Out>>;
 
+/**
+ * Server actions have no NextRequest argument; proxy.ts still stamps the
+ * incoming request, so read that header when we are inside a real request.
+ * Calling an action directly in a test has no headers store — that is fine.
+ */
+async function currentRequestId(): Promise<string | undefined> {
+  try {
+    const { headers } = await import('next/headers');
+    return (await headers()).get('x-request-id') ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function createServerAction<In, Out = unknown, Raw = In>(
   options: ServerActionOptions<In, Raw>,
   handler: (args: In) => Promise<ActionResult<Out>>
@@ -69,7 +84,7 @@ export function createServerAction<In, Out = unknown, Raw = In>(
   const schema = options.schema;
   const actionName = options.actionName;
 
-  const action = async (args?: Raw | FormData): Promise<ActionResult<Out>> => {
+  const execute = async (args?: Raw | FormData): Promise<ActionResult<Out>> => {
     let validatedArgs: In;
     try {
       // Build raw input object explicitly — avoid nested ternary.
@@ -133,6 +148,11 @@ export function createServerAction<In, Out = unknown, Raw = In>(
         errorCode: 'INTERNAL_ERROR',
       };
     }
+  };
+
+  const action = async (args?: Raw | FormData): Promise<ActionResult<Out>> => {
+    const requestId = await currentRequestId();
+    return runWithRequestContext(requestId, () => execute(args));
   };
 
   return action as ServerAction<Raw, Out>;
