@@ -3,8 +3,15 @@ import { logger } from '@/lib/infrastructure/logger';
 
 const MIN_IDEMPOTENCY_TTL_SECONDS = 60; // safety floor — at least 1 minute
 
-/** 1 hour — covers the QStash retry window. */
+/** 1 hour — covers the QStash retry window for completed jobs. */
 export const JOB_DEDUP_TTL_SECONDS = 3600;
+
+/**
+ * Short processing lease. A crashed/killed worker must not suppress QStash's
+ * retry for an hour; it only needs to block concurrent duplicate delivery
+ * while the function is still running (maxDuration is 60s).
+ */
+export const JOB_PROCESSING_LEASE_SECONDS = 120;
 
 export type ClaimScope = 'request' | 'job';
 
@@ -61,6 +68,24 @@ export async function releaseOnce(key: string, scope: ClaimScope = 'request'): P
     return deleted > 0;
   } catch (error) {
     logger.warn(`[idempotency] failed to release ${scope} claim ${key}`, error);
+    return false;
+  }
+}
+
+/**
+ * Convert a short processing lease into a completed marker. Overwrites the
+ * existing key's TTL; if the lease already expired mid-flight this recreates it
+ * so a late redelivery cannot re-run a completed job.
+ */
+export async function completeOnce(key: string, ttlSeconds: number): Promise<boolean> {
+  const redis = getUpstashRedis();
+  if (redis === null || redis === undefined) return false;
+
+  try {
+    await withRedisTimeout(redis.set(key, '1', { ex: ttlSeconds }), 4000);
+    return true;
+  } catch (error) {
+    logger.warn(`[idempotency] failed to complete claim ${key}`, error);
     return false;
   }
 }

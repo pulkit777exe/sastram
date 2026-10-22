@@ -340,14 +340,16 @@ model MessageMention {
 
 model Attachment {
   id        String         @id @default(cuid())
-  messageId String
+  // Nullable on purpose: when a thread is hard-purged, keep the blob row so
+  // cleanup-blobs can delete the object. Cascade deletes would orphan it.
+  messageId String?
   url       String
   type      AttachmentType
   name      String?
   size      BigInt?
   createdAt DateTime       @default(now())
 
-  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
 
   @@index([messageId])
   @@map("attachments")
@@ -442,6 +444,11 @@ model ThreadSubscription {
   frequency DigestFrequency @default(DAILY)
   isActive  Boolean         @default(true)
   createdAt DateTime        @default(now())
+  // Digest checkpoint: lastAttemptedAt lets a timed-out run resume with the
+  // next batch instead of rescanning/re-sending the same rows; lastSentAt is
+  // the successful-delivery marker.
+  lastAttemptedAt DateTime?
+  lastSentAt      DateTime?
 
   thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   user   User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -449,6 +456,7 @@ model ThreadSubscription {
   @@unique([threadId, userId])
   @@unique([threadId, email])
   @@index([userId])
+  @@index([isActive, lastAttemptedAt])
   @@map("thread_subscriptions")
 }
 

@@ -63,8 +63,8 @@ function shouldRunInline(): boolean {
   return false;
 }
 
-// Well under QStash's 1,000/day free tier — the rest is headroom for retries.
-const DAILY_CAP = 450;
+// Default is well under QStash's 1,000/day free tier — the rest is headroom
+// for retries. Paid deployments can raise QSTASH_DAILY_CAP.
 const CRITICAL_JOBS = new Set<string>(['email']);
 
 /**
@@ -135,14 +135,15 @@ export async function enqueueJob<T extends object>(jobType: string, payload: T):
   }
 
   const count = await incrementDailyQstashCount();
+  const dailyCap = env.QSTASH_DAILY_CAP ?? 450;
 
   // CRITICAL_JOBS (email — carries OTP sign-in codes) are never dropped by the
   // daily cap: failing to deliver a sign-in code is a user-facing outage, while
   // the cap only protects QStash's free allowance. They are still counted above
   // so the daily guard threshold sees them.
-  if (count > DAILY_CAP && !CRITICAL_JOBS.has(jobType)) {
+  if (count > dailyCap && !CRITICAL_JOBS.has(jobType)) {
     logger.error(
-      `[queue] DROPPED job — daily QStash cap (${DAILY_CAP}) reached, skipping: ${jobType} (count=${count})`
+      `[queue] DROPPED job — daily QStash cap (${dailyCap}) reached, skipping: ${jobType} (count=${count})`
     );
     return { status: 'dropped', ok: false };
   }

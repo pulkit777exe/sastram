@@ -24,9 +24,14 @@ export async function GET(req: NextRequest) {
     while (batchCount < MAX_BATCHES) {
       const orphanedAttachments = await prisma.attachment.findMany({
         where: {
-          message: { deletedAt: { not: null } },
+          OR: [
+            // Hard-purged thread/message: the FK was set null, so this row is
+            // the only pointer to the blob.
+            { messageId: null },
+            { message: { deletedAt: { not: null } } },
+          ],
         },
-        select: { id: true, url: true, messageId: true },
+        select: { id: true, url: true },
         take: BATCH_SIZE,
       });
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { HTTP_STATUS } from '@/lib/utils/api-response';
 import { Receiver } from '@upstash/qstash';
 import { logger } from '@/lib/infrastructure/logger';
-import { deduplicateJob, releaseJobDedup } from '@/lib/services/job-dedup';
+import { completeJobDedup, deduplicateJob, releaseJobDedup } from '@/lib/services/job-dedup';
 import { jobHandlers, type JobHandlerMap } from '@/lib/queue/registry';
 import { AppError } from '@/lib/utils/errors';
 
@@ -23,6 +23,7 @@ async function handleJob(body: string, request: NextRequest) {
   try {
     parsed = JSON.parse(body);
   } catch {
+    if (messageId) await completeJobDedup(messageId);
     return NextResponse.json({ error: 'Invalid JSON' }, { status: HTTP_STATUS.BAD_REQUEST });
   }
 
@@ -31,17 +32,22 @@ async function handleJob(body: string, request: NextRequest) {
   const handler = jobHandlers[jobType];
   if (!handler) {
     logger.warn(`[jobs] Unknown job type: ${jobType}`);
+    if (messageId) await completeJobDedup(messageId);
     return NextResponse.json({ error: `Unknown job type: ${jobType}` }, { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   try {
     logger.info(`[jobs] Processing job: ${jobType}`);
     await handler(payload as never);
+    // Upgrade the short processing lease to a full completed marker only now;
+    // a crash before this point lets QStash redeliver after the lease expires.
+    if (messageId) await completeJobDedup(messageId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (AppError.isAppError(error)) {
-      // Terminal — keep the dedup claim so a redelivery is not re-run.
+      // Terminal — mark completed so a redelivery is not re-run.
       logger.warn(`[jobs] Job ${jobType} failed (non-retryable): ${error.message}`);
+      if (messageId) await completeJobDedup(messageId);
       return NextResponse.json({ ok: true, error: error.message });
     }
     // Retryable — release the claim before the 500 so QStash's retry

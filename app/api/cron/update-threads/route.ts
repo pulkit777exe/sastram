@@ -10,6 +10,7 @@ import { prewarmFollowUpQueries } from '@/modules/ai-search';
 import { verifyCronAuth } from '@/lib/middleware/cron-auth';
 import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { purgeSoftDeleted } from '@/lib/services/soft-delete-purge';
+import { purgeExpiredData } from '@/lib/services/data-retention';
 import { reconcileCounters } from '@/lib/services/counter-reconciliation';
 import { promoteThreadsToKnowledgePages } from '@/lib/services/knowledge-promotion';
 import { checkCronSpendCaps } from '@/lib/ai/guard';
@@ -17,8 +18,11 @@ import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { hasTrustedProvenance } from '@/modules/threads/confidence-decay';
 import { refreshUserExpertise } from '@/lib/services/user-memory';
 
+export const maxDuration = 60;
+
 const BATCH_SIZE = 25;
-const QSTASH_GUARD_THRESHOLD = 400;
+// Keep a small retry reserve under the configurable daily publish cap.
+const QSTASH_GUARD_THRESHOLD = Math.max(0, env.QSTASH_DAILY_CAP - 50);
 const SCORE_FRESHNESS_HOURS = 24;
 const HIGH_SCORE_THRESHOLD = 70;
 // Bound fan-out per run so one cron tick cannot blow the QStash daily budget.
@@ -76,6 +80,31 @@ export async function GET(req: NextRequest) {
     let enqueuesThisRun = 0;
     let enqueuesSkippedByCap = 0;
     let cursor: string | undefined;
+
+    // Retention and read-only reconciliation must run even when the AI
+    // fan-out below exhausts the function budget or times out. They used to
+    // sit after the loop, which let soft-deleted accounts/threads live forever
+    // on a busy run.
+    let purgeResult: { threads: number; users: number } = { threads: 0, users: 0 };
+    try {
+      purgeResult = await purgeSoftDeleted();
+    } catch (error) {
+      logger.error('[cron/update-threads] purge failed', error);
+    }
+
+    let retentionResult: Awaited<ReturnType<typeof purgeExpiredData>> | null = null;
+    try {
+      retentionResult = await purgeExpiredData();
+    } catch (error) {
+      logger.error('[cron/update-threads] retention failed', error);
+    }
+
+    let reconciliationResult: { scanned: number; drifts: unknown[] } = { scanned: 0, drifts: [] };
+    try {
+      reconciliationResult = await reconcileCounters();
+    } catch (error) {
+      logger.error('[cron/update-threads] reconciliation failed', error);
+    }
 
     // Bound fan-out: once the per-run budget is spent, further jobs are
     // counted as skipped instead of enqueued (logged once at the end).
@@ -305,20 +334,6 @@ export async function GET(req: NextRequest) {
       logger.warn('[cron/update-threads] checkAndLogUsage failed', error);
     }
 
-    let purgeResult: { threads: number; users: number } = { threads: 0, users: 0 };
-    try {
-      purgeResult = await purgeSoftDeleted();
-    } catch (error) {
-      logger.error('[cron/update-threads] purge failed', error);
-    }
-
-    let reconciliationResult: { scanned: number; drifts: unknown[] } = { scanned: 0, drifts: [] };
-    try {
-      reconciliationResult = await reconcileCounters();
-    } catch (error) {
-      logger.error('[cron/update-threads] reconciliation failed', error);
-    }
-
     // KnowledgePage auto-promotion — best-effort, never throws (per-thread isolation inside service)
     let knowledgeResult: Awaited<ReturnType<typeof promoteThreadsToKnowledgePages>> | null = null;
     try {
@@ -369,6 +384,7 @@ export async function GET(req: NextRequest) {
         prewarmedQueries: prewarmResult.prewarmed,
         purgedThreads: purgeResult.threads,
         purgedUsers: purgeResult.users,
+        retention: retentionResult,
         reconciliation: {
           scanned: reconciliationResult.scanned,
           driftsFound: reconciliationResult.drifts.length,

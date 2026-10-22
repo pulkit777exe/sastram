@@ -61,6 +61,7 @@ describe('digest service', () => {
         expect(findArgs?.orderBy).to.deep.equal({ createdAt: 'desc' });
         expect(findArgs?.where).to.deep.equal({
           threadId: 'thread1',
+          deletedAt: null,
           createdAt: { gte: start, lte: end },
         });
       } finally {

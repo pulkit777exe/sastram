@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { startOfDay } from 'date-fns';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { sendNewsletterDigest } from '@/lib/services/email';
 import {
@@ -15,6 +16,12 @@ import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { env } from '@/lib/config/env';
 import { filterReadableUserIds, type ThreadAccessContext } from '@/lib/thread-access';
 
+export const maxDuration = 60;
+
+const BATCH_SIZE = 100;
+// Leave headroom under the 60s function limit for the final write/response.
+const TIME_BUDGET_MS = 45_000;
+
 export async function GET(req: NextRequest) {
   const authError = verifyCronAuth(req);
   if (authError) {
@@ -23,74 +30,18 @@ export async function GET(req: NextRequest) {
 
   try {
     const today = new Date();
-
-    // 1. Get all active subscriptions (paginated to avoid unbounded queries)
-    const BATCH_SIZE = 100;
-    let cursor: string | undefined;
-    const allSubscriptions: Awaited<ReturnType<typeof fetchBatch>> = [];
-
-    async function fetchBatch(after?: string) {
-      return prisma.threadSubscription.findMany({
-        where: {
-          isActive: true,
-          frequency: { in: ['DAILY', 'WEEKLY', 'MONTHLY'] },
-        },
-        include: {
-          thread: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              createdBy: true,
-              visibility: true,
-            },
-          },
-        },
-        take: BATCH_SIZE,
-        ...(after ? { cursor: { id: after }, skip: 1 } : {}),
-        orderBy: { id: 'asc' as const },
-      });
-    }
-
-    do {
-      const batch = await fetchBatch(cursor);
-      allSubscriptions.push(...batch);
-      cursor = batch.length === BATCH_SIZE ? batch[batch.length - 1].id : undefined;
-    } while (cursor);
+    const startedAt = Date.now();
+    // Checkpoint is per local day (the same clock getDigestWindow uses): a
+    // second run today only sees subscriptions this run has not attempted yet.
+    const dayStart = startOfDay(today);
 
     const results = {
       processed: 0,
       sent: 0,
       skipped: 0,
       errors: 0,
+      hasMore: false,
     };
-
-    // A subscription is a hint, not proof of access: invitations can be
-    // revoked and a public thread can become private after someone subscribes.
-    // Resolve each thread's current readers once, before fetching messages.
-    const threadContexts = new Map<string, ThreadAccessContext>();
-    const subscribersByThread = new Map<string, string[]>();
-    for (const sub of allSubscriptions) {
-      threadContexts.set(sub.thread.id, {
-        threadId: sub.thread.id,
-        createdBy: sub.thread.createdBy,
-        visibility: sub.thread.visibility,
-      });
-      if (!sub.userId) continue;
-      const subscriberIds = subscribersByThread.get(sub.threadId) ?? [];
-      subscriberIds.push(sub.userId);
-      subscribersByThread.set(sub.threadId, subscriberIds);
-    }
-
-    const readableByThread = new Map<string, Set<string>>();
-    await Promise.all(
-      [...subscribersByThread.entries()].map(async ([threadId, subscriberIds]) => {
-        const context = threadContexts.get(threadId);
-        if (!context) return;
-        const readable = await filterReadableUserIds(context, subscriberIds);
-        readableByThread.set(threadId, new Set(readable));
-      })
-    );
 
     // Bound each digest to a bounded message window (same knob as the other
     // AI analysis paths) and memoize per (threadId, window) so N subscribers
@@ -115,89 +66,177 @@ export async function GET(req: NextRequest) {
       return pending;
     }
 
-    for (const sub of allSubscriptions) {
-      // Skip before any DB/AI work — a subscription without an email can't send.
-      if (!sub.email) {
-        results.skipped++;
-        continue;
-      }
+    async function fetchBatch(after?: string) {
+      return prisma.threadSubscription.findMany({
+        where: {
+          isActive: true,
+          frequency: { in: ['DAILY', 'WEEKLY', 'MONTHLY'] },
+          OR: [{ lastAttemptedAt: null }, { lastAttemptedAt: { lt: dayStart } }],
+        },
+        include: {
+          thread: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              createdBy: true,
+              visibility: true,
+            },
+          },
+          // The denormalized email is only a snapshot. Resolve the account's
+          // current address so a changed email cannot keep receiving digests.
+          user: { select: { email: true, deletedAt: true } },
+        },
+        take: BATCH_SIZE,
+        ...(after ? { cursor: { id: after }, skip: 1 } : {}),
+        orderBy: { id: 'asc' as const },
+      });
+    }
 
-      // Check if this frequency should be processed today
-      const window = getDigestWindow(sub.frequency, today);
-      if (!window || !window.process) {
-        results.skipped++;
-        continue;
-      }
-
-      const canDeliver = sub.userId
-        ? readableByThread.get(sub.threadId)?.has(sub.userId) === true
-        : sub.thread.visibility === 'PUBLIC';
-      if (!canDeliver) {
-        results.skipped++;
-        continue;
-      }
-
-      // Fetch messages within the frequency's time window (memoized).
-      const messages = await getMessages(sub.threadId, window);
-
-      const thread = sub.thread;
-
-      if (messages.length === 0) {
-        results.skipped++;
-        continue;
-      }
-
-      // Generate or retrieve summary for this thread window.
-      let summaryHtml = '';
+    async function markAttempted(subscriptionId: string, sent: boolean): Promise<void> {
       try {
-        const summaryKey = windowKey(thread.id, window);
-        let summaryPromise = threadSummaries.get(summaryKey);
-        if (!summaryPromise) {
-          // Spend is consumed once per actual digest generation, not per
-          // subscriber — memoized subscribers reuse the same summary.
-          const spendCapResult = await enforceAiSpendCap(AiCallPath.DAILY_DIGEST);
-          if (!spendCapResult.allowed) {
-            logger.warn('[cron/daily-digest] daily AI spend cap reached — stopping digest run');
-            break;
-          }
+        await prisma.threadSubscription.update({
+          where: { id: subscriptionId },
+          data: {
+            lastAttemptedAt: today,
+            ...(sent ? { lastSentAt: today } : {}),
+          },
+        });
+      } catch (error) {
+        // A failed checkpoint must not drop the delivery that already happened;
+        // it only means the next run may retry this subscription.
+        logger.warn(`[cron/daily-digest] failed to checkpoint subscription ${subscriptionId}`, error);
+      }
+    }
 
-          summaryPromise = generateDigestSummary(messages);
-          // Never cache a rejected summary: one transient failure must not
-          // poison every later subscriber of the same thread window.
-          summaryPromise.catch(() => threadSummaries.delete(summaryKey));
-          threadSummaries.set(summaryKey, summaryPromise);
+    let cursor: string | undefined;
+    let stop = false;
+
+    while (!stop) {
+      const batch = await fetchBatch(cursor);
+      if (batch.length === 0) break;
+      cursor = batch.length === BATCH_SIZE ? batch[batch.length - 1].id : undefined;
+
+      // A subscription is a hint, not proof of access: invitations can be
+      // revoked and a public thread can become private after someone subscribes.
+      // Resolve each thread's current readers for this page.
+      const threadContexts = new Map<string, ThreadAccessContext>();
+      const subscribersByThread = new Map<string, string[]>();
+      for (const sub of batch) {
+        threadContexts.set(sub.thread.id, {
+          threadId: sub.thread.id,
+          createdBy: sub.thread.createdBy,
+          visibility: sub.thread.visibility,
+        });
+        if (!sub.userId) continue;
+        const subscriberIds = subscribersByThread.get(sub.threadId) ?? [];
+        subscriberIds.push(sub.userId);
+        subscribersByThread.set(sub.threadId, subscriberIds);
+      }
+
+      const readableByThread = new Map<string, Set<string>>();
+      await Promise.all(
+        [...subscribersByThread.entries()].map(async ([threadId, subscriberIds]) => {
+          const context = threadContexts.get(threadId);
+          if (!context) return;
+          const readable = await filterReadableUserIds(context, subscriberIds);
+          readableByThread.set(threadId, new Set(readable));
+        })
+      );
+
+      for (const sub of batch) {
+        if (Date.now() - startedAt >= TIME_BUDGET_MS) {
+          results.hasMore = true;
+          stop = true;
+          break;
         }
 
-        summaryHtml =
-          (await summaryPromise) ??
-          '<p><em>AI features aren\'t configured for this deployment.</em></p>';
-      } catch (err) {
-        logger.error(`Failed to generate summary for thread ${thread.id}:`, err);
-        results.errors++;
-        continue;
+        let sent = false;
+        try {
+          // Prefer the account's current address; the subscription email is a
+          // stale snapshot. A deleted account's subscriptions are not deliverable.
+          const recipient = sub.userId ? sub.user?.email : sub.email;
+          if (!recipient || (sub.userId && sub.user?.deletedAt)) {
+            results.skipped++;
+            continue;
+          }
+
+          // Check if this frequency should be processed today
+          const window = getDigestWindow(sub.frequency, today);
+          if (!window || !window.process) {
+            results.skipped++;
+            continue;
+          }
+
+          const canDeliver = sub.userId
+            ? readableByThread.get(sub.threadId)?.has(sub.userId) === true
+            : sub.thread.visibility === 'PUBLIC';
+          if (!canDeliver) {
+            results.skipped++;
+            continue;
+          }
+
+          // Fetch messages within the frequency's time window (memoized).
+          const messages = await getMessages(sub.threadId, window);
+          const thread = sub.thread;
+
+          if (messages.length === 0) {
+            results.skipped++;
+            continue;
+          }
+
+          // Generate or retrieve summary for this thread window.
+          const summaryKey = windowKey(thread.id, window);
+          let summaryPromise = threadSummaries.get(summaryKey);
+          if (!summaryPromise) {
+            // Spend is consumed once per actual digest generation, not per
+            // subscriber — memoized subscribers reuse the same summary.
+            const spendCapResult = await enforceAiSpendCap(AiCallPath.DAILY_DIGEST);
+            if (!spendCapResult.allowed) {
+              logger.warn('[cron/daily-digest] daily AI spend cap reached — stopping digest run');
+              results.hasMore = true;
+              stop = true;
+              break;
+            }
+
+            summaryPromise = generateDigestSummary(messages);
+            // Never cache a rejected summary: one transient failure must not
+            // poison every later subscriber of the same thread window.
+            summaryPromise.catch(() => threadSummaries.delete(summaryKey));
+            threadSummaries.set(summaryKey, summaryPromise);
+          }
+
+          const summaryHtml =
+            (await summaryPromise) ??
+            '<p><em>AI features aren\'t configured for this deployment.</em></p>';
+
+          const uniqueParticipants = new Set(messages.map((m) => m.senderId));
+          await sendNewsletterDigest(
+            recipient,
+            thread.name,
+            summaryHtml,
+            `${env.NEXT_PUBLIC_APP_URL}/dashboard/threads/${thread.slug}`,
+            messages.length,
+            uniqueParticipants.size
+          );
+          // Email jobs are CRITICAL_JOBS in the queue — exempt from the daily
+          // QStash cap — so a resolved send is a queued send; publish failures
+          // throw and land in the catch below as errors.
+          sent = true;
+          results.sent++;
+          results.processed++;
+        } catch (err) {
+          logger.error('[cron/daily-digest] subscription failed', err);
+          results.errors++;
+          results.processed++;
+        } finally {
+          // Checkpoint successes, skips, and failures so a second invocation
+          // today advances to the next page instead of rescanning this one.
+          await markAttempted(sub.id, sent);
+        }
       }
 
-      // Send Email
-      try {
-        const uniqueParticipants = new Set(messages.map((m) => m.senderId));
-
-        await sendNewsletterDigest(
-          sub.email,
-          thread.name,
-          summaryHtml,
-          `${env.NEXT_PUBLIC_APP_URL}/dashboard/threads/${thread.slug}`,
-          messages.length,
-          uniqueParticipants.size
-        );
-        // Email jobs are CRITICAL_JOBS in the queue — exempt from the daily
-        // QStash cap — so a resolved send is a queued send; publish failures
-        // throw and land in the catch below as errors.
-        results.sent++;
-      } catch (err) {
-        logger.error(`Failed to send email to ${sub.email}:`, err);
-        results.errors++;
-      }
-      results.processed++;
+      if (stop || !cursor) break;
     }
 
     return NextResponse.json(ok({ results }));

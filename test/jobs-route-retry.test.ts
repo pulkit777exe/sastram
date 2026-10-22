@@ -32,6 +32,7 @@ function buildJobRequest(messageId: string): NextRequest {
 describe('POST /api/jobs retry integrity', () => {
   let dedupStub: sinon.SinonStub;
   let releaseStub: sinon.SinonStub;
+  let completeStub: sinon.SinonStub;
   let handlerStub: sinon.SinonStub;
   let savedSigningKey: string | undefined;
   let savedNextSigningKey: string | undefined;
@@ -51,6 +52,7 @@ describe('POST /api/jobs retry integrity', () => {
 
     dedupStub = sinon.stub().resolves(true);
     releaseStub = sinon.stub().resolves(true);
+    completeStub = sinon.stub().resolves(true);
     handlerStub = sinon.stub().resolves({ ok: true });
 
     stubModule(loggerModulePath, {
@@ -59,6 +61,7 @@ describe('POST /api/jobs retry integrity', () => {
     stubModule(jobDedupModulePath, {
       deduplicateJob: dedupStub,
       releaseJobDedup: releaseStub,
+      completeJobDedup: completeStub,
     });
     stubModule(registryModulePath, {
       jobHandlers: { 'test-job': handlerStub },
@@ -98,6 +101,7 @@ describe('POST /api/jobs retry integrity', () => {
 
     expect(res.status).to.equal(200);
     sinon.assert.notCalled(releaseStub);
+    sinon.assert.calledOnceWithExactly(completeStub, 'msg-terminal');
   });
 
   it('does not run the handler or release the claim on duplicate delivery', async () => {
@@ -111,5 +115,15 @@ describe('POST /api/jobs retry integrity', () => {
     expect(body).to.deep.equal({ ok: true, duplicate: true });
     sinon.assert.notCalled(handlerStub);
     sinon.assert.notCalled(releaseStub);
+    sinon.assert.notCalled(completeStub);
+  });
+
+  it('marks a successful job completed for the full dedup window', async () => {
+    const POST = (require(routeModulePath) as typeof import('@/app/api/jobs/route')).POST;
+
+    const res = await POST(buildJobRequest('msg-success'));
+
+    expect(res.status).to.equal(200);
+    sinon.assert.calledOnceWithExactly(completeStub, 'msg-success');
   });
 });

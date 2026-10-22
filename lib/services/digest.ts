@@ -78,6 +78,7 @@ export async function fetchDigestMessages(
   const rows = await prisma.message.findMany({
     where: {
       threadId,
+      deletedAt: null,
       createdAt: { gte: window.start, lte: window.end },
     },
     select: {
