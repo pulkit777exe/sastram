@@ -123,6 +123,9 @@ jobs:
           BETTER_AUTH_URL: https://sastram.example
           NEXT_PUBLIC_APP_URL: https://sastram.example
           CRON_SECRET: ci_cron_secret_long_enough_32chars
+          UPSTASH_REDIS_REST_URL: https://example.upstash.io
+          UPSTASH_REDIS_REST_TOKEN: ci_placeholder_token
+          QSTASH_DEV: 'false'
           GEMINI_API_KEY: skip
           OPENAI_API_KEY: skip
           RESEND_API_KEY: re_ci_placeholder_key
@@ -135,15 +138,79 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sastram_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - uses: actions/checkout@v4
       # The production image is what actually ships for self-hosted deploys.
-      # Building it here catches Dockerfile/standalone-output regressions that
-      # `next build` on the runner cannot.
-      - run: docker build --target runner -t sastram:ci .
+      # Build both the migration step and the runtime, then actually boot the
+      # standalone server and probe it. A green `docker build` alone cannot
+      # catch a broken server.js or missing runtime asset.
+      - run: >-
+          docker build
+          --build-arg NEXT_PUBLIC_APP_URL=https://sastram.example
+          --target runner
+          -t sastram:ci .
         env:
           DOCKER_BUILDKIT: '1'
+      - run: docker build --target migrate -t sastram:migrate .
+        env:
+          DOCKER_BUILDKIT: '1'
+      - name: Apply migrations to the CI database
+        run: >-
+          docker run --rm --network host
+          -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/sastram_test
+          -e DATABASE_URL_UNPOOLED=postgresql://postgres:postgres@localhost:5432/sastram_test
+          sastram:migrate
+      - name: Boot the production image and probe liveness
+        run: |
+          set -euo pipefail
+          docker run -d --name sastram-ci --network host \
+            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/sastram_test \
+            -e DATABASE_URL_UNPOOLED=postgresql://postgres:postgres@localhost:5432/sastram_test \
+            -e BETTER_AUTH_SECRET=ci_secret_that_is_long_enough_32chars \
+            -e BETTER_AUTH_URL=http://localhost:3000 \
+            -e NEXT_PUBLIC_APP_URL=https://sastram.example \
+            -e CRON_SECRET=ci_cron_secret_long_enough_32chars \
+            -e RESEND_API_KEY=re_ci_placeholder_key \
+            -e RESEND_FROM="CI <ci@test.local>" \
+            -e RESEND_TEMPLATE_OTP=ci_placeholder \
+            -e RESEND_TEMPLATE_INVITATION=ci_placeholder \
+            -e RESEND_TEMPLATE_THREAD_SUMMARY=ci_placeholder \
+            -e RESEND_TEMPLATE_PASSWORD_RESET=ci_placeholder \
+            -e RESEND_TEMPLATE_WELCOME=ci_placeholder \
+            -e CONTENT_MODERATION_ENABLED=false \
+            sastram:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/health/live; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs sastram-ci
+          exit 1
+      - name: Probe readiness shape (degraded without Redis is expected)
+        run: |
+          set -euo pipefail
+          body="$(curl -sS http://localhost:3000/api/health)"
+          echo "$body"
+          echo "$body" | grep -q '"status":"degraded"'
+          echo "$body" | grep -q '"redis":"error"'
+      - if: always()
+        run: docker rm -f sastram-ci || true
 
   e2e:
     runs-on: ubuntu-latest

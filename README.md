@@ -65,13 +65,13 @@ Starts PostgreSQL, applies migrations, then starts the Next.js app. The app cont
 See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the release order, probes, scheduled jobs, backups, and rollback.
 
 ```bash
-bun typecheck
-bun lint
-bun build
-NODE_ENV=production bun check:prod
+bun run typecheck
+bun run lint
+bun run build
+NODE_ENV=production bun run check:prod
 ```
 
-`bun check:prod` validates required production environment variables, URL shape, and infrastructure pairs. Liveness is `/api/health/live`; readiness is `/api/health`.
+`bun run check:prod` validates required production environment variables, URL shape, and infrastructure pairs (including Upstash Redis and complete QStash signing keys). Liveness is `/api/health/live`; readiness is `/api/health`.
 
 ## Testing
 

@@ -9,6 +9,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sastram"]
       interval: 5s
@@ -47,17 +48,31 @@ services:
       dockerfile: Dockerfile
       args:
         # Public env vars are baked into the client bundle at build time.
-        NEXT_PUBLIC_APP_URL: http://localhost:3001
+        # Set DOCKER_APP_URL when exposing Compose on a real hostname.
+        NEXT_PUBLIC_APP_URL: ${DOCKER_APP_URL:-http://localhost:3001}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+        SENTRY_ORG: ${SENTRY_ORG:-}
+        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
     ports:
       - "3001:3000"
     init: true
+    restart: unless-stopped
+    # Pass integration keys from .env (Upstash, QStash, AI, OAuth, Sentry,
+    # Blob). Explicit values below win for the local database/URL wiring.
+    env_file:
+      - path: .env
+        required: false
     environment:
       NODE_ENV: production
       PORT: "3000"
+      # The local developer .env often sets QSTASH_DEV=true for `bun dev`.
+      # Production runtime rejects that flag; jobs here use QStash when
+      # configured, otherwise they run inline.
+      QSTASH_DEV: "false"
       DATABASE_URL: postgresql://sastram:sastram_dev@db:5432/sastram
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set}
-      BETTER_AUTH_URL: http://localhost:3001
-      NEXT_PUBLIC_APP_URL: http://localhost:3001
+      BETTER_AUTH_URL: ${DOCKER_APP_URL:-http://localhost:3001}
+      NEXT_PUBLIC_APP_URL: ${DOCKER_APP_URL:-http://localhost:3001}
       CRON_SECRET: ${CRON_SECRET:?CRON_SECRET must be set}
       RESEND_API_KEY: ${RESEND_API_KEY:-re_local_placeholder}
       RESEND_FROM: ${RESEND_FROM:-Sastram <noreply@localhost>}
@@ -68,8 +83,9 @@ services:
       RESEND_TEMPLATE_WELCOME: ${RESEND_TEMPLATE_WELCOME:-local_welcome}
       # NOTE: no REDIS_URL/REDIS_HOST here on purpose — rate limits, quotas,
       # and caches read UPSTASH_REDIS_REST_URL/TOKEN only (see
-      # lib/infrastructure/redis-upstash.ts) and degrade to in-memory without
-      # them. Set the UPSTASH pair in .env if you want shared limits locally.
+      # lib/infrastructure/redis-upstash.ts). Production needs the Upstash pair:
+      # without it limits degrade to per-instance memory and AI quotas/spend
+      # caps fail closed. Set the pair in .env for a usable Compose stack.
     depends_on:
       db:
         condition: service_healthy

@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM oven/bun:1.4 AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
@@ -11,12 +12,24 @@ WORKDIR /app
 # collecting route data. The final image receives real values at runtime; these
 # are non-secret build-only placeholders passed only to the build command, not
 # baked into image metadata. Never copy `.env` into the image.
-ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
-ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_SENTRY_DSN=
+ARG SENTRY_ORG=
+ARG SENTRY_PROJECT=
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
+    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
+    SENTRY_ORG=$SENTRY_ORG \
+    SENTRY_PROJECT=$SENTRY_PROJECT
+RUN test -n "$NEXT_PUBLIC_APP_URL" || \
+    (echo "NEXT_PUBLIC_APP_URL build arg is required (it is baked into the client bundle)" >&2; exit 1)
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN DATABASE_URL=postgresql://build:build@localhost:5432/sastram \
+# SENTRY_AUTH_TOKEN arrives as a BuildKit secret, never as an image layer or
+# build arg. Without it Sentry skips source-map upload; the build still works.
+RUN --mount=type=secret,id=sentry_auth_token,required=false \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || true)" \
+    DATABASE_URL=postgresql://build:build@localhost:5432/sastram \
     BETTER_AUTH_SECRET=build_only_placeholder_secret_32_chars \
     BETTER_AUTH_URL=http://localhost:3000 \
     RESEND_API_KEY=build_only_placeholder \
@@ -35,7 +48,14 @@ RUN DATABASE_URL=postgresql://build:build@localhost:5432/sastram \
 FROM deps AS migrate
 WORKDIR /app
 COPY prisma.config.ts ./
-CMD ["./node_modules/.bin/prisma", "migrate", "deploy"]
+COPY tsconfig.json ./
+COPY scripts ./scripts
+# apply-extensions imports this via the `@/` path alias; keep the migrate
+# image minimal rather than copying the whole application source.
+COPY lib/utils/sql-statements.ts ./lib/utils/sql-statements.ts
+# pg_trgm indexes live outside Prisma migration history; apply them in the
+# same release step so a fresh self-hosted database gets the GIN indexes.
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && ./node_modules/.bin/tsx scripts/apply-extensions.ts"]
 
 FROM node:22-alpine AS runner
 WORKDIR /app
