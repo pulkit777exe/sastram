@@ -38,10 +38,30 @@ export async function getUserCollectionsLight(userId: string) {
 }
 
 export async function getCollection(collectionId: string, userId: string, opts?: { take?: number; skip?: number; viewerRole?: Role | null }) {
+  // Visibility is applied inside the items query so take/skip paginate over
+  // visible rows only. Filtering after the page was fetched could return a
+  // short page and make the take+1 hasMore probe wrong.
+  const filter = await visibilityFilter(userId, opts?.viewerRole);
+
   const collection = await prisma.collection.findFirst({
     where: { id: collectionId, userId },
     include: {
       items: {
+        where: {
+          AND: [
+            { OR: [{ threadId: null }, { thread: { is: { deletedAt: null, ...filter } } }] },
+            {
+              OR: [
+                { messageId: null },
+                {
+                  message: {
+                    is: { deletedAt: null, thread: { is: { deletedAt: null, ...filter } } },
+                  },
+                },
+              ],
+            },
+          ],
+        },
         include: {
           thread: { select: { id: true, name: true, slug: true, aiSummary: true } },
           session: {
@@ -66,33 +86,6 @@ export async function getCollection(collectionId: string, userId: string, opts?:
       },
     },
   });
-
-  if (!collection) return null;
-
-  const items = collection.items ?? [];
-
-  // Thread visibility can change after an item is saved. Re-check every
-  // thread referenced by the items against the collection owner and drop the
-  // ones the owner can no longer read.
-  const threadIds = new Set<string>();
-  for (const item of items) {
-    if (item.threadId) threadIds.add(item.threadId);
-    if (item.message?.threadId) threadIds.add(item.message.threadId);
-  }
-
-  if (threadIds.size > 0) {
-    const filter = await visibilityFilter(userId, opts?.viewerRole);
-    const visible = await prisma.thread.findMany({
-      where: { id: { in: [...threadIds] }, deletedAt: null, ...filter },
-      select: { id: true },
-    });
-    const visibleIds = new Set(visible.map((row) => row.id));
-
-    collection.items = items.filter((item) => {
-      const target = item.threadId ?? item.message?.threadId ?? null;
-      return target === null || visibleIds.has(target);
-    });
-  }
 
   return collection;
 }
