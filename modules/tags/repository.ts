@@ -42,28 +42,33 @@ export async function getPopularTags(limit: number = 20, viewerId?: string, view
   try {
     const filter = await visibilityFilter(viewerId, viewerRole);
 
-    // Over-fetch by 3x: raw `_count` includes private threads the viewer cannot
-    // read. Re-rank by the visible-only count and trim to the requested limit.
-    const candidates = await prisma.threadTag.findMany({
-      include: withThreadCount,
-      orderBy: { threads: { _count: 'desc' } },
-      take: limit * 3,
+    // One grouped count over visible threads. The previous implementation
+    // ranked by the raw relation count (which includes private threads) and
+    // then re-counted each candidate, which was both approximate and N+1.
+    const counts = await prisma.threadTagRelation.groupBy({
+      by: ['tagId'],
+      where: { thread: { deletedAt: null, ...filter } },
+      _count: { tagId: true },
     });
 
-    const tags = await Promise.all(
-      candidates.map(async (tag) => {
-        const threadCount = await prisma.threadTagRelation.count({
-          where: { tagId: tag.id, thread: { deletedAt: null, ...filter } },
-        });
-        const { _count, ...rest } = tag;
-        return { ...rest, threadCount };
-      })
-    );
-
-    return tags
-      .filter((tag) => tag.threadCount > 0)
+    const top = counts
+      .map((row) => ({ tagId: row.tagId, threadCount: row._count.tagId }))
+      .filter((row) => row.threadCount > 0)
       .sort((a, b) => b.threadCount - a.threadCount)
       .slice(0, limit);
+
+    if (top.length === 0) return [];
+
+    const tags = await prisma.threadTag.findMany({
+      where: { id: { in: top.map((row) => row.tagId) } },
+      select: { id: true, name: true, slug: true, color: true, createdAt: true },
+    });
+    const byId = new Map(tags.map((tag) => [tag.id, tag]));
+
+    return top.flatMap((row) => {
+      const tag = byId.get(row.tagId);
+      return tag ? [{ ...tag, threadCount: row.threadCount }] : [];
+    });
   } catch (error) {
     logger.error('[getPopularTags]', error);
     return [];
