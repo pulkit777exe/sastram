@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/config/env";
 import { logger } from "@/lib/infrastructure/logger";
 import { prisma } from "@/lib/infrastructure/prisma";
-import { Redis } from "@upstash/redis";
+import { getUpstashRedis } from "@/lib/infrastructure/redis-upstash";
 import { fail, HTTP_STATUS } from "@/lib/utils/api-response";
-import { rateLimit } from "@/lib/services/rate-limit";
+import { InMemoryRateLimiter } from "@/lib/services/rate-limit";
 import { getRequestIp } from "@/lib/utils/request-ip";
 import { APP_VERSION } from "@/lib/config/app-version";
+
+// Per-instance limiter for probes: a load balancer's health check must not
+// consume shared Redis budget (one Redis op per probe). 120 req/min/IP is
+// far above any sane probe cadence.
+const healthProbeLimiter = new InMemoryRateLimiter(120, 60);
 
 type ServiceStatus = "ok" | "not_configured" | "error";
 
@@ -37,22 +42,41 @@ async function checkDatabase(): Promise<ServiceStatus> {
   }
 }
 
+// Probe cadence can be every few seconds; each PING is a billed Upstash command.
+// A short per-instance cache keeps readiness meaningful without spending the
+// free-tier budget on health checks alone. Failures are re-probed sooner.
+const REDIS_PING_OK_TTL_MS = 60_000;
+const REDIS_PING_ERROR_TTL_MS = 10_000;
+let redisPingCache: { status: ServiceStatus; expiresAt: number } | null = null;
+
 async function checkRedis(): Promise<ServiceStatus> {
-  if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
+  const now = Date.now();
+  if (redisPingCache && redisPingCache.expiresAt > now) {
+    return redisPingCache.status;
+  }
+
+  let status: ServiceStatus;
+  const redis = getUpstashRedis();
+  if (!redis) {
     // Shared rate limits, quotas, and AI spend caps fail closed without Redis.
     // That is tolerable locally, but a production instance is not safe to
     // route traffic to, so surface it as degraded.
-    return env.NODE_ENV === "production" ? "error" : "not_configured";
+    status = env.NODE_ENV === "production" ? "error" : "not_configured";
+  } else {
+    try {
+      await withTimeout(redis.ping(), HEALTH_CHECK_TIMEOUT_MS, "redis");
+      status = "ok";
+    } catch (err) {
+      logger.error("[health] redis check failed", err);
+      status = "error";
+    }
   }
 
-  try {
-    const redis = Redis.fromEnv();
-    await withTimeout(redis.ping(), HEALTH_CHECK_TIMEOUT_MS, "redis");
-    return "ok";
-  } catch (err) {
-    logger.error("[health] redis check failed", err);
-    return "error";
-  }
+  redisPingCache = {
+    status,
+    expiresAt: now + (status === "ok" ? REDIS_PING_OK_TTL_MS : REDIS_PING_ERROR_TTL_MS),
+  };
+  return status;
 }
 
 function checkAi(): ServiceStatus {
@@ -85,7 +109,7 @@ export async function GET(request: NextRequest) {
   // Public path (proxy skips it), so the edge limiter never runs — bound the
   // DB/Redis probes here instead.
   const ip = getRequestIp(request);
-  const rateLimitResult = await rateLimit({ key: `health:${ip}`, type: "api" });
+  const rateLimitResult = await healthProbeLimiter.check(ip);
   if (!rateLimitResult.success) {
     return NextResponse.json(fail("RATE_LIMITED", "Too many requests"), { status: HTTP_STATUS.RATE_LIMITED });
   }

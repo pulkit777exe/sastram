@@ -7,9 +7,20 @@
 
 import { logger } from '@/lib/infrastructure/logger';
 import { consumeQuota, type QuotaKind } from '@/lib/services/daily-quota';
-import { enforceAiSpendCap, checkAiSpendCap } from '@/lib/services/ai-spend-cap';
-import { evaluateAiCostGate, type AiCallPath } from '@/lib/services/ai-cost-classification';
+import {
+  enforceAiSpendCap,
+  getAiSpendDailyLimit,
+  readTodayAiSpend,
+} from '@/lib/services/ai-spend-cap';
+import {
+  evaluateAiCostGate,
+  classifyAiCallCost,
+  AiCostTier,
+  type AiCallPath,
+} from '@/lib/services/ai-cost-classification';
 import { isQuotaError } from '@/lib/utils/errors';
+
+const AI_SPEND_DAILY_LIMIT = getAiSpendDailyLimit();
 
 export interface GuardQuota {
   kind: QuotaKind;
@@ -125,35 +136,49 @@ export async function runGuardedAi<T>(
 }
 
 /**
- * One read-only spend check per path for crons, run concurrently (one Redis
- * RTT for the whole fan-out). Consumes nothing — enqueued workers consume
- * their own per-execution estimate via `runGuardedWorker` (ADR-0001 stayed:
- * routes that run work synchronously still pass `alreadyBilled`). Each path is
- * isolated so one Redis failure never blocks the others; production fails
- * closed, development stays fail-open.
+ * One read-only spend check for crons (one Redis RTT for the whole fan-out —
+ * every path reads the same counter, so they share one GET instead of one per
+ * path). Consumes nothing — enqueued workers consume their
+ * own per-execution estimate via `runGuardedWorker` (ADR-0001: routes that run
+ * work synchronously still pass `alreadyBilled`). Cheap paths are always
+ * allowed without touching Redis; the read is only needed for expensive ones.
+ * Fail closed for expensive paths when the counter cannot be read in production.
  */
 export async function checkCronSpendCaps(paths: AiCallPath[]): Promise<Record<string, CronSpendCap>> {
-  const entries = await Promise.all(
-    paths.map(async (path): Promise<[string, CronSpendCap]> => {
-      try {
-        return [path, await checkAiSpendCap(path)];
-      } catch (error) {
-        const fallback =
-          process.env.NODE_ENV === 'production'
-            ? { allowed: false, remaining: 0 }
-            : { allowed: true, remaining: -1 };
-        logger.warn(
-          `[cron] spend cap check failed for ${path} — ${fallback.allowed ? 'allowing' : 'denying'} (fail-${fallback.allowed ? 'open' : 'closed'})`,
-          error
-        );
-        return [path, fallback];
-      }
-    })
-  );
+  const classificationByPath = new Map(paths.map((path) => [path, classifyAiCallCost(path)]));
+  const needsExpensive = paths.some((path) => classificationByPath.get(path)!.tier !== AiCostTier.CHEAP);
+
+  let used = 0;
+  let spendReadFailed = false;
+  if (needsExpensive) {
+    try {
+      used = await readTodayAiSpend();
+    } catch (error) {
+      spendReadFailed = true;
+      logger.warn('[cron] spend cap read failed — applying fallback policy for expensive paths', error);
+    }
+  }
 
   const caps: Record<string, CronSpendCap> = {};
-  for (const [path, cap] of entries) {
-    caps[path] = cap;
+  for (const path of paths) {
+    const classification = classificationByPath.get(path)!;
+    if (classification.tier === AiCostTier.CHEAP) {
+      caps[path] = { allowed: true, remaining: -1 };
+      continue;
+    }
+    if (spendReadFailed) {
+      // Unknown spend: production denies expensive work, development allows it
+      // and reports -1 (unlimited/unknown) rather than a fabricated budget.
+      caps[path] =
+        process.env.NODE_ENV === 'production'
+          ? { allowed: false, remaining: 0 }
+          : { allowed: true, remaining: -1 };
+      continue;
+    }
+    caps[path] = {
+      allowed: used < AI_SPEND_DAILY_LIMIT,
+      remaining: Math.max(0, AI_SPEND_DAILY_LIMIT - used),
+    };
   }
   return caps;
 }

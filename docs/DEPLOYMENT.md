@@ -58,6 +58,10 @@ See `.env.example`. The important production-only rules:
   Uploads are limited per user and provider spend counts against the global AI
   cap. Set `CONTENT_MODERATION_ENABLED=false` only if you have an external
   moderation equivalent.
+- Query warming is **off** by default: it speculatively runs follow-up searches
+  through Exa/Tavily/Gemini for recent queries. Set `QUERY_WARMING_ENABLED=true`
+  only when that spend is deliberate. The cron still enforces the daily AI spend
+  cap per warmed query.
 
 `bun run check:prod` enforces these rules before a release.
 

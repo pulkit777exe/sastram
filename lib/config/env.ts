@@ -49,6 +49,10 @@ const serverEnvSchema = z.object({
   QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
   QSTASH_DAILY_CAP: z.coerce.number().int().positive().default(450),
   RATE_LIMIT_ENABLED: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).transform(toBool).default(true),
+  // Speculative follow-up search warming burns Exa/Tavily/Gemini credits for
+  // queries nobody may read. Off by default; enable only when the budget is
+  // deliberate.
+  QUERY_WARMING_ENABLED: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).transform(toBool).default(false),
   // Fail safe by default in production; local development opts out so tests
   // and offline work do not call a provider.
   CONTENT_MODERATION_ENABLED: z

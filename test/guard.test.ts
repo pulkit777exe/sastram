@@ -20,7 +20,7 @@ function stubModule(path: string, exports: Record<string, unknown>) {
 function loadGuard(quotaImpl: unknown, spendImpl: unknown): GuardModule {
   delete require.cache[guardModulePath];
   stubModule(quotaModulePath, { consumeQuota: quotaImpl });
-  stubModule(spendCapModulePath, { enforceAiSpendCap: spendImpl });
+  stubModule(spendCapModulePath, { enforceAiSpendCap: spendImpl, getAiSpendDailyLimit: () => 5 });
   return require(guardModulePath) as GuardModule;
 }
 
@@ -30,6 +30,7 @@ function loadShared(spendImpl: unknown): SharedModule {
   stubModule(spendCapModulePath, {
     enforceAiSpendCap: spendImpl,
     consumeSpendCap: async () => ({ allowed: true, remaining: -1 }),
+    getAiSpendDailyLimit: () => 5,
   });
   return require(sharedModulePath) as SharedModule;
 }

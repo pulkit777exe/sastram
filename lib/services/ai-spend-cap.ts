@@ -1,9 +1,37 @@
 import { logger } from '@/lib/infrastructure/logger';
 import { classifyAiCallCost, AiCostTier, AiCallPath } from '@/lib/services/ai-cost-classification';
-import { getUpstashRedis, getSecondsUntilUtcMidnight, CHECK_AND_INCRBY_FLOAT_EXPIRE_LUA, withRedisTimeout } from '@/lib/infrastructure/redis-upstash';
+import {
+  getUpstashRedis,
+  getSecondsUntilUtcMidnight,
+  CHECK_AND_INCRBY_FLOAT_EXPIRE_LUA,
+  withRedisTimeout,
+} from '@/lib/infrastructure/redis-upstash';
 
 const DAILY_DOLLAR_LIMIT = 5.00;
 const SPEND_KEY = 'ai_global_spend';
+
+export function getAiSpendDailyLimit(): number {
+  return DAILY_DOLLAR_LIMIT;
+}
+
+/**
+ * Single Redis read for the day's spend, shared by every caller evaluating
+ * multiple paths at once (cron fan-outs).
+ * Throws when Redis is configured but unreadable — callers decide their own
+ * policy instead of silently getting `used: 0` (fail-open by accident).
+ * In development with no Redis at all, returns 0 so offline work is not blocked.
+ */
+export async function readTodayAiSpend(): Promise<number> {
+  const r = getUpstashRedis();
+  if (!r) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('[ai-spend-cap] Redis unavailable — cannot read daily spend');
+    }
+    return 0;
+  }
+  const rawUsed = (await withRedisTimeout(r.get(todayKey()) as Promise<number | null>, 4000)) as number | null;
+  return rawUsed ?? 0;
+}
 
 function getTodayDateString(): string {
   return new Date().toISOString().slice(0, 10);

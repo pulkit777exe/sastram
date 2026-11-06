@@ -30,38 +30,10 @@ describe('checkCronSpendCaps (read-only)', () => {
     delete require.cache[redisModulePath];
   });
 
-  it('reads via checkAiSpendCap and never calls the consuming seam', async () => {
-    const readStub = sinon.stub().resolves({ allowed: false, remaining: 0 });
-    const enforceStub = sinon.stub().resolves({ allowed: true, remaining: 1 });
-    const consumeStub = sinon.stub().resolves({ allowed: true, remaining: 1 });
-
+  function stubSpendCap(readTodayAiSpend: sinon.SinonStub, limit = 5) {
     stubModule(spendCapModulePath, {
-      checkAiSpendCap: readStub,
-      enforceAiSpendCap: enforceStub,
-      consumeSpendCap: consumeStub,
-    });
-    stubModule(quotaModulePath, { consumeQuota: sinon.stub() });
-    stubModule(loggerModulePath, {
-      logger: { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined },
-    });
-    delete require.cache[guardModulePath];
-
-    const { checkCronSpendCaps } = require(guardModulePath) as GuardModule;
-    const caps = await checkCronSpendCaps([AiCallPath.DAILY_DIGEST, AiCallPath.THREAD_DNA]);
-
-    expect(caps[AiCallPath.DAILY_DIGEST]).to.deep.equal({ allowed: false, remaining: 0 });
-    expect(caps[AiCallPath.THREAD_DNA]).to.deep.equal({ allowed: false, remaining: 0 });
-    sinon.assert.calledWith(readStub, AiCallPath.DAILY_DIGEST);
-    sinon.assert.calledWith(readStub, AiCallPath.THREAD_DNA);
-    sinon.assert.notCalled(enforceStub);
-    sinon.assert.notCalled(consumeStub);
-  });
-
-  it('fails open per path when the read throws', async () => {
-    const readStub = sinon.stub().rejects(new Error('redis down'));
-
-    stubModule(spendCapModulePath, {
-      checkAiSpendCap: readStub,
+      readTodayAiSpend,
+      getAiSpendDailyLimit: () => limit,
       enforceAiSpendCap: sinon.stub(),
       consumeSpendCap: sinon.stub(),
     });
@@ -70,11 +42,56 @@ describe('checkCronSpendCaps (read-only)', () => {
       logger: { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined },
     });
     delete require.cache[guardModulePath];
+  }
 
+  it('shares one read across every expensive path and never calls the consuming seam', async () => {
+    const readStub = sinon.stub().resolves(5);
+
+    stubSpendCap(readStub);
+    const { checkCronSpendCaps } = require(guardModulePath) as GuardModule;
+    const caps = await checkCronSpendCaps([AiCallPath.DAILY_DIGEST, AiCallPath.QUERY_WARMING]);
+
+    expect(caps[AiCallPath.DAILY_DIGEST]).to.deep.equal({ allowed: false, remaining: 0 });
+    expect(caps[AiCallPath.QUERY_WARMING]).to.deep.equal({ allowed: false, remaining: 0 });
+    sinon.assert.calledOnce(readStub);
+  });
+
+  it('does not read Redis when every path is cheap', async () => {
+    const readStub = sinon.stub().resolves(5);
+
+    stubSpendCap(readStub);
+    const { checkCronSpendCaps } = require(guardModulePath) as GuardModule;
+    const caps = await checkCronSpendCaps([AiCallPath.THREAD_DNA]);
+
+    expect(caps[AiCallPath.THREAD_DNA]).to.deep.equal({ allowed: true, remaining: -1 });
+    sinon.assert.notCalled(readStub);
+  });
+
+  it('fails open for expensive paths when the read throws outside production', async () => {
+    const readStub = sinon.stub().rejects(new Error('redis down'));
+
+    stubSpendCap(readStub);
     const { checkCronSpendCaps } = require(guardModulePath) as GuardModule;
     const caps = await checkCronSpendCaps([AiCallPath.DAILY_DIGEST]);
 
     expect(caps[AiCallPath.DAILY_DIGEST]).to.deep.equal({ allowed: true, remaining: -1 });
+  });
+
+  it('fails closed for expensive paths when the read throws in production', async () => {
+    const mutableEnv = process.env as Record<string, string | undefined>;
+    const savedNodeEnv = mutableEnv.NODE_ENV;
+    mutableEnv.NODE_ENV = 'production';
+
+    try {
+      stubSpendCap(sinon.stub().rejects(new Error('redis down')));
+      const { checkCronSpendCaps } = require(guardModulePath) as GuardModule;
+      const caps = await checkCronSpendCaps([AiCallPath.DAILY_DIGEST]);
+
+      expect(caps[AiCallPath.DAILY_DIGEST]).to.deep.equal({ allowed: false, remaining: 0 });
+    } finally {
+      if (savedNodeEnv === undefined) delete mutableEnv.NODE_ENV;
+      else mutableEnv.NODE_ENV = savedNodeEnv;
+    }
   });
 });
 

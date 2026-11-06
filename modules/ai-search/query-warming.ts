@@ -14,6 +14,9 @@ import type { SearchCtx, SearchStore } from '@/modules/ai-search/ports';
 function isWarmingEnabled(): boolean {
   try {
     const envConfig = getEnv();
+    if (!envConfig.QUERY_WARMING_ENABLED) {
+      return false;
+    }
     if (!envConfig.SASTRAM_EXA_KEY || !envConfig.SASTRAM_TAVILY_KEY) {
       logger.warn('[query-warming] EXA/TAVILY keys missing — query warming disabled');
       return false;
