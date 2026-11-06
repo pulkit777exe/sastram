@@ -189,7 +189,7 @@ Dub-like flat domain modules — no subdirectories under `modules/`:
 - Bookmarks: `getBookmarkedThreads` passes session viewer so the visibility filter applies
 - `.gitignore`: `docs/AUDIT-REPORT.md` now tracked
 
-**Verification after restructure**: `bun run typecheck` clean, `bun run lint` 0 problems, `bun run test` 804 passing (2 dead-schema test assertions removed with the dead code), structure: `find modules -mindepth 2 -type d` → empty.
+**Verification after restructure**: `bun run typecheck` clean, `bun run lint` 0 problems, `bun run test` 810 passing (2 dead-schema test assertions removed with the dead code), structure: `find modules -mindepth 2 -type d` → empty.
 
 ### Phase 4: Redis / Paid-Service Minimization (Implemented 2026-11-06)
 
@@ -197,6 +197,12 @@ Dub-like flat domain modules — no subdirectories under `modules/`:
 - Cron spend caps share one Redis `GET` for the whole fan-out; cheap AI paths never touch Redis.
 - Query warming is opt-in via `QUERY_WARMING_ENABLED` (default `false`), so speculative Exa/Tavily/Gemini spend only happens when deliberately enabled.
 - Documentation updated in `.env.example` and `docs/DEPLOYMENT.md`; spend-cap tests updated.
+
+### Phase 5: Bounty Claim Path (Implemented 2026-11-06)
+
+- `claimBounties` settles every unclaimed row with one atomic `updateManyAndReturn` and returns the count/amount.
+- `POST /api/bounties/claim` is restricted to the thread creator (moderators do not get a payout override), rate-limited, and requires read access first.
+- The thread header exposes a Claim action to the OP when the unclaimed total is non-zero.
 
 ---
 
@@ -217,9 +223,11 @@ Dub-like flat domain modules — no subdirectories under `modules/`:
 13. `modules/search/actions.ts` — schema slimmed (no client-supplied viewer fields)
 14. `modules/tags/repository.ts` — exact visibility-filtered popular tag counts
 15. `modules/collections/repository.ts` — visibility filter applied before item pagination
-16. `prisma/migrations/20261105000000_add_thread_invitation_invitee_id` — inviteeId column
-17. `prisma/migrations/20261106000000_backfill_thread_invitation_invitee_id` — backfill for accepted rows
-18. Structural flatten (see Phase 3)
+16. `modules/bounties/repository.ts` + `app/api/bounties/claim/route.ts` — atomic claim path
+17. `components/thread/BountyButton.tsx` + header — OP claim affordance
+18. `prisma/migrations/20261105000000_add_thread_invitation_invitee_id` — inviteeId column
+19. `prisma/migrations/20261106000000_backfill_thread_invitation_invitee_id` — backfill for accepted rows
+20. Structural flatten (see Phase 3)
 
 ---
 
@@ -228,15 +236,15 @@ Dub-like flat domain modules — no subdirectories under `modules/`:
 After fixes, run:
 - `bun run typecheck` — ensures no TypeScript errors ✅ (passes cleanly)
 - `bun run lint` — ensures no lint violations
-- `bun run test` — ensures existing tests pass ✅ (804 passing; 2 dead-schema assertions removed with the dead code they tested; the previously failing reaction DB-free test passes once the fake seam is used consistently)
+- `bun run test` — ensures existing tests pass ✅ (810 passing; 2 dead-schema assertions removed with the dead code they tested; the previously failing reaction DB-free test passes once the fake seam is used consistently)
 - Manual review: verify suspended users cannot create threads/react/etc., verify private threads are properly filtered in bookmarks/newsletter, verify poll messageId is cross-checked, etc.
 
 ---
 
 ## 8. Known Remaining Gaps
 
-- **Bounties** (`modules/bounties/repository.ts`): create/list/total only — `isClaimed` is never set and there is no claim/refund path. This is a product gap, not a security finding.
-- **Deployment**: run `bun run db:deploy` so both invitation migrations (`inviteeId` column + backfill) reach Neon.
+- **Bounties**: the claim path is implemented (`POST /api/bounties/claim`, thread-creator only, atomic settlement). Refunds remain out of scope because there is no points ledger to debit/credit.
+- **Deployment**: run `bun run db:deploy` so both invitation migrations (`inviteeId` column + backfill) reach Neon. The current `.env` password is rejected by Neon (`password authentication failed for user "neondb_owner"`); refresh the connection string from the Neon console before deploying.
 - **Query warming**: intentionally off by default; set `QUERY_WARMING_ENABLED=true` only when the speculative search spend is budgeted.
 - **RLS (L3)**: Neon has no row-level security; access remains enforced at the application layer by design.
 
