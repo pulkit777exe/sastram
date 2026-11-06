@@ -24,6 +24,8 @@ interface ThreadPageHeaderProps {
   onEdited?: (title: string, description: string | null) => void;
   /** Server-known bookmark state for the header bookmark button. */
   isBookmarked?: boolean;
+  /** OP can settle unclaimed bounties; moderators cannot. */
+  canClaimBounty?: boolean;
 }
 
 export function ThreadPageHeader({
@@ -35,6 +37,7 @@ export function ThreadPageHeader({
   canEdit,
   onEdited,
   isBookmarked,
+  canClaimBounty,
 }: ThreadPageHeaderProps) {
   return (
     <header className="flex items-center justify-between px-4 sm:px-6 h-14 border-b border-line/60 shrink-0 bg-surface/95 backdrop-blur z-30">
@@ -63,7 +66,7 @@ export function ThreadPageHeader({
       <div className="flex items-center gap-0.5">
         <CollectionSaveButton threadId={threadId} iconOnly />
         <BookmarkButton threadId={threadId} iconOnly initialIsBookmarked={isBookmarked} />
-        <BountyButton threadId={threadId} iconOnly />
+        <BountyButton threadId={threadId} iconOnly canClaim={canClaimBounty} />
         <ForkButton threadId={threadId} threadName={title} iconOnly />
         <ThreadSubscribeButton
           threadId={threadId}

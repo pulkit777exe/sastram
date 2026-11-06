@@ -412,6 +412,7 @@ export function ThreadLiveWrapper({
         canEdit={canEditThread}
         onEdited={handleThreadEdited}
         isBookmarked={isBookmarked}
+        canClaimBounty={createdBy != null && createdBy === currentUser.id}
       />
 
       {isPollingStale && (

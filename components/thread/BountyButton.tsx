@@ -17,10 +17,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { toasts } from '@/lib/utils/toast';
 import { Trophy, Loader2 } from 'lucide-react';
 
-export function BountyButton({ threadId, iconOnly = false }: { threadId: string; iconOnly?: boolean }) {
+export function BountyButton({ threadId, iconOnly = false, canClaim = false }: { threadId: string; iconOnly?: boolean; canClaim?: boolean }) {
   const [total, setTotal] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [adding, setAdding] = React.useState(false);
+  const [claiming, setClaiming] = React.useState(false);
   const [open, setOpen] = React.useState(false);
   const [amount, setAmount] = React.useState('10');
 
@@ -70,6 +71,28 @@ export function BountyButton({ threadId, iconOnly = false }: { threadId: string;
   };
 
   const tooltip = total ? `Add bounty · ${total} current` : 'Add bounty';
+
+  const claim = async () => {
+    if (claiming || adding) return;
+    setClaiming(true);
+    try {
+      const res = await fetch('/api/bounties/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threadId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error?.message || 'Failed to claim bounty');
+      const claimed = json.data?.amount ?? 0;
+      toasts.success(claimed > 0 ? `Claimed ${claimed} bounty` : 'Nothing left to claim');
+      setOpen(false);
+      await load();
+    } catch (e) {
+      toasts.error(e instanceof Error ? e.message : 'Failed to claim bounty');
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -125,10 +148,16 @@ export function BountyButton({ threadId, iconOnly = false }: { threadId: string;
           />
         </div>
         <DialogFooter>
+          {canClaim && total !== null && total > 0 && (
+            <Button variant="secondary" onClick={() => void claim()} disabled={claiming || adding}>
+              {claiming ? <Loader2 size={14} className="animate-spin" /> : <Trophy size={14} />}
+              Claim {total}
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={() => void addBounty()} disabled={adding}>
+          <Button onClick={() => void addBounty()} disabled={adding || claiming}>
             {adding ? <Loader2 size={14} className="animate-spin" /> : <Trophy size={14} />}
             Add bounty
           </Button>
