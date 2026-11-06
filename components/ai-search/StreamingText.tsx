@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Citation, Source } from '@/modules/ai-search/types';
 import { toasts } from '@/lib/utils/toast';
+import { isSafePublicUrl } from "@/lib/services/content-safety";
 import { Button } from '@/components/ui/button';
 
 /* ─────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ interface StreamingTextProps {
 function SourceChip({ source, onCiteClick }: { source: Source; onCiteClick?: (sourceId: string) => void }) {
   return (
     <a
-      href={source.url}
+      href={isSafePublicUrl(source.url) ? source.url : "#"}
       target="_blank"
       rel="noreferrer"
       onClick={() => onCiteClick?.(source.id)}
@@ -562,7 +563,7 @@ export function StreamingText({
               {displayedSources.map((source) => (
                 <a
                   key={source.id}
-                  href={source.url}
+                  href={isSafePublicUrl(source.url) ? source.url : "#"}
                   target="_blank"
                   rel="noreferrer"
                   className="flex flex-col gap-1 rounded-control px-2 py-1.5 text-[12px] transition-colors duration-150 hover:bg-hover group"

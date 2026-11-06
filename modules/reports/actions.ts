@@ -13,24 +13,11 @@ import { revalidatePath } from 'next/cache';
 import { ROUTES } from '@/lib/config/routes';
 import type { ReportCategory, ReportStatus, Role } from '@prisma/client';
 import { requireReadOrThrow } from '@/lib/thread-access';
-import { actionSuccess } from '@/lib/utils/server-action';
+import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
 import { AppError } from '@/lib/utils/errors';
 import type { ActionErrorCode } from '@/lib/utils/server-action';
 import { resolveReport as resolveReportService } from './service';
 
-const INTERNAL_ERROR = {
-  data: null,
-  error: 'Something went wrong',
-  ok: false,
-  errorCode: 'INTERNAL_ERROR',
-} as const;
-
-const INVALID_INPUT = {
-  data: null,
-  error: 'Invalid input',
-  ok: false,
-  errorCode: 'VALIDATION_ERROR',
-} as const;
 
 // ── Shared select constants ────────────────────────────────────────────────
 const REPORT_SENDER_SELECT = {
@@ -185,15 +172,15 @@ async function persistReportRecord(params: {
 async function validateAndFetchReportContext(messageId: string, reporterId: string, reporterRole: string) {
   const existing = await findDuplicateReport(messageId, reporterId);
   if (existing !== null) {
-    return { error: { data: null, error: 'You have already reported this message', ok: false, errorCode: 'CONFLICT' } as const };
+    return { error: actionFailure('CONFLICT', 'You have already reported this message') };
   }
   const message = await fetchMessageForReport(messageId);
   if (message === null) {
-    return { error: { data: null, error: 'Message not found', ok: false, errorCode: 'NOT_FOUND' } as const };
+    return { error: actionFailure('NOT_FOUND', 'Message not found') };
   }
   await requireReadOrThrow(message.threadId, reporterId, reporterRole as Role);
   if (isOwnMessage(message.senderId, reporterId)) {
-    return { error: { data: null, error: 'You cannot report your own message', ok: false, errorCode: 'FORBIDDEN' } as const };
+    return { error: actionFailure('FORBIDDEN', 'You cannot report your own message') };
   }
   return { message };
 }
@@ -201,7 +188,7 @@ async function validateAndFetchReportContext(messageId: string, reporterId: stri
 export async function createReport(data: { messageId: string; category: string; details?: string }) {
   const validation = createReportSchema.safeParse(data);
   if (!validation.success) {
-    return INVALID_INPUT;
+    return actionFailure('VALIDATION_ERROR', 'Invalid input');
   }
 
   const { messageId, category, details } = validation.data;
@@ -241,7 +228,7 @@ export async function createReport(data: { messageId: string; category: string; 
     });
   } catch (error) {
     logger.error('[createReport]', error);
-    return INTERNAL_ERROR;
+    return actionFailure('INTERNAL_ERROR', 'Something went wrong');
   }
 }
 
@@ -267,7 +254,7 @@ async function fetchReports(where: { status?: ReportStatus }, limit: number, off
 export async function getReports(filters?: { status?: string; limit?: number; offset?: number }) {
   const parsed = reportFiltersSchema.safeParse(filters ?? {});
   if (!parsed.success) {
-    return INVALID_INPUT;
+    return actionFailure('VALIDATION_ERROR', 'Invalid input');
   }
 
   try {
@@ -281,7 +268,7 @@ export async function getReports(filters?: { status?: string; limit?: number; of
     return actionSuccess(reports);
   } catch (error) {
     logger.error('[getReports]', error);
-    return INTERNAL_ERROR;
+    return actionFailure('INTERNAL_ERROR', 'Something went wrong');
   }
 }
 
@@ -322,7 +309,7 @@ export async function getReportStats() {
     });
   } catch (error) {
     logger.error('[getReportStats]', error);
-    return INTERNAL_ERROR;
+    return actionFailure('INTERNAL_ERROR', 'Something went wrong');
   }
 }
 
@@ -425,7 +412,7 @@ function getViolationActionLabel(isActive: boolean): string {
 export async function getReportWithContext(reportId: string) {
   const parsed = reportIdSchema.safeParse({ reportId });
   if (!parsed.success) {
-    return INVALID_INPUT;
+    return actionFailure('VALIDATION_ERROR', 'Invalid input');
   }
 
   try {
@@ -434,7 +421,7 @@ export async function getReportWithContext(reportId: string) {
     const report = await fetchReportWithRelations(parsed.data.reportId);
 
     if (report === null) {
-      return { data: null, error: 'Report not found', ok: false, errorCode: 'NOT_FOUND' };
+      return actionFailure('NOT_FOUND', 'Report not found');
     }
 
     const [surroundingMessages, violationHistory, similarReports, userBanCount, userReportCount] =
@@ -468,7 +455,7 @@ export async function getReportWithContext(reportId: string) {
     });
   } catch (error) {
     logger.error('[getReportWithContext]', error);
-    return INTERNAL_ERROR;
+    return actionFailure('INTERNAL_ERROR', 'Something went wrong');
   }
 }
 
@@ -480,7 +467,7 @@ function getResolvedBy(status: string, userId: string): string | null {
 export async function updateReportStatusAction(reportId: string, status: 'RESOLVED' | 'DISMISSED') {
   const validation = updateReportStatusSchema.safeParse({ reportId, status });
   if (!validation.success) {
-    return INVALID_INPUT;
+    return actionFailure('VALIDATION_ERROR', 'Invalid input');
   }
 
   try {
@@ -507,7 +494,7 @@ export async function updateReportStatusAction(reportId: string, status: 'RESOLV
     return actionSuccess(null);
   } catch (error) {
     logger.error('[updateReportStatusAction]', error);
-    return INTERNAL_ERROR;
+    return actionFailure('INTERNAL_ERROR', 'Something went wrong');
   }
 }
 
@@ -522,7 +509,7 @@ export async function resolveReport(data: {
 }) {
   const parsed = resolveReportSchema.safeParse(data);
   if (!parsed.success) {
-    return INVALID_INPUT;
+    return actionFailure('VALIDATION_ERROR', 'Invalid input');
   }
 
   try {
@@ -538,8 +525,8 @@ export async function resolveReport(data: {
     logger.error('[resolveReport]', error);
     if (AppError.isAppError(error)) {
       const errorCode = toActionErrorCode(error.code);
-      return { data: null, error: error.message, ok: false, errorCode };
+      return actionFailure(errorCode, error.message);
     }
-    return INTERNAL_ERROR;
+    return actionFailure('INTERNAL_ERROR', 'Something went wrong');
   }
 }

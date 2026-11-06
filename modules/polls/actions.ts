@@ -138,6 +138,17 @@ export const createPollAction = withValidation(
         throw error;
       }
 
+      // Verify that if messageId is provided, it belongs to the given threadId.
+      if (messageId) {
+        const message = await prisma.message.findUnique({
+          where: { id: messageId },
+          select: { threadId: true },
+        });
+        if (!message || message.threadId !== threadId) {
+          return fail('messageId must belong to the specified threadId', 'FORBIDDEN');
+        }
+      }
+
       const poll = await createPollRepo(threadId, question, options, expiresAt ?? undefined, messageId);
 
       logger.info('[createPoll] Poll created', {
@@ -294,13 +305,17 @@ export const getPollResultsAction = createServerAction(
   async ({ pollId }) => {
     try {
       const session = await requireSession();
+      // Resolve the thread BEFORE touching poll data so access is checked first.
+      const fullPoll = await getPollByIdRepo(pollId);
+      if (!fullPoll) {
+        return pollNotFound();
+      }
+      if (fullPoll.threadId) {
+        await requireReadOrThrow(fullPoll.threadId, session.user.id, session.user.role as Role);
+      }
       const poll = await getPollResultsRepo(pollId);
       if (poll === null) {
         return pollNotFound();
-      }
-      const fullPoll = await getPollByIdRepo(pollId);
-      if (fullPoll?.threadId) {
-        await requireReadOrThrow(fullPoll.threadId, session.user.id, session.user.role as Role);
       }
       return actionSuccess(poll);
     } catch (error) {

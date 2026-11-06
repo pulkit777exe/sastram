@@ -142,6 +142,7 @@ model User {
   notifications    Notification[]
   reports          Report[]             @relation("Reporter")
   invitations      ThreadInvitation[]   @relation("InvitationSender")
+  receivedInvitations ThreadInvitation[] @relation("InvitationInvitee")
   bans             UserBan[]            @relation("BannedUser")
   issuedBans       UserBan[]            @relation("BanIssuer")
   followers        UserFollow[]         @relation("Follower")
@@ -641,20 +642,26 @@ model UserActivity {
 }
 
 model ThreadInvitation {
-  id        String           @id @default(cuid())
-  threadId  String
-  senderId  String
-  email     String
-  status    InvitationStatus @default(PENDING)
-  token     String           @unique @default(cuid())
-  expiresAt DateTime?
-  createdAt DateTime         @default(now())
+  id          String           @id @default(cuid())
+  threadId    String
+  senderId    String
+  email       String
+  // Email match breaks when an invitee changes address after acceptance;
+  // inviteeId binds the invitation to the accepting user directly.
+  // Set at acceptance time; NULL for PENDING rows and for rows accepted before the migration.
+  inviteeId   String?
+  status      InvitationStatus @default(PENDING)
+  token       String           @unique @default(cuid())
+  expiresAt   DateTime?
+  createdAt   DateTime         @default(now())
 
-  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender User   @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  thread   Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender   User   @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  invitee  User?  @relation("InvitationInvitee", fields: [inviteeId], references: [id], onDelete: SetNull)
 
   @@unique([threadId, email])
   @@index([email])
+  @@index([inviteeId, status])
   @@map("thread_invitations")
 }
 

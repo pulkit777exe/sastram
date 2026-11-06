@@ -32,7 +32,7 @@ export const getBookmarkedThreads = createServerAction(
   { schema: paginationSchema, actionName: 'getBookmarkedThreads' },
   async ({ limit, offset }) => {
     const session = await requireSession();
-    const result = await getUserBookmarksRepo(session.user.id, limit || 20, offset || 0);
+    const result = await getUserBookmarksRepo(session.user.id, limit || 20, offset || 0, session.user.id, session.user.role);
     return actionSuccess(result);
   }
 );

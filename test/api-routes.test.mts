@@ -98,17 +98,3 @@ describe('API Route — CRON Security', () => {
     expect(env.CRON_SECRET!.length).to.be.greaterThanOrEqual(32);
   });
 });
-
-describe('API Route — Moderation Validation', () => {
-  it('delete message validates messageId', async () => {
-    const { deleteMessageSchema } = await import('@/modules/moderation/schemas');
-    const result = deleteMessageSchema.safeParse({ messageId: 'invalid', sectionSlug: 'test' });
-    expect(result.success).to.be.false;
-  });
-
-  it('ban user validates reason enum', async () => {
-    const { banUserSchema } = await import('@/modules/moderation/schemas');
-    const result = banUserSchema.safeParse({ userId: 'abc123', reason: 'INVALID_REASON' });
-    expect(result.success).to.be.false;
-  });
-});

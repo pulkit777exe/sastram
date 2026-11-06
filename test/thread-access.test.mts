@@ -87,22 +87,14 @@ describe('Thread Access', () => {
       expect(await canAccessThread(baseThread, 'user-1', Role.USER)).to.be.true;
     });
 
-    it('should return true if user has accepted invitation by senderId', async () => {
+    it('should return true if user has an accepted invitation (inviteeId or email match, one lookup)', async () => {
       mockPrismaThreadInvitationFindFirst({ id: 'inv-1' });
+      mockPrismaUserFindUnique({ email: 'user@example.com' });
       expect(await canAccessThread(baseThread, 'user-2', Role.USER)).to.be.true;
     });
 
-    it('should return true if user has accepted invitation by email', async () => {
-      let callCount = 0;
-      prismaRestores.push(
-        installFakePrisma({
-          'threadInvitation.findFirst': async () => {
-            callCount++;
-            if (callCount === 1) return null; // senderId lookup
-            return { id: 'inv-2' }; // email lookup
-          },
-        })
-      );
+    it('should return true if user has an accepted invitation matched by email (pre-migration row)', async () => {
+      mockPrismaThreadInvitationFindFirst({ id: 'inv-2' });
       mockPrismaUserFindUnique({ email: 'user@example.com' });
 
       expect(await canAccessThread(baseThread, 'user-2', Role.USER)).to.be.true;
@@ -153,18 +145,18 @@ describe('Thread Access', () => {
       const users = [
         { id: 'creator', email: 'creator@example.com', role: Role.USER },
         { id: 'moderator', email: 'mod@example.com', role: Role.MODERATOR },
-        { id: 'sender', email: 'sender@example.com', role: Role.USER },
+        { id: 'invitee-by-id', email: 'invitee-by-id@example.com', role: Role.USER },
         { id: 'email-invitee', email: 'invitee@example.com', role: Role.USER },
-        { id: 'sender-no-email', email: null, role: Role.USER },
+        { id: 'invitee-no-email', email: null, role: Role.USER },
         { id: 'stranger', email: 'stranger@example.com', role: Role.USER },
       ];
       prismaRestores.push(
         installFakePrisma({
           'user.findMany': async () => users,
           'threadInvitation.findMany': async () => [
-            { senderId: 'sender', email: 'sender@example.com' },
-            { senderId: 'someone-else', email: 'invitee@example.com' },
-            { senderId: 'sender-no-email', email: null },
+            { inviteeId: 'invitee-by-id', email: 'invitee-by-id@example.com' },
+            { inviteeId: null, email: 'invitee@example.com' },
+            { inviteeId: 'invitee-no-email', email: null },
           ],
         })
       );
@@ -177,9 +169,9 @@ describe('Thread Access', () => {
       expect(allowed).to.have.members([
         'creator',
         'moderator',
-        'sender',
+        'invitee-by-id',
         'email-invitee',
-        'sender-no-email',
+        'invitee-no-email',
       ]);
       expect(allowed).to.not.include('stranger');
     });
@@ -251,7 +243,7 @@ describe('Thread Access', () => {
       const invitationFilter = (filter.OR as unknown as FilterWithInvitations[]).find((f) => f.invitations);
       expect(invitationFilter).to.exist;
       expect((invitationFilter as unknown as { invitations: { some: { OR: unknown[] } } }).invitations.some.OR).to.have.lengthOf(1);
-      expect((invitationFilter as unknown as { invitations: { some: { OR: unknown[] } } }).invitations.some.OR).to.deep.include({ senderId: 'user-1' });
+      expect((invitationFilter as unknown as { invitations: { some: { OR: unknown[] } } }).invitations.some.OR).to.deep.include({ inviteeId: 'user-1' });
     });
   });
 
@@ -281,6 +273,7 @@ describe('Thread Access', () => {
 
     it('should delegate to canAccessThread for non-public threads', async () => {
       mockPrismaThreadInvitationFindFirst({ id: 'inv-1' });
+      mockPrismaUserFindUnique({ email: 'user@example.com' });
       expect(await canWriteToThread(baseThread, 'user-2', Role.USER)).to.be.true;
     });
 
@@ -675,12 +668,8 @@ describe('Thread Access', () => {
           visibility: row.visibility,
         };
 
-        if (row.hasInvitation) {
-          mockPrismaThreadInvitationFindFirst({ id: 'inv-1' });
-        } else {
-          mockPrismaThreadInvitationFindFirst(null);
-          mockPrismaUserFindUnique({ email: 'user@example.com' });
-        }
+        mockPrismaThreadInvitationFindFirst(row.hasInvitation ? { id: 'inv-1' } : null);
+        mockPrismaUserFindUnique({ email: 'user@example.com' });
         const readable = await canReadThread(thread, row.userId, row.role);
         expect(readable).to.equal(row.expected);
 

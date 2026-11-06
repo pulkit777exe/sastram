@@ -76,8 +76,9 @@ export const getPopularTagsAction = withValidation(
   z.object({ limit: z.number().int().positive().max(100).optional() }),
   'getPopularTagsAction',
   async ({ limit }) => {
+    const session = await requireSession(false);
     const effectiveLimit = limit ?? DEFAULT_POPULAR_TAGS_LIMIT;
-    const tags = await getPopularTagsRepo(effectiveLimit);
+    const tags = await getPopularTagsRepo(effectiveLimit, session.user.id, session.user.role);
     return actionSuccess(tags);
   }
 );

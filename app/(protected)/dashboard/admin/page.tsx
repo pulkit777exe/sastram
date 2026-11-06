@@ -8,7 +8,9 @@ export default async function AdminDashboardPage() {
   if (!session) return null;
   assertAdmin(session.user);
 
-  const threadsPromise = listThreads();
+  // Pass the admin user as viewer so listThreads applies the correct
+  // visibility filter (admins see all threads via canModerate in the filter).
+  const threadsPromise = listThreads({ memberUserId: session.user.id, memberRole: session.user.role });
 
   return (
     <AdminDashboardForms

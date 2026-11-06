@@ -7,7 +7,7 @@ import { createServerAction } from '@/lib/utils/server-action';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { getRequestIp } from '@/lib/utils/request-ip';
 import { submitFeedbackSchema } from '@/modules/feedback/schemas';
-import { actionSuccess } from '@/lib/utils/server-action';
+import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
 
 export const submitFeedback = createServerAction(
   { schema: submitFeedbackSchema, actionName: 'submitFeedback' },
@@ -34,7 +34,7 @@ export const submitFeedback = createServerAction(
     const limitKey = userId ? `feedback:user:${userId}` : anonymousKey;
     const limitResult = await rateLimit({ key: limitKey, type: 'api' });
     if (!limitResult.success) {
-      return { data: null, error: 'Too many submissions. Please try again later.', errorCode: 'RATE_LIMITED', ok: false };
+      return actionFailure('RATE_LIMITED', 'Too many submissions. Please try again later.');
     }
 
     const feedback = await prisma.feedback.create({

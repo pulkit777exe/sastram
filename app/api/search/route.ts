@@ -78,7 +78,7 @@ async function handleSearchByType(
     return NextResponse.json(ok(result));
   }
   if (type === 'users') {
-    const result = await searchUsers(q, limit, offset);
+    const result = await searchUsers(q, limit, offset, session.user.id);
     return NextResponse.json(ok(result));
   }
   return NextResponse.json(

@@ -31,7 +31,10 @@ export function buildInvitationMatch(
   memberUserId: string,
   email?: string | null
 ): Prisma.ThreadInvitationWhereInput[] {
-  const match: Prisma.ThreadInvitationWhereInput[] = [{ senderId: memberUserId }];
+  // senderId is the inviter, NOT the invitee. The invitee is the accepting
+  // user (inviteeId, set at acceptance) or — for rows accepted before
+  // inviteeId existed — the invitation's email address.
+  const match: Prisma.ThreadInvitationWhereInput[] = [{ inviteeId: memberUserId }];
   if (email) {
     match.push({ email });
   }
@@ -46,10 +49,6 @@ export function buildInvitationMatch(
 export interface ThreadAccessStore {
   loadThread(threadId: string): Promise<ThreadAccessContext | null>;
   findInvitation(threadId: string, userId: string): Promise<{ id: string } | null>;
-  findInvitationByEmail(
-    threadId: string,
-    match: Prisma.ThreadInvitationWhereInput[]
-  ): Promise<{ id: string } | null>;
   /** Active, unexpired thread-scoped or site-wide (`threadId: null`) ban. */
   findActiveBan(threadId: string, userId: string): Promise<{ id: string } | null>;
   getUserEmail(userId: string): Promise<string | null>;
@@ -66,14 +65,9 @@ export const prismaThreadAccessStore: ThreadAccessStore = {
     return { threadId: foundThread.id, createdBy: foundThread.createdBy, visibility: foundThread.visibility };
   },
   async findInvitation(threadId, userId) {
+    const userEmail = await this.getUserEmail(userId);
     return prisma.threadInvitation.findFirst({
-      where: { threadId, status: 'ACCEPTED', senderId: userId },
-      select: { id: true },
-    });
-  },
-  async findInvitationByEmail(threadId, match) {
-    return prisma.threadInvitation.findFirst({
-      where: { threadId, status: 'ACCEPTED', OR: match },
+      where: { threadId, status: 'ACCEPTED', OR: buildInvitationMatch(userId, userEmail) },
       select: { id: true },
     });
   },
@@ -139,12 +133,6 @@ export function createFakeThreadAccessStore(seed: {
     async findInvitation(threadId, userId) {
       return accepted(threadId, userId, null) ? { id: `${threadId}:${userId}` } : null;
     },
-    async findInvitationByEmail(threadId, match) {
-      const email = match
-        .map((m) => (typeof m.email === 'string' ? m.email : null))
-        .find((e): e is string => e !== null) ?? null;
-      return accepted(threadId, '', email) ? { id: `${threadId}:${email}` } : null;
-    },
     async findActiveBan(threadId, userId) {
       return banned(threadId, userId) ? { id: `ban:${threadId}:${userId}` } : null;
     },
@@ -170,17 +158,8 @@ async function evaluateRead(
   if (canModerate(effectiveRole)) return true;
   if (thread.createdBy === userId) return true;
 
-  const senderInvitation = await store.findInvitation(thread.threadId, userId);
-  if (senderInvitation !== null) return true;
-
-  // Invitations are also addressed by email, so fall back to an email match.
-  const userEmail = await store.getUserEmail(userId);
-  if (userEmail === null || userEmail.length === 0) return false;
-
-  const invitationMatch = buildInvitationMatch(userId, userEmail);
-  const emailInvitation = await store.findInvitationByEmail(thread.threadId, invitationMatch);
-
-  return emailInvitation !== null;
+  const invitation = await store.findInvitation(thread.threadId, userId);
+  return invitation !== null;
 }
 
 /** Single write rule shared by `canWrite` and `requireWrite` (one locality). */
@@ -336,19 +315,21 @@ export async function filterReadableUserIds(
       threadId: thread.threadId,
       status: 'ACCEPTED',
       OR: [
-        { senderId: { in: users.map((user) => user.id) } },
+        { inviteeId: { in: uniqueIds } },
         ...(emails.length > 0 ? [{ email: { in: emails } }] : []),
       ],
     },
-    select: { senderId: true, email: true },
+    select: { inviteeId: true, email: true },
   });
 
   if (invitations.length > 0) {
-    const invitedSenders = new Set(invitations.map((invitation) => invitation.senderId));
+    const invitedInvitees = new Set(
+      invitations.map((invitation) => invitation.inviteeId).filter((id): id is string => typeof id === 'string')
+    );
     const invitedEmails = new Set(invitations.map((invitation) => invitation.email));
     for (const user of users) {
       if (allowed.has(user.id)) continue;
-      if (invitedSenders.has(user.id) || (user.email !== null && invitedEmails.has(user.email))) {
+      if (invitedInvitees.has(user.id) || (user.email !== null && invitedEmails.has(user.email))) {
         allowed.add(user.id);
       }
     }

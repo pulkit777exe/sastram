@@ -2,6 +2,8 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { cache } from 'react';
 import { logger } from '@/lib/infrastructure/logger';
 import { computeHasMore } from '@/lib/db/pagination';
+import { visibilityFilter } from '@/lib/thread-access';
+import type { Role } from '@prisma/client';
 
 const BOOKMARK_THREAD_SELECT = {
   id: true,
@@ -34,31 +36,36 @@ export async function unbookmarkThread(userId: string, threadId: string) {
   }
 }
 
-export const getUserBookmarks = cache(async (userId: string, limit: number = 20, offset: number = 0) => {
-  try {
-    const [bookmarks, total] = await Promise.all([
-      prisma.userBookmark.findMany({
-        where: { userId, thread: { deletedAt: null } },
-        include: {
-          thread: { select: BOOKMARK_THREAD_SELECT },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.userBookmark.count({ where: { userId, thread: { deletedAt: null } } }),
-    ]);
+export const getUserBookmarks = cache(
+  async (userId: string, limit: number = 20, offset: number = 0, viewerId?: string, viewerRole?: Role | null) => {
+    try {
+      const vf = await visibilityFilter(viewerId, viewerRole);
+      const [bookmarks, total] = await Promise.all([
+        prisma.userBookmark.findMany({
+          where: { userId, thread: { deletedAt: null, ...vf } },
+          include: {
+            thread: {
+              select: BOOKMARK_THREAD_SELECT,
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+          skip: offset,
+        }),
+        prisma.userBookmark.count({ where: { userId, thread: { deletedAt: null, ...vf } } }),
+      ]);
 
-    return {
-      bookmarks: bookmarks.map((bookmark) => bookmark.thread),
-      total,
-      hasMore: computeHasMore(offset, limit, total),
-    };
-  } catch (error) {
-    logger.error('[getUserBookmarks]', error);
-    return { bookmarks: [], total: 0, hasMore: false };
+      return {
+        bookmarks: bookmarks.map((bookmark) => bookmark.thread),
+        total,
+        hasMore: computeHasMore(offset, limit, total),
+      };
+    } catch (error) {
+      logger.error('[getUserBookmarks]', error);
+      return { bookmarks: [], total: 0, hasMore: false };
+    }
   }
-});
+);
 
 export const isBookmarked = cache(async (userId: string, threadId: string): Promise<boolean> => {
   try {

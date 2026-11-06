@@ -219,19 +219,19 @@ export async function searchMessages(
 
 const IS_ACTIVE_NOT_DELETED_USER: Prisma.UserWhereInput = { status: 'ACTIVE', deletedAt: null };
 
-function scoreUser(user: { name: string | null; bio: string | null; followerCount: number }, tokens: string[]): number {
+function scoreUser(user: { name: string | null; followerCount: number }, tokens: string[]): number {
   let score = 0;
   for (const tok of tokens) {
-    score += tokenScore(tok, user.name) * 10 + tokenScore(tok, user.bio) * 2;
+    score += tokenScore(tok, user.name) * 10;
   }
-  const matched = tokens.filter((tok) => tokenScore(tok, user.name) > 0 || tokenScore(tok, user.bio) > 0).length;
+  const matched = tokens.filter((tok) => tokenScore(tok, user.name) > 0).length;
   score += matched * 3;
   if (tokens.length > 1 && matched === tokens.length) score += 4;
   score += Math.log1p(user.followerCount) * 0.4;
   return score;
 }
 
-export async function searchUsers(query: string, limit: number = 20, offset: number = 0) {
+export async function searchUsers(query: string, limit: number = 20, offset: number = 0, viewerId?: string) {
   try {
     const trimmed = query.trim();
     if (trimmed.length < 2) return { users: [], total: 0, hasMore: false };
@@ -240,7 +240,6 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
     const or: Prisma.UserWhereInput[] = [];
     for (const term of searchTerms) {
       or.push({ name: { contains: term, mode: insensitive } });
-      or.push({ bio: { contains: term, mode: insensitive } });
     }
     const where: Prisma.UserWhereInput = {
       ...IS_ACTIVE_NOT_DELETED_USER,
@@ -252,6 +251,8 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
     const window = offset + limit + 1;
     const candidates = await prisma.user.findMany({
       where,
+      // bio is read only to keep own-profile results complete; it is stripped
+      // from non-self rows before returning (private/followers-only bios never leave the server).
       select: {
         id: true,
         name: true,
@@ -268,7 +269,11 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
       .map((u) => ({ user: u, score: scoreUser(u, effectiveTokens) }))
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score);
-    const page = scored.slice(offset, offset + limit).map((x) => x.user);
+    const page = scored.slice(offset, offset + limit).map(({ user }) => {
+      if (viewerId !== undefined && viewerId !== null && user.id === viewerId) return user;
+      const { bio: _bio, ...rest } = user;
+      return rest;
+    });
     const hasMore = scored.length > offset + limit || candidates.length === window;
     return { users: page, total: scored.length, hasMore };
   } catch (error) {

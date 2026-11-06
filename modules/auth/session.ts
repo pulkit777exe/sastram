@@ -110,7 +110,13 @@ export async function requireSession(checkBanStatus = true): Promise<SessionPayl
     redirect(`/login?reason=session_expired&redirect=${encodeURIComponent(requestedPath)}`);
   }
 
-  if (checkBanStatus && session.user.status === 'BANNED') {
+  const banned = checkBanStatus && session.user.status === 'BANNED';
+  const suspended = checkBanStatus && session.user.status === 'SUSPENDED';
+
+  if (banned) {
+    redirect('/banned');
+  }
+  if (suspended) {
     redirect('/banned');
   }
 
@@ -125,6 +131,10 @@ export async function requireSessionOrThrow(checkBanStatus = true): Promise<Sess
 
   if (checkBanStatus && session.user.status === 'BANNED') {
     throw new AppError('Forbidden: user is banned', 'FORBIDDEN', 403);
+  }
+
+  if (checkBanStatus && session.user.status === 'SUSPENDED') {
+    throw new AppError('Forbidden: user is suspended', 'FORBIDDEN', 403);
   }
 
   return session;

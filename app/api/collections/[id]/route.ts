@@ -28,7 +28,7 @@ export const GET = withCollectionsHandler(async (request: NextRequest, session, 
   const id = await parseRouteId(context, collectionIdSchema);
 
   const { take, skip } = parseItemsWindow(request);
-  const collection = await getCollection(id, session.user.id, { take, skip });
+  const collection = await getCollection(id, session.user.id, { take, skip, viewerRole: session.user.role });
   if (!collection) return NextResponse.json(fail('NOT_FOUND', 'Collection not found'), { status: HTTP_STATUS.NOT_FOUND });
   return NextResponse.json(ok(collection));
 });

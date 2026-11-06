@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { slugify } from '@/lib/utils/slug';
-import { countActiveUsersByThread } from '@/modules/threads/threads-core/repository';
+import { countActiveUsersByThread } from '@/modules/threads/list';
 import { visibilityFilter } from '@/lib/thread-access';
 import type { Role } from '@prisma/client';
 
@@ -38,15 +38,32 @@ export async function removeTagFromThread(threadId: string, tagId: string) {
   }
 }
 
-export async function getPopularTags(limit: number = 20) {
+export async function getPopularTags(limit: number = 20, viewerId?: string, viewerRole?: Role | null) {
   try {
-    const tags = await prisma.threadTag.findMany({
+    const filter = await visibilityFilter(viewerId, viewerRole);
+
+    // Over-fetch by 3x: raw `_count` includes private threads the viewer cannot
+    // read. Re-rank by the visible-only count and trim to the requested limit.
+    const candidates = await prisma.threadTag.findMany({
       include: withThreadCount,
       orderBy: { threads: { _count: 'desc' } },
-      take: limit,
+      take: limit * 3,
     });
 
-    return tags.map((tag) => ({ ...tag, threadCount: tag._count.threads }));
+    const tags = await Promise.all(
+      candidates.map(async (tag) => {
+        const threadCount = await prisma.threadTagRelation.count({
+          where: { tagId: tag.id, thread: { deletedAt: null, ...filter } },
+        });
+        const { _count, ...rest } = tag;
+        return { ...rest, threadCount };
+      })
+    );
+
+    return tags
+      .filter((tag) => tag.threadCount > 0)
+      .sort((a, b) => b.threadCount - a.threadCount)
+      .slice(0, limit);
   } catch (error) {
     logger.error('[getPopularTags]', error);
     return [];

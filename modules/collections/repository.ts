@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AppError } from '@/lib/utils/errors';
 import { Prisma } from '@prisma/client';
+import type { Role } from '@prisma/client';
+import { visibilityFilter } from '@/lib/thread-access';
 import { assertStrictMetadata, stableStringify } from './metadata';
 import { metadataHash } from './metadata-hash';
 import type { SavePayload } from './schemas';
@@ -35,8 +37,8 @@ export async function getUserCollectionsLight(userId: string) {
   });
 }
 
-export async function getCollection(collectionId: string, userId: string, opts?: { take?: number; skip?: number }) {
-  return prisma.collection.findFirst({
+export async function getCollection(collectionId: string, userId: string, opts?: { take?: number; skip?: number; viewerRole?: Role | null }) {
+  const collection = await prisma.collection.findFirst({
     where: { id: collectionId, userId },
     include: {
       items: {
@@ -64,6 +66,35 @@ export async function getCollection(collectionId: string, userId: string, opts?:
       },
     },
   });
+
+  if (!collection) return null;
+
+  const items = collection.items ?? [];
+
+  // Thread visibility can change after an item is saved. Re-check every
+  // thread referenced by the items against the collection owner and drop the
+  // ones the owner can no longer read.
+  const threadIds = new Set<string>();
+  for (const item of items) {
+    if (item.threadId) threadIds.add(item.threadId);
+    if (item.message?.threadId) threadIds.add(item.message.threadId);
+  }
+
+  if (threadIds.size > 0) {
+    const filter = await visibilityFilter(userId, opts?.viewerRole);
+    const visible = await prisma.thread.findMany({
+      where: { id: { in: [...threadIds] }, deletedAt: null, ...filter },
+      select: { id: true },
+    });
+    const visibleIds = new Set(visible.map((row) => row.id));
+
+    collection.items = items.filter((item) => {
+      const target = item.threadId ?? item.message?.threadId ?? null;
+      return target === null || visibleIds.has(target);
+    });
+  }
+
+  return collection;
 }
 
 export async function addToCollection(collectionId: string, threadId?: string, sessionId?: string, messageId?: string, metadata?: unknown) {

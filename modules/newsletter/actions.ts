@@ -12,12 +12,12 @@ import { withValidation } from '@/lib/utils/server-action';
 import { ROUTES } from '@/lib/config/routes';
 import { prismaErrorMessage } from '@/lib/utils/errors';
 import { threadIdSchema } from '@/lib/utils/validation-common';
-import { actionSuccess } from '@/lib/utils/server-action';
+import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
 
 function handleNewsletterError(error: unknown) {
   const prismaMsg = prismaErrorMessage(error);
-  if (prismaMsg) return { data: null, error: prismaMsg, ok: false as const, errorCode: 'INTERNAL_ERROR' as const };
-  return { data: null, error: 'Something went wrong', ok: false as const, errorCode: 'INTERNAL_ERROR' as const };
+  if (prismaMsg) return actionFailure('INTERNAL_ERROR', prismaMsg);
+  return actionFailure('INTERNAL_ERROR', 'Something went wrong');
 }
 
 function revalidateNewsletterPath(slug?: string) {
@@ -92,18 +92,32 @@ export async function getUserNewsletterSubscriptions() {
   try {
     const session = await requireSession(false);
 
+    // Re-apply thread visibility check per subscription so that threads
+    // whose visibility changed after subscription are correctly filtered.
     const subscriptions = await prisma.threadSubscription.findMany({
       where: { userId: session.user.id },
       include: { thread: { select: { id: true, name: true, slug: true, description: true } } },
     });
 
-    return actionSuccess(subscriptions.map((sub) => ({
-      id: sub.id,
-      threadId: sub.threadId,
-      thread: sub.thread,
-      frequency: sub.frequency,
-      createdAt: sub.createdAt,
-    })));
+    const visibleSubs: typeof subscriptions = [];
+    for (const sub of subscriptions) {
+      try {
+        await requireReadOrThrow(sub.thread.id, session.user.id, session.user.role);
+        visibleSubs.push(sub);
+      } catch {
+        // Viewer does not have access to this thread; skip it.
+      }
+    }
+
+    return actionSuccess(
+      visibleSubs.map((sub) => ({
+        id: sub.id,
+        threadId: sub.threadId,
+        thread: sub.thread,
+        frequency: sub.frequency,
+        createdAt: sub.createdAt,
+      }))
+    );
   } catch (error) {
     logger.error('[getUserNewsletterSubscriptions]', error);
     return handleNewsletterError(error);

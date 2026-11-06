@@ -1,6 +1,6 @@
 /**
  * Shared poll-expiry guard — canonical home for the rule previously
- * duplicated across threads-write/service.ts, messages/actions/post.ts and
+ * duplicated across threads/mutations.ts, messages/post.ts and
  * polls/actions.ts.
  *
  * Returns an error message when invalid, null when valid or empty.

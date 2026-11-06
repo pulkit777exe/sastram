@@ -5,8 +5,9 @@ import { markThreadReadSchema } from '@/modules/read-receipts/schemas';
 import { upsertThreadReadReceipt } from '@/modules/read-receipts/repository';
 import { logger } from '@/lib/infrastructure/logger';
 import { withValidation } from '@/lib/utils/server-action';
-import { actionSuccess } from '@/lib/utils/server-action';
+import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
 import { requireReadOrThrow } from '@/lib/thread-access';
+import { AppError } from '@/lib/utils/errors';
 
 export const markThreadReadAction = withValidation(
   markThreadReadSchema,
@@ -23,8 +24,13 @@ export const markThreadReadAction = withValidation(
 
       return actionSuccess({ marked: true });
     } catch (error) {
+      if (AppError.isAppError(error)) {
+        const known = ['AUTH_REQUIRED', 'FORBIDDEN', 'NOT_FOUND', 'CONFLICT', 'RATE_LIMITED'] as const;
+        const code = known.find((c) => c === error.code) ?? 'INTERNAL_ERROR';
+        return actionFailure(code, error.message);
+      }
       logger.error('[markThreadRead]', error);
-      return { data: null, error: 'Something went wrong', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return actionFailure('INTERNAL_ERROR', 'Something went wrong');
     }
   }
 );

@@ -11,7 +11,7 @@ export default async function CollectionDetailPage({ params }: { params: Promise
   const session = await getSession();
   if (!session) return <div className="p-8">Please log in</div>;
 
-  const collection = await getCollection(id, session.user.id, { take: 51 });
+  const collection = await getCollection(id, session.user.id, { take: 51, viewerRole: session.user.role });
   if (!collection) notFound();
 
   const rawItems = collection.items ?? [];

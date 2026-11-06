@@ -46,8 +46,8 @@ export const searchUsersAction = withValidation(
   searchSchema,
   'searchUsers',
   async ({ query, limit, offset }) => {
-    await requireSession();
-    const result = await searchUsersRepo(query, limit, offset);
+    const session = await requireSession(false);
+    const result = await searchUsersRepo(query, limit, offset, session.user.id);
     return actionSuccess(result);
   }
 );

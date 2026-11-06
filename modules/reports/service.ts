@@ -32,7 +32,7 @@ function getRestrictionNotification(action: string, note: string, banExpiresAt: 
   if (action === 'BAN_USER') {
     return { title: 'Account Banned', message: `Your account has been permanently banned. Reason: ${note}` };
   }
-  const until = banExpiresAt?.toLocaleDateString() ?? 'indefinitely';
+  const until = banExpiresAt?.toLocaleDateString() ?? '7 days';
   return { title: 'Account Suspended', message: `Your account has been suspended until ${until}. Reason: ${note}` };
 }
 

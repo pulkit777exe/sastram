@@ -16,7 +16,7 @@ function escapeMd(s: string): string {
 
 export const GET = withCollectionsHandler(async (_: NextRequest, session, context) => {
   const id = await parseRouteId(context, collectionIdSchema);
-  const collection = await getCollection(id, session.user.id, { take: 100 });
+  const collection = await getCollection(id, session.user.id, { take: 100, viewerRole: session.user.role });
   if (!collection) return NextResponse.json(fail('NOT_FOUND', 'Collection not found'), { status: HTTP_STATUS.NOT_FOUND });
 
   let md = `# ${escapeMd(collection.title)}\n\n`;

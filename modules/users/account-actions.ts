@@ -7,14 +7,8 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { getSession } from '@/modules/auth';
 import { createServerAction } from '@/lib/utils/server-action';
 import { logger } from '@/lib/infrastructure/logger';
-import { actionSuccess } from '@/lib/utils/server-action';
+import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
 
-const NOT_AUTHENTICATED = {
-  data: null,
-  error: 'Not authenticated',
-  ok: false,
-  errorCode: 'AUTH_REQUIRED',
-} as const;
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
@@ -25,7 +19,7 @@ export const changePasswordAction = createServerAction(
   { schema: changePasswordSchema, actionName: 'changePasswordAction' },
   async ({ currentPassword, newPassword }) => {
     const session = await getSession();
-    if (!session) return NOT_AUTHENTICATED;
+    if (!session) return actionFailure('AUTH_REQUIRED', 'Not authenticated');
     try {
       await auth.api.changePassword({
         // A password change must invalidate stolen/shared sessions; otherwise
@@ -37,7 +31,7 @@ export const changePasswordAction = createServerAction(
     } catch (error) {
       logger.error('[changePasswordAction]', error);
       const message = error instanceof Error ? error.message : 'Failed to change password';
-      return { data: null, error: message, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return actionFailure('INTERNAL_ERROR', message);
     }
   }
 );
@@ -50,7 +44,7 @@ export const changeEmailAction = createServerAction(
   { schema: changeEmailSchema, actionName: 'changeEmailAction' },
   async ({ newEmail }) => {
     const session = await getSession();
-    if (!session) return NOT_AUTHENTICATED;
+    if (!session) return actionFailure('AUTH_REQUIRED', 'Not authenticated');
     try {
       await auth.api.changeEmail({
         body: {
@@ -63,7 +57,7 @@ export const changeEmailAction = createServerAction(
     } catch (error) {
       logger.error('[changeEmailAction]', error);
       const message = error instanceof Error ? error.message : 'Failed to change email';
-      return { data: null, error: message, ok: false, errorCode: 'INTERNAL_ERROR' };
+      return actionFailure('INTERNAL_ERROR', message);
     }
   }
 );
@@ -72,7 +66,7 @@ export const listSessionsAction = createServerAction(
   { schema: z.object({}), actionName: 'listSessionsAction' },
   async () => {
     const current = await getSession();
-    if (!current) return NOT_AUTHENTICATED;
+    if (!current) return actionFailure('AUTH_REQUIRED', 'Not authenticated');
     try {
       const currentToken = await getCurrentSessionToken();
       const sessions = await prisma.session.findMany({
@@ -92,7 +86,7 @@ export const listSessionsAction = createServerAction(
       });
     } catch (error) {
       logger.error('[listSessionsAction]', error);
-      return { data: null, error: 'Failed to load sessions', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return actionFailure('INTERNAL_ERROR', 'Failed to load sessions');
     }
   }
 );
@@ -105,20 +99,20 @@ export const revokeSessionAction = createServerAction(
   { schema: revokeSessionSchema, actionName: 'revokeSessionAction' },
   async ({ sessionId }) => {
     const session = await getSession();
-    if (!session) return NOT_AUTHENTICATED;
+    if (!session) return actionFailure('AUTH_REQUIRED', 'Not authenticated');
     try {
       const target = await prisma.session.findUnique({
         where: { id: sessionId },
         select: { userId: true },
       });
       if (!target || target.userId !== session.user.id) {
-        return { data: null, error: 'Session not found', ok: false, errorCode: 'NOT_FOUND' };
+        return actionFailure('NOT_FOUND', 'Session not found');
       }
       await prisma.session.delete({ where: { id: sessionId } });
       return actionSuccess({ ok: true });
     } catch (error) {
       logger.error('[revokeSessionAction]', error);
-      return { data: null, error: 'Failed to revoke session', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return actionFailure('INTERNAL_ERROR', 'Failed to revoke session');
     }
   }
 );
@@ -146,7 +140,7 @@ export const getLinkedAccountsAction = createServerAction(
   { schema: z.object({}), actionName: 'getLinkedAccountsAction' },
   async () => {
     const session = await getSession();
-    if (!session) return { ...NOT_AUTHENTICATED, data: [] };
+    if (!session) return { ...actionFailure('AUTH_REQUIRED', 'Not authenticated'), data: [] };
     const accounts = await prisma.account.findMany({
       where: { userId: session.user.id },
       select: { providerId: true, createdAt: true, idToken: true },
@@ -167,23 +161,18 @@ export const unlinkAccountAction = createServerAction(
   { schema: unlinkAccountSchema, actionName: 'unlinkAccountAction' },
   async ({ provider }) => {
     const session = await getSession();
-    if (!session) return NOT_AUTHENTICATED;
+    if (!session) return actionFailure('AUTH_REQUIRED', 'Not authenticated');
     try {
       const accounts = await prisma.account.findMany({
         where: { userId: session.user.id },
         select: { providerId: true, accountId: true },
       });
       if (accounts.length <= 1) {
-        return {
-          data: null,
-          error: 'You must keep at least one sign-in method.',
-          ok: false,
-          errorCode: 'FORBIDDEN',
-        };
+        return actionFailure('FORBIDDEN', 'You must keep at least one sign-in method.');
       }
       const target = accounts.find((a) => a.providerId === provider);
       if (!target) {
-        return { data: null, error: 'Account not found', ok: false, errorCode: 'NOT_FOUND' };
+        return actionFailure('NOT_FOUND', 'Account not found');
       }
       await (auth.api.unlinkAccount as unknown as (args: unknown) => Promise<void>)({ body: { providerId: provider }, headers: await headers() });
       return actionSuccess({ ok: true });
@@ -191,9 +180,9 @@ export const unlinkAccountAction = createServerAction(
       logger.error('[unlinkAccountAction]', error);
       const msg = error instanceof Error ? error.message : '';
       if (msg.includes('SESSION_NOT_FRESH') || msg.includes('Unauthorized')) {
-        return { data: null, error: 'Session expired. Please sign in again and try unlinking.', ok: false, errorCode: 'AUTH_REQUIRED' };
+        return actionFailure('AUTH_REQUIRED', 'Session expired. Please sign in again and try unlinking.');
       }
-      return { data: null, error: msg || 'Failed to unlink account', ok: false, errorCode: 'INTERNAL_ERROR' };
+      return actionFailure('INTERNAL_ERROR', msg || 'Failed to unlink account');
     }
   }
 );

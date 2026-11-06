@@ -3,6 +3,7 @@ import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
+import { AppError } from '@/lib/utils/errors';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { revalidatePath } from 'next/cache';
 
@@ -68,13 +69,16 @@ export async function POST(request: NextRequest) {
     await prisma.$transaction(async (tx) => {
       await tx.threadInvitation.update({
         where: { id: invitationId },
-        data: { status: 'ACCEPTED' },
+        data: { status: 'ACCEPTED', inviteeId: session.user.id },
       });
     }, { maxWait: 5000, timeout: 10000 });
 
     revalidatePath(`/dashboard/threads/${invitation.thread.slug}`);
     return NextResponse.json(ok({ threadSlug: invitation.thread.slug }));
   } catch (error) {
+    if (AppError.isAppError(error) && error.code === 'AUTH_REQUIRED') {
+      return NextResponse.json(fail('AUTH_REQUIRED', 'Unauthorized'), { status: HTTP_STATUS.UNAUTHORIZED });
+    }
     logger.error('[invitations/accept]', error);
     return NextResponse.json(fail('INTERNAL_ERROR', 'Something went wrong'), { status: HTTP_STATUS.INTERNAL });
   }
