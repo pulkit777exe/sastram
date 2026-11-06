@@ -54,6 +54,7 @@ docs
 !docs/
 docs/*
 !docs/CANONICAL-REFERENCE.md
+!docs/AUDIT-REPORT.md
 !docs/ARCHITECTURE-REVIEW.md
 !docs/VIEW-TRANSITIONS-SPEC.md
 !docs/PROMOTION_SYSTEM.md
