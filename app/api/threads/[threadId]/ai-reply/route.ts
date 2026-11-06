@@ -5,7 +5,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
-import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
+import { extractAiInlineQuery } from '@/modules/messages/ai-inline';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 

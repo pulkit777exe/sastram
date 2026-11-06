@@ -4,16 +4,26 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { requireSession } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import { sanitizeContent } from '@/lib/services/content-safety';
+import { moderateIncomingMessage } from './moderation-hooks';
 import { createServerAction } from '@/lib/utils/server-action';
 import { recordActivity } from '@/modules/activity/repository';
 import { requireManageOrThrow, requireReadOrThrow } from '@/lib/thread-access';
-import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
+import { actionSuccess, actionFailure, type ActionResult } from '@/lib/utils/server-action';
 import { AppError } from '@/lib/utils/errors';
 import {
   editMessageSchema,
   pinMessageSchema,
   getMessageEditHistorySchema,
 } from '@/modules/messages/schemas';
+
+function buildBlockedResult(message: string): ActionResult<{ ok: false }> {
+  return {
+    data: { ok: false },
+    error: message,
+    errorCode: 'FORBIDDEN',
+    ok: false,
+  };
+}
 
 export const editMessage = createServerAction(
   { schema: editMessageSchema, actionName: 'editMessage' },
@@ -44,7 +54,23 @@ export const editMessage = createServerAction(
         throw error;
       }
 
-      const safeContent = sanitizeContent(content);
+      // Moderate the new content through the same pipeline as a new post.
+      // This prevents a user from posting benign content then editing it to
+      // prohibited content after the moderation gate has already passed.
+      const moderationResult = await moderateIncomingMessage({
+        threadId: message.threadId,
+        authorId: session.user.id,
+        content,
+        parentId: null,
+      });
+      if (!moderationResult.success) {
+        const reason = moderationResult.reason ?? 'Message blocked by content filter';
+        return buildBlockedResult(reason);
+      }
+
+      // Moderation passed — use moderated content from the message, fall back to sanitizeContent
+      const moderatedMsg = moderationResult.message;
+      const safeContent = moderatedMsg?.content ?? sanitizeContent(content);
       await prisma.$transaction([
         prisma.messageEdit.create({
           data: {

@@ -1,7 +1,7 @@
 import { consumeQuota } from '@/lib/services/daily-quota';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { AiCallPath, evaluateAiCostGate } from '@/lib/services/ai-cost-classification';
-import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
+import type { MessageSideEffectsPort } from '@/modules/messages/side-effects';
 
 type AiInlineQuota = (params: {
   userId: string;

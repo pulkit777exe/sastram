@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
-import { createExternalForkDomain, threadVisibilitySchema } from '@/modules/threads/threads-write/service';
-import { infraThreadSideEffects } from '@/modules/threads/adapters/infra-side-effects';
+import { createExternalForkDomain, threadVisibilitySchema } from '@/modules/threads/mutations';
+import { infraThreadSideEffects } from '@/modules/threads/infra-effects';
 import { sanitizeUserContent, isSafePublicUrl } from '@/lib/services/content-safety';
 import { rateLimit } from '@/lib/services/rate-limit';
 

@@ -4,8 +4,8 @@ import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireReadOrThrow, visibilityFilter } from '@/lib/thread-access';
-import { forkThreadDomain, threadVisibilitySchema } from '@/modules/threads/threads-write/service';
-import { infraThreadSideEffects } from '@/modules/threads/adapters/infra-side-effects';
+import { forkThreadDomain, threadVisibilitySchema } from '@/modules/threads/mutations';
+import { infraThreadSideEffects } from '@/modules/threads/infra-effects';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { rateLimit } from '@/lib/services/rate-limit';
 

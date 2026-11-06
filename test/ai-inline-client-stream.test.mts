@@ -4,8 +4,8 @@ import { randomUUID } from 'node:crypto';
 import {
   extractAiInlineQuery,
   queueAiInlineIfRequested,
-} from '@/modules/messages/actions/ai-inline';
-import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
+} from '@/modules/messages/ai-inline';
+import type { MessageSideEffectsPort } from '@/modules/messages/side-effects';
 
 function makeSideEffectsStub() {
   const calls: { enqueueAiInline: unknown[] } = { enqueueAiInline: [] };

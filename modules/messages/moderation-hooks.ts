@@ -1,8 +1,8 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AppError } from '@/lib/utils/errors';
 import { MessageService } from '@/modules/messages/moderation-processor';
-import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
-import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
+import type { MessageSideEffectsPort } from '@/modules/messages/side-effects';
+import { infraMessageSideEffects } from '@/modules/messages/infra-effects';
 
 const messageService = new MessageService();
 

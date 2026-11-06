@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Pin, Loader2 } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
-import { editMessage, pinMessage, deleteMessage } from '@/modules/messages/actions';
+import { editMessage, pinMessage, deleteMessage } from '@/modules/messages';
 import { toggleReaction } from '@/modules/reactions/actions';
 import { toasts } from '@/lib/utils/toast';
 import type { Message, MessageReaction } from '@/lib/types/index';

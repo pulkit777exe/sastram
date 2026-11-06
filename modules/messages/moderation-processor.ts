@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
-import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
-import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
+import { infraMessageSideEffects } from '@/modules/messages/infra-effects';
+import type { MessageSideEffectsPort } from '@/modules/messages/side-effects';
 import { AppError } from '@/lib/utils/errors';
 import {
   MessageModerationPipeline,

@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { dispatch } from '@/modules/notifications/dispatcher';
 import { recordActivity } from '@/modules/activity/repository';
 import { revalidatePath } from 'next/cache';
-import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
+import type { MessageSideEffectsPort } from '@/modules/messages/side-effects';
 
 export const infraMessageSideEffects: MessageSideEffectsPort = {
   async sendMentionEmail({ toEmail, mentionedByName, threadName, contentPreview, threadUrl }) {

@@ -1,30 +1,29 @@
 // Facade over the focused thread submodules:
-//   threads-core      list/get summaries
-//   threads-read      SQL-heavy read models
-//   threads-write     mutations
-//   threads-relations semantic relation graph
+//   list.ts           list/get summaries
+//   read.ts           SQL-heavy read models
+//   write.ts          mutations
+//   relations.ts      semantic relation graph
 
 export {
   listThreads,
   type ListThreadsParams,
   type PaginatedThreads,
-} from './threads-core/repository';
+} from './list';
 
 export {
   createThread,
   deleteThread,
   updateThreadDNA,
-} from './threads-write/repository';
+} from './write';
 
 export {
   getThreadWithFullContext,
   getThreadMessagesPaginated,
   getThreadParticipants,
-} from './threads-read/repository';
-export type { PaginatedMessagesResult, ThreadParticipant } from './threads-read/repository';
+} from './read';
+export type { PaginatedMessagesResult, ThreadParticipant } from './read';
 
 export {
-  findRelatedThreads,
   getRelatedThreads,
   updateAllThreadRelations,
-} from './threads-relations/repository';
+} from './relations';

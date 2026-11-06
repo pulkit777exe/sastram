@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { searchMentionUsers } from '@/modules/messages/actions';
+import { searchMentionUsers } from '@/modules/messages';
 import type { MentionCandidate } from '@/components/chat/mention-suggest';
 
 interface UseMentionOptions {

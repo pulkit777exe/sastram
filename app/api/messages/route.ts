@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { postMessage } from '@/modules/messages/actions';
+import { postMessage } from '@/modules/messages/post';
 import { ok, fail, errorCodeToStatus, HTTP_STATUS } from '@/lib/utils/api-response';
 import { requireSessionOrThrow } from '@/modules/auth';
 import { requireWriteOrThrow } from '@/lib/thread-access';

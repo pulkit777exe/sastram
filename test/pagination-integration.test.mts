@@ -64,13 +64,13 @@ describe('Pagination — getThreadMessagesPaginated', function () {
   });
 
   it('returns correct totalCount', async function () {
-    const { getThreadMessagesPaginated } = await import('@/modules/threads/threads-read/repository');
+    const { getThreadMessagesPaginated } = await import('@/modules/threads/read');
     const result = await getThreadMessagesPaginated(testThreadId, null, 50);
     expect(result.totalCount).to.equal(120);
   });
 
   it('returns first page with hasMore=true when more messages exist', async function () {
-    const { getThreadMessagesPaginated } = await import('@/modules/threads/threads-read/repository');
+    const { getThreadMessagesPaginated } = await import('@/modules/threads/read');
     const result = await getThreadMessagesPaginated(testThreadId, null, 50);
     expect(result.hasMore).to.be.true;
     expect(result.nextCursor).to.be.a('string');
@@ -78,7 +78,7 @@ describe('Pagination — getThreadMessagesPaginated', function () {
   });
 
   it('returns second page with hasMore=true', async function () {
-    const { getThreadMessagesPaginated } = await import('@/modules/threads/threads-read/repository');
+    const { getThreadMessagesPaginated } = await import('@/modules/threads/read');
     const firstPage = await getThreadMessagesPaginated(testThreadId, null, 50);
     const secondPage = await getThreadMessagesPaginated(testThreadId, firstPage.nextCursor ?? undefined, 50);
     expect(secondPage.hasMore).to.be.true;
@@ -94,7 +94,7 @@ describe('Pagination — getThreadMessagesPaginated', function () {
   });
 
   it('returns last page with hasMore=false', async function () {
-    const { getThreadMessagesPaginated } = await import('@/modules/threads/threads-read/repository');
+    const { getThreadMessagesPaginated } = await import('@/modules/threads/read');
     const firstPage = await getThreadMessagesPaginated(testThreadId, null, 50);
     const secondPage = await getThreadMessagesPaginated(testThreadId, firstPage.nextCursor ?? undefined, 50);
     const lastPage = await getThreadMessagesPaginated(testThreadId, secondPage.nextCursor ?? undefined, 50);
@@ -104,13 +104,13 @@ describe('Pagination — getThreadMessagesPaginated', function () {
   });
 
   it('caps limit at 100', async function () {
-    const { getThreadMessagesPaginated } = await import('@/modules/threads/threads-read/repository');
+    const { getThreadMessagesPaginated } = await import('@/modules/threads/read');
     const result = await getThreadMessagesPaginated(testThreadId, null, 500);
     expect(result.messages.length).to.be.at.most(100);
   });
 
   it('returns empty array for non-existent thread', async function () {
-    const { getThreadMessagesPaginated } = await import('@/modules/threads/threads-read/repository');
+    const { getThreadMessagesPaginated } = await import('@/modules/threads/read');
     const result = await getThreadMessagesPaginated('nonexistentThreadId123', null, 50);
     expect(result.messages).to.deep.equal([]);
     expect(result.hasMore).to.be.false;
@@ -118,7 +118,7 @@ describe('Pagination — getThreadMessagesPaginated', function () {
   });
 
   it('returns messages in ascending order (oldest first)', async function () {
-    const { getThreadMessagesPaginated } = await import('@/modules/threads/threads-read/repository');
+    const { getThreadMessagesPaginated } = await import('@/modules/threads/read');
     const result = await getThreadMessagesPaginated(testThreadId, null, 10);
     for (let i = 1; i < result.messages.length; i++) {
       expect(result.messages[i].createdAt.getTime()).to.be.greaterThanOrEqual(
@@ -128,7 +128,7 @@ describe('Pagination — getThreadMessagesPaginated', function () {
   });
 
   it('includes author info on messages', async function () {
-    const { getThreadMessagesPaginated } = await import('@/modules/threads/threads-read/repository');
+    const { getThreadMessagesPaginated } = await import('@/modules/threads/read');
     const result = await getThreadMessagesPaginated(testThreadId, null, 1);
     expect(result.messages[0].author).to.have.property('id', testUserId);
     expect(result.messages[0].author).to.have.property('name', 'Pagination Test User');

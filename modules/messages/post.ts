@@ -9,7 +9,7 @@ import { sanitizeContent } from '@/lib/services/content-safety';
 import { createMessageWithAttachmentsSchema } from '@/modules/messages/schemas';
 import { getMessageLimiter } from '@/lib/services/rate-limit';
 import { parseMentions, resolveUserMentions } from '@/modules/messages/mention-parser';
-import { infraMessageSideEffects } from '@/modules/messages/adapters/infra-side-effects';
+import { infraMessageSideEffects } from '@/modules/messages/infra-effects';
 import { moderateIncomingMessage } from './moderation-hooks';
 import { createMentionsForMessage } from './mentions';
 import { queueAiInlineIfRequested } from './ai-inline';

@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { toasts } from '@/lib/utils/toast';
 import { validateFile } from '@/lib/services/content-safety';
-import { postMessage } from '@/modules/messages/actions';
+import { postMessage } from '@/modules/messages';
 import type { AiInlineMeta, Message } from '@/lib/types/index';
 import { useMessageDraft } from './use-message-draft';
 import { useMentions } from './use-mentions';

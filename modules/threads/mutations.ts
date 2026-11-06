@@ -4,9 +4,9 @@ import type { ThreadVisibility } from '@prisma/client';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { AppError } from '@/lib/utils/errors';
 import { buildThreadSlug } from '@/modules/threads/slug';
-import { createThread, forkThread, updateThreadDetails } from './repository';
-import { infraThreadSideEffects } from '../adapters/infra-side-effects';
-import type { ThreadSideEffectsPort } from '../ports/side-effects';
+import { createThread, forkThread, updateThreadDetails } from './write';
+import { infraThreadSideEffects } from './infra-effects';
+import type { ThreadSideEffectsPort } from './side-effects';
 
 /**
  * Canonical visibility enum — mirrors Prisma ThreadVisibility

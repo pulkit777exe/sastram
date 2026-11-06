@@ -3,8 +3,8 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import { stubAuth } from '@/test/api/helpers';
 import { prisma } from '@/lib/infrastructure/prisma';
-import { createFakeReactionStore } from '@/modules/reactions/adapters/reaction-store';
-import { createFakeReactionSideEffects } from '@/modules/reactions/adapters/fake-side-effects';
+import { createFakeReactionStore } from '@/modules/reactions/store';
+import { createFakeReactionSideEffects } from '@/modules/reactions/effects';
 
 const nextHeaders = require('next/headers');
 // Lazy require: stubAuth() swaps session exports in beforeEach, so the

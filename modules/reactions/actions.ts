@@ -5,14 +5,14 @@ import { requireSession } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction } from '@/lib/utils/server-action';
 import { requireReadOrThrow } from '@/lib/thread-access';
-import { infraReactionSideEffects } from '@/modules/reactions/adapters/infra-side-effects';
-import { prismaReactionStore } from '@/modules/reactions/adapters/reaction-store';
-import type { ReactionDeps } from '@/modules/reactions/ports/side-effects';
+import { infraReactionSideEffects } from '@/modules/reactions/effects';
+import { prismaReactionStore } from '@/modules/reactions/store';
+import type { ReactionDeps } from '@/modules/reactions/store';
 import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
 
 const toggleReactionSchema = z.object({
   messageId: z.string().cuid(),
-  emoji: z.string().min(1),
+  emoji: z.string().min(1).max(50),
 });
 
 type AuthorizedMessage = {

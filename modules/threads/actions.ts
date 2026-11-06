@@ -3,12 +3,12 @@
 import { z } from 'zod';
 import { requireSessionOrThrow, assertAdminOrThrow } from '@/modules/auth';
 import { buildThreadSlug } from '@/modules/threads/slug';
-import { createThread, deleteThread, updateThreadVerified } from './threads-write/repository';
-import { forkThreadDomain, threadVisibilitySchema, updateThreadDomain } from './threads-write/service';
+import { createThread, deleteThread, updateThreadVerified } from './write';
+import { forkThreadDomain, threadVisibilitySchema, updateThreadDomain } from './mutations';
 import { validatePollExpiry } from '@/modules/polls/validate';
-import { infraThreadSideEffects } from './adapters/infra-side-effects';
+import { infraThreadSideEffects } from './infra-effects';
 import { buildThreadDTO } from './service';
-import { getThreadMessagesPaginated } from './threads-read/repository';
+import { getThreadMessagesPaginated } from './read';
 import { createPoll } from '@/modules/polls';
 import { createServerAction } from '@/lib/utils/server-action';
 import { actionSuccess } from '@/lib/utils/server-action';
@@ -244,7 +244,7 @@ export const backfillThreadMessages = createServerAction(
     const session = await requireSessionOrThrow();
     await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 
-    // Single canonical read path: threads-read owns the row→DTO mapping
+    // Single canonical read path: read.ts owns the row→DTO mapping
     // (reactions, polls, attachments included). Filter by updatedAt, not just
     // createdAt: streamed AI placeholders are updated in place when generation
     // finishes or fails, and a createdAt-only window never sees that content.

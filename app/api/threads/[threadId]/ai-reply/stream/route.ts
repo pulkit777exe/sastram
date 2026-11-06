@@ -4,7 +4,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { trackNeonRequest } from '@/lib/services/usage-check';
 import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
-import { extractAiInlineQuery } from '@/modules/messages/actions/ai-inline';
+import { extractAiInlineQuery } from '@/modules/messages/ai-inline';
 import { z } from 'zod';
 import { createSSEStream, createSseSender, sseEvent, sseHeaders } from '@/lib/utils/sse';
 import { HTTP_STATUS } from '@/lib/utils/api-response';

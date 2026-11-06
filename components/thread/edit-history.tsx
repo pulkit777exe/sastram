@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { getMessageEditHistory } from '@/modules/messages/actions';
+import { getMessageEditHistory } from '@/modules/messages';
 
 interface EditRecord {
   id: string;

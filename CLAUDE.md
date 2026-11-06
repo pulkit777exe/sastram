@@ -204,7 +204,7 @@ The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
 - Routes/actions that read/write thread data must call `requireReadOrThrow(threadId, userId, role)` / `requireWriteOrThrow(...)`.
 - `requireSession()` / `auth.api.getSession()` for authentication only — does NOT check access.
 - Admin-only: `assertAdmin(session.user)` in thread actions, `requireAdmin()` / `requireModerator()` for API routes.
-- Messages: posting and reading require thread access (`modules/messages/actions.ts`).
+- Messages: posting and reading require thread access (`modules/messages/post.ts`).
 - AI routes (`thread-dna`, `resolution-score`, `ai-reply`) require thread access.
 
 ## Test Coverage

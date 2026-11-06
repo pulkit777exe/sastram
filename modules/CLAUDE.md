@@ -2,7 +2,7 @@
 
 ## Overview
 
-Domain modules implementing business logic, organized by feature. 24 modules. Each module typically contains actions, optionally repository, types, and schemas.
+Domain modules implementing business logic, organized by feature. 24 modules. Each module contains **flat files only — no subdirectories**. Dub-style layout: `actions.ts` (or `<verb>.ts` files for focused actions), `repository.ts` (DB access), `service.ts` (business logic), `types.ts`, `schemas.ts` (Zod), named after their concern. Test seams are single flat files (`store.ts`, `effects.ts`, `infra-effects.ts`, `side-effects.ts`) instead of `ports/`/`adapters/` nesting. Barrel `index.ts` files only where consumers import the package root.
 
 ## Module List
 
@@ -11,7 +11,7 @@ Domain modules implementing business logic, organized by feature. 24 modules. Ea
 
 ### Core Features
 - `modules/users/` - User CRUD, profiles, account actions (`actions.ts`, `account-actions.ts`)
-- `modules/threads/` - Thread CRUD, slug routing, relations, confidence decay (split into `threads-core` / `threads-read` / `threads-write` / `threads-relations` + `adapters` / `ports`)
+- `modules/threads/` - Thread CRUD, slug routing, relations, confidence decay (flat: `list.ts` queries, `read.ts` SQL read models, `write.ts` mutations, `relations.ts` relation graph, `mutations.ts` domain ops, `service.ts` DTOs, `adapters/` / `ports/`)
 - `modules/messages/` - Messages with tree threading (post, edit, delete, mentions, AI inline, moderation processor; `adapters` / `ports` / `actions/`)
 - `modules/search/` - Full-text thread/message search
 - `modules/ai-search/` - AI forum search: service, cache, citations, query warming, LLM, synthesis, search providers

@@ -106,7 +106,7 @@ export async function forkThread(payload: { name: string; description?: string |
       visibility: payload.visibility ?? 'PUBLIC',
     },
   });
-  // Tag copy lives in threads-write/service.ts forkThreadDomain via
+  // Tag copy lives in mutations.ts forkThreadDomain via
   // ThreadSideEffectsPort.copyThreadTags (keeps this repository thin).
   return forked;
 }

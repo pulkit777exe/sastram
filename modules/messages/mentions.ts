@@ -6,9 +6,9 @@ import { logger } from '@/lib/infrastructure/logger';
 import { createServerAction } from '@/lib/utils/server-action';
 import { searchMentionUsersSchema } from '@/modules/messages/schemas';
 import { filterReadableUserIds, requireReadOrThrow } from '@/lib/thread-access';
-import type { MessageSideEffectsPort } from '@/modules/messages/ports/side-effects';
+import type { MessageSideEffectsPort } from '@/modules/messages/side-effects';
 import { ROUTES } from '@/lib/config/routes';
-import { actionSuccess } from '@/lib/utils/server-action';
+import { actionSuccess, actionFailure } from '@/lib/utils/server-action';
 
 const EMAIL_PREVIEW_LENGTH = 200;
 
@@ -166,12 +166,7 @@ export const searchMentionUsers = createServerAction(
       return actionSuccess(mapped);
     } catch (error) {
       logger.error('[searchMentionUsers]', error);
-      return {
-        data: null,
-        error: 'Something went wrong',
-        errorCode: 'INTERNAL_ERROR',
-        ok: false,
-      };
+      return actionFailure('INTERNAL_ERROR', 'Something went wrong');
     }
   }
 );

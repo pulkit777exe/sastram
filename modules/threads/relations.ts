@@ -81,46 +81,6 @@ async function persistRelations({ toCreate, toUpdate }: RelationUpsert): Promise
   }
 }
 
-const IS_THREAD_NOT_DELETED = { deletedAt: null } as const;
-
-function scoreRelatedThread(
-  other: { id: string; name: string; slug: string; threadDna: unknown },
-  baseDna: ThreadDNA
-): RelatedThread | null {
-  const otherDna = parseThreadDna(other.threadDna);
-  if (!otherDna) return null;
-  const similarity = calculateThreadSimilarity(baseDna, otherDna);
-  if (similarity < SIMILARITY_THRESHOLD) return null;
-  return { id: other.id, name: other.name, slug: other.slug, similarity, threadDna: otherDna };
-}
-
-function rankRelatedThreads(candidates: Array<{ id: string; name: string; slug: string; threadDna: unknown }>, baseDna: ThreadDNA): RelatedThread[] {
-  const scored: RelatedThread[] = [];
-  for (const c of candidates) {
-    const s = scoreRelatedThread(c, baseDna);
-    if (s) scored.push(s);
-  }
-  scored.sort((a, b) => b.similarity - a.similarity);
-  return scored.slice(0, MAX_RELATED_THREADS);
-}
-
-function buildRelationUpsert(
-  relatedThreads: RelatedThread[],
-  existingByTarget: Map<string, { id: string; similarity: number }>,
-  threadId: string
-): RelationUpsert {
-  const pending: RelationUpsert = { toCreate: [], toUpdate: [] };
-  for (const related of relatedThreads) {
-    const existing = existingByTarget.get(related.id);
-    if (!existing) {
-      pending.toCreate.push({ sourceThreadId: threadId, targetThreadId: related.id, similarity: related.similarity });
-    } else if (existing.similarity !== related.similarity) {
-      pending.toUpdate.push({ id: existing.id, similarity: related.similarity });
-    }
-  }
-  return pending;
-}
-
 function collectRelationUpserts(
   parsed: Array<{ id: string; dna: ThreadDNA }>,
   relationsBySource: Map<string, Map<string, { id: string; similarity: number }>>
@@ -140,39 +100,6 @@ function collectRelationUpserts(
     }
   }
   return pending;
-}
-
-export async function findRelatedThreads(threadId: string): Promise<RelatedThread[]> {
-  try {
-    const thread = await prisma.thread.findFirst({
-      where: { id: threadId, ...IS_THREAD_NOT_DELETED },
-      select: { threadDna: true },
-    });
-    const parsedDna = parseThreadDna(thread?.threadDna);
-    if (!parsedDna) return [];
-
-    const otherThreads = await prisma.thread.findMany({
-      where: { id: { not: threadId }, threadDna: { not: Prisma.DbNull }, ...IS_THREAD_NOT_DELETED },
-      select: { id: true, name: true, slug: true, threadDna: true },
-      take: 1000,
-    });
-
-    const relatedThreads = rankRelatedThreads(otherThreads, parsedDna);
-
-    const relatedIds = relatedThreads.map((r) => r.id);
-    const existingRelations = await prisma.threadRelation.findMany({
-      where: { sourceThreadId: threadId, targetThreadId: { in: relatedIds } },
-      select: { id: true, targetThreadId: true, similarity: true },
-    });
-    const existingByTarget = new Map(existingRelations.map((r) => [r.targetThreadId, r]));
-    const pending = buildRelationUpsert(relatedThreads, existingByTarget, threadId);
-
-    await persistRelations(pending);
-    return relatedThreads;
-  } catch (error) {
-    logger.error(`Failed to find related threads for ${threadId}:`, error);
-    return [];
-  }
 }
 
 export async function getRelatedThreads(

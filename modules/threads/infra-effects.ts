@@ -6,7 +6,7 @@ import { prisma } from '@/lib/infrastructure/prisma';
 import { recordActivity } from '@/modules/activity/repository';
 import { refreshUserExpertise } from '@/lib/services/user-memory';
 import { ROUTES } from '@/lib/config/routes';
-import type { ThreadSideEffectsPort } from '../ports/side-effects';
+import type { ThreadSideEffectsPort } from './side-effects';
 
 export const infraThreadSideEffects: ThreadSideEffectsPort = {
   async enqueueInitialAiJobs({ threadId, message }) {
