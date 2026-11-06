@@ -1,6 +1,7 @@
 # Sastram Modules Security & Simplification Audit Report
 
 **Date**: 2026-11-04
+**Updated**: 2026-11-06
 **Scope**: `modules/` domain code — 118 files across 24 modules
 **Objective**: Identify security vulnerabilities, simplify duplication, and close exposure gaps.
 **Deliverable**: Written report + implementation of critical/high severity fixes.
@@ -49,6 +50,13 @@ Two additional findings are **medium severity** (reliability/quality) and **2 ar
 **Evidence**: `repository.ts` fetched bookmarks with `include: { thread: ... }` but never applied a visibility filter.
 
 **Fix**: Added `visibilityFilter` re-check in `getUserBookmarks`. The function now accepts `viewerId` and `viewerRole` parameters and applies the visibility filter when fetching bookmarked threads. Threads whose visibility changed after bookmarking are correctly filtered.
+
+### [C4] Collection Items Leak After Visibility Change
+**File**: `modules/collections/repository.ts`
+**Severity**: HIGH
+**Impact**: Saved collection items returned thread metadata (name, slug, AI summary) and message content for threads that had since become private. The collection owner could still read threads they no longer had access to.
+
+**Fix**: `getCollection` now applies `visibilityFilter` inside the items query, with AND semantics over both the direct thread reference and the message's thread. Hidden items are excluded before `take/skip`, so pagination is also correct (no short pages or hasMore drift).
 
 ### [C5] Visibility Leaks on Stale Newsletter Subscriptions
 **File**: `modules/newsletter/actions.ts`
@@ -105,11 +113,11 @@ Two additional findings are **medium severity** (reliability/quality) and **2 ar
 
 **Evidence**: `tags/repository.ts` lines 41-53: `getPopularTags` does `prisma.threadTag.findMany({ include: withThreadCount, ... })` — no visibility filter.
 
-**Fix**: The fix for C11 was noted as requiring careful handling due to Prisma type system limitations. The function signature was updated to accept `viewerId` and `viewerRole` parameters, but the visibility filtering implementation requires further work due to the inability to spread `ThreadWhereInput` into `ThreadTagWhereInput` directly. This is tracked as a medium finding for future attention.
+**Fix**: `getPopularTags` now runs a single `groupBy` over `thread_tag_relations` filtered by `visibilityFilter`, ranks the visible-only counts, and then fetches metadata for the top N tags. Counts are exact (no raw-count over-fetch) and the previous N+1 per-candidate count queries are gone.
 
 ---
 
-## 3. Medium Findings (Documented for Future Attention)
+## 3. Medium Findings
 
 ### [M1] AI Search Source URL Unsanitized Rendering
 **File**: `components/ai-search/StreamingText.tsx`
@@ -156,8 +164,8 @@ Per `lib/thread-access.ts`: "RLS note: row-level security is not enabled on Neon
 | **C8** | `modules/reactions/actions.ts` + `reaction-store.ts` | ✅ Implemented — emoji max length, `deletedAt` check, `requireWriteOrThrow` |
 | **C9** | `modules/follows/actions.ts` | ✅ Implemented — conditional notification dispatch |
 | **C10** | `modules/search/repository.ts` + `modules/search/actions.ts` | ✅ Implemented — bio exclusion, privacy filtering |
-| **C4** | `modules/collections/repository.ts` | 📝 Documented — type system challenges; documented for follow-up |
-| **C11** | `modules/tags/repository.ts` | 📝 Documented — medium finding; Prisma type limitations noted for follow-up |
+| **C4** | `modules/collections/repository.ts` | ✅ Implemented — visibility filter applied before pagination |
+| **C11** | `modules/tags/repository.ts` | ✅ Implemented — exact visibility-filtered `groupBy`, no N+1 |
 
 ### Phase 2: Medium / Low Severity Fixes (Implemented 2026-11-05)
 
@@ -167,7 +175,7 @@ Per `lib/thread-access.ts`: "RLS note: row-level security is not enabled on Neon
 | **M2** | ✅ `modules/reports/service.ts` — 7-day default suspension, "7 days" in notification |
 | **M3** | ✅ Dead code removed: unused `banUserSchema`/`deleteMessageSchema` (`modules/moderation/schemas.ts`), unused `findRelatedThreads` + related helpers (`modules/threads/relations.ts`), fragile `information_schema` probe replaced by direct `p."messageId" IS NULL` (`modules/threads/read.ts`) |
 | **M4** | ✅ Error-code mapping: `modules/reports/actions.ts`, `modules/read-receipts/actions.ts`, `app/api/invitations/accept/route.ts`, `modules/polls/actions.ts` |
-| **L1** | 📝 Documented — invitation `senderId` semantics is a design question; no escalation path |
+| **L1** | ✅ Implemented — `inviteeId` bound on acceptance; backfill migration for pre-existing ACCEPTED rows |
 
 ### Phase 3: Structural Simplification (Implemented 2026-11-05)
 
@@ -181,7 +189,14 @@ Dub-like flat domain modules — no subdirectories under `modules/`:
 - Bookmarks: `getBookmarkedThreads` passes session viewer so the visibility filter applies
 - `.gitignore`: `docs/AUDIT-REPORT.md` now tracked
 
-**Verification after restructure**: `bun run typecheck` clean, `bun run lint` 0 problems, `bun run test` 802 passing (2 dead-schema test assertions removed with the dead code), structure: `find modules -mindepth 2 -type d` → empty.
+**Verification after restructure**: `bun run typecheck` clean, `bun run lint` 0 problems, `bun run test` 804 passing (2 dead-schema test assertions removed with the dead code), structure: `find modules -mindepth 2 -type d` → empty.
+
+### Phase 4: Redis / Paid-Service Minimization (Implemented 2026-11-06)
+
+- Health probe uses a per-instance limiter instead of shared Upstash, reuses the shared client, and caches the Redis `PING` (60s ok / 10s error) so platform probes do not burn the free-tier command budget.
+- Cron spend caps share one Redis `GET` for the whole fan-out; cheap AI paths never touch Redis.
+- Query warming is opt-in via `QUERY_WARMING_ENABLED` (default `false`), so speculative Exa/Tavily/Gemini spend only happens when deliberately enabled.
+- Documentation updated in `.env.example` and `docs/DEPLOYMENT.md`; spend-cap tests updated.
 
 ---
 
@@ -200,7 +215,11 @@ Dub-like flat domain modules — no subdirectories under `modules/`:
 11. `modules/search/repository.ts` — privacy filtering in searchUsers
 12. `modules/search/repository.ts` — session-derived viewer, per-result `bio` strip
 13. `modules/search/actions.ts` — schema slimmed (no client-supplied viewer fields)
-14. Structural flatten (see Phase 3)
+14. `modules/tags/repository.ts` — exact visibility-filtered popular tag counts
+15. `modules/collections/repository.ts` — visibility filter applied before item pagination
+16. `prisma/migrations/20261105000000_add_thread_invitation_invitee_id` — inviteeId column
+17. `prisma/migrations/20261106000000_backfill_thread_invitation_invitee_id` — backfill for accepted rows
+18. Structural flatten (see Phase 3)
 
 ---
 
@@ -209,9 +228,18 @@ Dub-like flat domain modules — no subdirectories under `modules/`:
 After fixes, run:
 - `bun run typecheck` — ensures no TypeScript errors ✅ (passes cleanly)
 - `bun run lint` — ensures no lint violations
-- `bun run test` — ensures existing tests pass ✅ (802 passing; 2 dead-schema assertions removed with the dead code they tested; the previously failing reaction DB-free test passes once the fake seam is used consistently)
+- `bun run test` — ensures existing tests pass ✅ (804 passing; 2 dead-schema assertions removed with the dead code they tested; the previously failing reaction DB-free test passes once the fake seam is used consistently)
 - Manual review: verify suspended users cannot create threads/react/etc., verify private threads are properly filtered in bookmarks/newsletter, verify poll messageId is cross-checked, etc.
 
 ---
 
-**Total fixes implemented**: 9 critical/high severity fixes fully implemented, 2 medium findings documented with notes for follow-up. The audit report is at `docs/AUDIT-REPORT.md`.
+## 8. Known Remaining Gaps
+
+- **Bounties** (`modules/bounties/repository.ts`): create/list/total only — `isClaimed` is never set and there is no claim/refund path. This is a product gap, not a security finding.
+- **Deployment**: run `bun run db:deploy` so both invitation migrations (`inviteeId` column + backfill) reach Neon.
+- **Query warming**: intentionally off by default; set `QUERY_WARMING_ENABLED=true` only when the speculative search spend is budgeted.
+- **RLS (L3)**: Neon has no row-level security; access remains enforced at the application layer by design.
+
+---
+
+**Total fixes implemented**: all 11 critical/high findings and all 4 medium findings are implemented; L1 is closed with `inviteeId` binding plus a backfill migration. The audit report is at `docs/AUDIT-REPORT.md`.
