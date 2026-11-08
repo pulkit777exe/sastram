@@ -88,6 +88,7 @@ requireHttps('NEXT_PUBLIC_APP_URL');
 pair('upstash-rest', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN');
 pair('qstash-signing', 'QSTASH_CURRENT_SIGNING_KEY', 'QSTASH_NEXT_SIGNING_KEY');
 pair('qstash-publish', 'QSTASH_URL', 'QSTASH_TOKEN');
+pair('sentry-release', 'SENTRY_ORG', 'SENTRY_PROJECT');
 // Streamlit-style single-process deploys can run without Redis, but a
 // production deployment must have shared rate limits/quotas. Without this,
 // every serverless instance gets its own limiter and spend cap.
@@ -104,7 +105,7 @@ checks.push({
 checks.push({
   name: 'qstash-dev',
   ok: env.QSTASH_DEV !== 'true' && env.QSTASH_DEV !== '1',
-  message: 'QSTASH_DEV must be disabled in production',
+  message: 'QSTASH_DEV must be disabled in production (set QSTASH_DEV=false)',
   severity: 'error',
 });
 
@@ -149,7 +150,19 @@ warning(
 warning(
   'neon-migrations-direct',
   !isNeon || Boolean(unpooledUrl) || !(isPooledHost || isPgbouncerFlagged),
-  'Neon migrations run over the pooled connection; set DATABASE_URL_UNPOOLED to the direct endpoint',
+  'Neon migrations should use the direct endpoint; set DATABASE_URL_UNPOOLED explicitly (Prisma config can derive it, but explicit config is safer)',
+);
+
+const sentryReleaseCreds = Boolean(env.SENTRY_AUTH_TOKEN);
+warning(
+  'sentry-release-creds',
+  !sentryReleaseCreds || Boolean(env.SENTRY_ORG && env.SENTRY_PROJECT),
+  'SENTRY_AUTH_TOKEN is set but SENTRY_ORG/SENTRY_PROJECT are missing; sourcemap/release upload will be skipped or fail',
+);
+warning(
+  'sentry-sourcemaps',
+  !env.NODE_ENV || env.NODE_ENV !== 'production' || !Boolean(env.SENTRY_DSN || env.NEXT_PUBLIC_SENTRY_DSN) || sentryReleaseCreds,
+  'Sentry DSN is configured for production but SENTRY_AUTH_TOKEN is missing; runtime monitoring works, but build sourcemap/release upload is disabled',
 );
 
 const failures = checks.filter((check) => !check.ok && check.severity === 'error');

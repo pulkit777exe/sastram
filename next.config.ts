@@ -123,12 +123,22 @@ const nextConfig: NextConfig = isVercel
   ? baseNextConfig
   : { ...baseNextConfig, output: 'standalone' as const };
 
+const hasSentryReleaseCreds = Boolean(
+  process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
+);
+
 const sentryConfig = {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
   widenClientFileUpload: true,
   tunnelRoute: '/monitoring',
+  // Avoid 403/build noise when release credentials are unavailable; set
+  // SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT in CI/production builds.
+  sourcemaps: {
+    disable: !hasSentryReleaseCreds,
+  },
   // Sentry 11+: span-based Vercel cron monitoring (replaces legacy webpack automaticVercelMonitors).
   _experimental: {
     vercelCronsMonitoring: true,

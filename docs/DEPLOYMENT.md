@@ -24,10 +24,15 @@ docker build \
   -t sastram .
 ```
 
-`SENTRY_AUTH_TOKEN` is mounted as a BuildKit secret for source-map upload; it
-never becomes an image layer or build arg. Omit the `--secret` line to skip
-source-map upload. `NEXT_PUBLIC_SENTRY_DSN` is public and must be a build arg
-because Next inlines it into the browser bundle.
+`SENTRY_AUTH_TOKEN` is mounted as a BuildKit secret for source-map/release
+upload; it never becomes an image layer or build arg. Sentry source-map upload
+is enabled only when `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` are
+all set (see `next.config.ts`). Omit the `--secret` line (or leave credentials
+unset) to skip upload without breaking the build.
+
+`NEXT_PUBLIC_SENTRY_DSN` is public and must be a build arg because Next inlines
+it into the browser bundle. `SENTRY_DSN` is a runtime variable for server/edge
+events. Keep release credentials in CI/build secrets, not runtime app config.
 
 The build stage also needs placeholder values for required server env because
 `prisma generate` and `next build` import the env schema. Never copy `.env` into
@@ -37,19 +42,25 @@ the image; the defaults in the Dockerfile are deliberately fake.
 
 See `.env.example`. The important production-only rules:
 
-- `DATABASE_URL` must be the pooled Neon endpoint in production.
-- `DATABASE_URL_UNPOOLED` must point at the direct endpoint for migrations.
+- `DATABASE_URL` should be the pooled Neon endpoint in production for app traffic.
+- `DATABASE_URL_UNPOOLED` should point at the direct Neon endpoint for Prisma CLI
+  migrations. `prisma.config.ts` can derive a direct URL from a pooled Neon URL,
+  but setting `DATABASE_URL_UNPOOLED` explicitly is safer and keeps `check:prod`
+  aligned.
 - `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` must both be HTTPS and match.
 - `CRON_SECRET` must be set (32+ chars) or cron endpoints return 503.
 - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are **required** in
   production: rate limits, quotas, spend caps, and caches need shared state.
   Without Redis, production rate limiting degrades to per-instance memory and
   AI spend/quota gates fail closed. Readiness reports `503`.
-- `QSTASH_URL` and `QSTASH_TOKEN` must be set together. QStash signing keys
+- `QSTASH_DEV` must be `false` in production (enforced at runtime by `lib/config/env.ts`).
+  `QSTASH_URL` and `QSTASH_TOKEN` must be set together, and QStash signing keys
   must also be present, or boot fails instead of accepting jobs that can never
-  be verified. `QSTASH_DEV` is rejected in production.
+  be verified.
 - OAuth client IDs and secrets must be present in pairs.
 - `RESEND_*` template IDs are required.
+- Sentry runtime monitoring uses `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`. Source-map
+  upload needs build-time `SENTRY_AUTH_TOKEN` + `SENTRY_ORG` + `SENTRY_PROJECT`.
 - Content moderation defaults to **on** in production and requires the provider
   key selected by `AI_PROVIDER`. Without it readiness returns `503` and
   `check:prod` fails, so a load balancer cannot silently send traffic to an
