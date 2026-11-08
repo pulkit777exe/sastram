@@ -1,8 +1,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { sentryPrivacyOptions } from './lib/observability/sentry';
 
-let clientTracesSampleRate = 1;
-if (process.env.NODE_ENV === 'production') clientTracesSampleRate = 0.1;
+const tracesSampleRate = process.env.NODE_ENV === 'production' ? 0.1 : 1;
 
 Sentry.init({
   // Next only inlines NEXT_PUBLIC_* into browser bundles. Falling back keeps
@@ -18,8 +17,7 @@ Sentry.init({
       blockAllMedia: true,
     }),
   ],
-  tracesSampleRate: clientTracesSampleRate,
-  enableLogs: true,
+  tracesSampleRate,
   replaysSessionSampleRate: 0,
   replaysOnErrorSampleRate: 1,
 });

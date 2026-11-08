@@ -1,5 +1,5 @@
 import type { NextConfig } from 'next';
-import { withSentryConfig } from '@sentry/nextjs';
+import { withSentryConfig } from '@sentry/nextjs/config';
 
 // NOTE: The active CSP is set in proxy.ts (per-request, with a nonce for
 // script-src). This file no longer sets a CSP to avoid sending two conflicting
@@ -64,7 +64,7 @@ const baseNextConfig: NextConfig = {
     },
   ],
   experimental: {
-    optimizePackageImports: ['lucide-react', '@tanstack/react-virtual', 'date-fns', 'framer-motion'],
+    optimizePackageImports: ['lucide-react', '@tanstack/react-virtual', 'date-fns', 'motion'],
     // Native Rust React Compiler inside Turbopack (avoids the slower Babel transform).
     turbopackRustReactCompiler: true,
   },
@@ -129,8 +129,9 @@ const sentryConfig = {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   widenClientFileUpload: true,
   tunnelRoute: '/monitoring',
-  webpack: {
-    automaticVercelMonitors: false,
+  // Sentry 11+: span-based Vercel cron monitoring (replaces legacy webpack automaticVercelMonitors).
+  _experimental: {
+    vercelCronsMonitoring: true,
   },
 };
 

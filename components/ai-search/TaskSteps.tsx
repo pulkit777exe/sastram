@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 const POP = { type: "spring", stiffness: 640, damping: 22, mass: 0.7 } as const;
 const CELL = { type: "spring", stiffness: 520, damping: 34, mass: 0.45 } as const;

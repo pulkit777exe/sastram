@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useNow } from '@/components/ui/use-now';
 import { voteOnPollAction, getUserVoteAction, getPollResultsAction } from '@/modules/polls/actions';
 import { toasts } from '@/lib/utils/toast';
