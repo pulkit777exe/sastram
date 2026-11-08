@@ -127,8 +127,8 @@ const { container } = render(
       <OtpInput value={['', '', '', '', '', '']} onChange={onChange} />
     );
     const inputs = container.querySelectorAll('input');
-    expect(inputs[0].getAttribute('aria-label')).to.equal('Digit 1');
-    expect(inputs[5].getAttribute('aria-label')).to.equal('Digit 6');
+    expect(inputs[0].getAttribute('aria-label')).to.equal('Digit 1 of verification code');
+    expect(inputs[5].getAttribute('aria-label')).to.equal('Digit 6 of verification code');
   });
 
   it('should be disabled when disabled prop is true', async () => {

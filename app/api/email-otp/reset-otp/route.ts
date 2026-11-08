@@ -21,16 +21,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fail('RATE_LIMITED', 'Too many attempts. Please try again later.'), { status: HTTP_STATUS.RATE_LIMITED });
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
+    }
     const validation = resetOtpSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Email, OTP, and password are required'), { status: HTTP_STATUS.BAD_REQUEST });
     }
 
-    const data = await auth.api.resetPasswordEmailOTP({
+    const result = (await auth.api.resetPasswordEmailOTP({
       body: validation.data,
-    });
-    return NextResponse.json(ok(data));
+      headers: request.headers,
+      returnHeaders: true,
+    })) as { headers?: Headers; response: unknown };
+
+    const next = NextResponse.json(ok(result.response));
+    if (result.headers) {
+      const setCookie = typeof result.headers.getSetCookie === 'function'
+        ? result.headers.getSetCookie()
+        : result.headers.get('set-cookie')
+          ? [result.headers.get('set-cookie') as string]
+          : [];
+      for (const cookie of setCookie) next.headers.append('set-cookie', cookie);
+    }
+    return next;
   } catch (error) {
     if (isAuthApiError(error) && error.statusCode < HTTP_STATUS.INTERNAL) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Password reset failed'), { status: HTTP_STATUS.BAD_REQUEST });

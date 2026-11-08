@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { betterAuth, APIError } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { emailOTP } from 'better-auth/plugins';
@@ -67,6 +69,7 @@ function buildSocialProviders() {
 export const auth = betterAuth({
   baseURL: env.NEXT_PUBLIC_APP_URL,
   secret: env.BETTER_AUTH_SECRET,
+  trustedOrigins: [env.NEXT_PUBLIC_APP_URL],
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
@@ -78,6 +81,19 @@ export const auth = betterAuth({
     ipAddress: {
       ipv6Subnet: 128,
     },
+  },
+  // Rate limiting: proxy.ts exempts /api/auth and /api/email-otp as public
+  // (no session redirect) and does not apply its own rate limiting to them, so
+  // Better Auth's limiter is authoritative for /api/auth/* and for plugin
+  // routes such as /email-otp/*. Some app-owned wrappers (e.g.
+  // /api/email-otp/reset-otp) add their own custom rate limiting; limits may
+  // stack there, which is intentional defense in depth. Do not add customRules
+  // that disable protection for raw /api/auth/* endpoints.
+  rateLimit: {
+    enabled: env.RATE_LIMIT_ENABLED,
+    storage: 'memory',
+    window: 60,
+    max: 100,
   },
   account: {
     accountLinking: {
@@ -111,6 +127,11 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    minPasswordLength: 8,
+    maxPasswordLength: 128,
+    // Verified in better-auth 1.7.18: emailOTP.resetPasswordEmailOTP calls
+    // resetCredentialPassword(), which revokes sessions when this flag is set.
+    revokeSessionsOnPasswordReset: true,
   },
   socialProviders: buildSocialProviders(),
   plugins: [
@@ -129,9 +150,14 @@ export const auth = betterAuth({
         ]
       : []),
     oAuthProxy({
-      currentURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      currentURL: env.NEXT_PUBLIC_APP_URL,
+      productionURL: env.NEXT_PUBLIC_APP_URL,
     }),
     emailOTP({
+      storeOTP: 'hashed',
+      allowedAttempts: 3,
+      expiresIn: 300,
+      resendStrategy: 'rotate',
       async sendVerificationOTP({ email, otp, type: otpType }) {
         if (email === undefined || email === null || email.length === 0) {
           logger.warn('OTP send requested but no email provided');

@@ -14,19 +14,28 @@ const forgetPasswordOtpSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const ip = getRequestIp(request);
-    const rateLimitResult = await rateLimit({ key: ip, type: 'auth' });
+    const rateLimitResult = await rateLimit({ key: `otp-forget:${ip}`, type: 'auth' });
     if (!rateLimitResult.success) {
       return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: HTTP_STATUS.RATE_LIMITED });
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
+    }
     const validation = forgetPasswordOtpSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid email address'), { status: HTTP_STATUS.BAD_REQUEST });
     }
 
+    // TODO(enumeration): Better Auth 1.7.x forgetPasswordEmailOTP returns success for unknown
+    // accounts; keep conservative generic responses here and avoid any change that could
+    // regress the reset flow or leak existence via timing/status differences.
     const data = await auth.api.forgetPasswordEmailOTP({
       body: validation.data,
+      headers: request.headers,
     });
     return NextResponse.json(ok(data));
   } catch (error) {

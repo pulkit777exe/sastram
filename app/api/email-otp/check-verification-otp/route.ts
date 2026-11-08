@@ -21,7 +21,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fail('RATE_LIMITED', 'Too many attempts. Please try again later.'), { status: HTTP_STATUS.RATE_LIMITED });
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
+    }
     const validation = checkVerificationOtpSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Email and OTP are required'), { status: HTTP_STATUS.BAD_REQUEST });
@@ -32,6 +37,7 @@ export async function POST(request: NextRequest) {
         ...validation.data,
         type: validation.data.type || 'sign-in',
       },
+      headers: request.headers,
     });
     return NextResponse.json(ok(data));
   } catch (error) {

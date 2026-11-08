@@ -9,12 +9,12 @@ import { z } from 'zod';
 
 const sendVerificationOtpSchema = z.object({
   email: z.string().email('Invalid email address'),
-  type: z.enum(['email-verification', 'forget-password', 'change-email', 'sign-in']).optional(),
+  type: z.enum(['email-verification', 'forget-password', 'sign-in']).optional(),
 });
 
 export async function POST(request: NextRequest) {
   const ip = getRequestIp(request);
-  const rateLimitResult = await rateLimit({ key: ip, type: 'auth' });
+  const rateLimitResult = await rateLimit({ key: `otp-send:${ip}`, type: 'auth' });
   if (!rateLimitResult.success) {
     return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: HTTP_STATUS.RATE_LIMITED });
   }
@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
         email: validation.data.email,
         type: validation.data.type || 'email-verification',
       },
+      headers: request.headers,
     });
     return NextResponse.json(ok(data));
   } catch (error) {

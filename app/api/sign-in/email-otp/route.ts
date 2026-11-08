@@ -14,7 +14,7 @@ const signInOtpSchema = z.object({
 
 export async function POST(request: NextRequest) {
   const ip = getRequestIp(request);
-  const rateLimitResult = await rateLimit({ key: ip, type: 'auth' });
+  const rateLimitResult = await rateLimit({ key: `otp-signin:${ip}`, type: 'auth' });
   if (!rateLimitResult.success) {
     return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: HTTP_STATUS.RATE_LIMITED });
   }
@@ -28,14 +28,26 @@ export async function POST(request: NextRequest) {
 
   const validation = signInOtpSchema.safeParse(body);
   if (!validation.success) {
-    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid input', validation.error.issues), { status: HTTP_STATUS.BAD_REQUEST });
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid email or OTP'), { status: HTTP_STATUS.BAD_REQUEST });
   }
 
   try {
-    const data = await auth.api.signInEmailOTP({
+    const result = (await auth.api.signInEmailOTP({
       body: validation.data,
-    });
-    return NextResponse.json(ok(data));
+      headers: request.headers,
+      returnHeaders: true,
+    })) as { headers?: Headers; response: unknown };
+
+    const next = NextResponse.json(ok(result.response));
+    if (result.headers) {
+      const setCookie = typeof result.headers.getSetCookie === 'function'
+        ? result.headers.getSetCookie()
+        : result.headers.get('set-cookie')
+          ? [result.headers.get('set-cookie') as string]
+          : [];
+      for (const cookie of setCookie) next.headers.append('set-cookie', cookie);
+    }
+    return next;
   } catch (error) {
     if (isAuthApiError(error) && error.statusCode < HTTP_STATUS.INTERNAL) {
       return NextResponse.json(fail('AUTH_REQUIRED', 'Invalid email or OTP'), { status: HTTP_STATUS.UNAUTHORIZED });

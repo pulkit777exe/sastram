@@ -125,6 +125,7 @@ function ForgotPasswordOtpForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(RESEND_COUNTDOWN_SECONDS);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const verifyingRef = useRef(false);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -146,10 +147,11 @@ function ForgotPasswordOtpForm({
   }, [countdown, startTransition]);
 
   const verifyOtp = async (code: string) => {
-    if (!email || code.length !== OTP_LENGTH) {
+    if (!email || code.length !== OTP_LENGTH || verifyingRef.current) {
       return;
     }
 
+    verifyingRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -159,15 +161,18 @@ function ForgotPasswordOtpForm({
         body: JSON.stringify({ email, otp: code, type: 'forget-password' }),
       });
 
-      let result;
+      let result: { error?: { message?: string } | string } = {};
       try {
-        result = await response.json();
+        result = (await response.json()) as { error?: { message?: string } | string };
       } catch {
         result = {};
       }
 
       if (!response.ok || result?.error) {
-        const errorMessage = result?.error?.message || result?.error || 'Invalid verification code';
+        const errorMessage =
+          typeof result?.error === 'string'
+            ? result.error
+            : result?.error?.message || 'Invalid verification code';
 
         if (/expired/i.test(errorMessage)) {
           toasts.otpExpired();
@@ -175,7 +180,6 @@ function ForgotPasswordOtpForm({
           toasts.invalidOtp();
         }
 
-        setIsSubmitting(false);
         return;
       }
 
@@ -185,6 +189,8 @@ function ForgotPasswordOtpForm({
     } catch (error) {
       clientLogger.error('ForgotPassword', 'Verify OTP failed', error);
       toasts.networkError();
+    } finally {
+      verifyingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -239,7 +245,12 @@ function ForgotPasswordOtpForm({
         body: JSON.stringify({ email }),
       });
 
-      const result = await response.json();
+      let result: { error?: unknown } = {};
+      try {
+        result = await response.json();
+      } catch {
+        result = {};
+      }
 
       if (!response.ok || result?.error) {
         toasts.serverError();
@@ -278,10 +289,26 @@ function ForgotPasswordOtpForm({
               }}
               type="text"
               inputMode="numeric"
-              maxLength={OTP_LENGTH}
+              maxLength={1}
+              autoComplete={index === 0 ? 'one-time-code' : 'off'}
+              aria-label={`Digit ${index + 1} of verification code`}
               className="w-10 text-center"
               value={digit}
               disabled={isSubmitting}
+              onPaste={(event) => {
+                const pasted = event.clipboardData.getData('text').replace(NON_DIGIT_PATTERN, '');
+                if (pasted.length <= 1) return;
+                event.preventDefault();
+                const nextOtp = [...otp];
+                pasted.slice(0, OTP_LENGTH).split('').forEach((char, i) => {
+                  if (index + i < OTP_LENGTH) nextOtp[index + i] = char;
+                });
+                setOtp(nextOtp);
+                inputRefs.current[Math.min(OTP_LENGTH - 1, index + pasted.length)]?.focus();
+                if (nextOtp.every((d) => d) && nextOtp.join('').length === OTP_LENGTH) {
+                  void verifyOtp(nextOtp.join(''));
+                }
+              }}
               onChange={(event) => handleOtpChange(index, event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === 'Backspace' && !otp[index] && index > 0) {
@@ -470,6 +497,10 @@ export function ForgotPasswordModal({ open, onOpenChange, initialEmail = '' }: F
   };
 
   const handleBack = () => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem('forgot_password_email');
+      window.sessionStorage.removeItem('forgot_password_otp');
+    }
     setStep('email');
     setFormKey((k) => k + 1);
   };
@@ -477,6 +508,10 @@ export function ForgotPasswordModal({ open, onOpenChange, initialEmail = '' }: F
   const handleClose = (isOpen: boolean) => {
     onOpenChange(isOpen);
     if (!isOpen) {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('forgot_password_email');
+        window.sessionStorage.removeItem('forgot_password_otp');
+      }
       setStep('email');
       setFormKey((k) => k + 1);
       setEmail(initialEmail);

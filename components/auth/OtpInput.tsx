@@ -86,8 +86,9 @@ export function OtpInput({
           onKeyDown={(e) => handleKeyDown(index, e)}
           disabled={disabled}
           autoFocus={autoFocus && index === 0}
+          autoComplete={index === 0 ? 'one-time-code' : 'off'}
           className="w-10 h-12 text-center text-lg font-semibold border border-line rounded-control bg-background text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent disabled:opacity-50"
-          aria-label={`Digit ${index + 1}`}
+          aria-label={`Digit ${index + 1} of verification code`}
         />
       ))}
     </div>
