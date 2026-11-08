@@ -96,4 +96,6 @@ export type AiInlineDelivery = 'streaming' | 'queued' | 'limited' | null;
 
 export interface AiInlineMeta {
   aiInline?: AiInlineDelivery;
+  /** Temp/optimistic message id for the confirmed post, so only that optimistic entry is reconciled. */
+  optimisticId?: string;
 }

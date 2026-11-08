@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CommentTree } from '@/components/thread/comment-tree';
 import { PostMessageForm } from '@/components/chat/post-message-form';
 import { useAIReplyStream, type AIStreamStart, type AIStreamError } from '@/hooks/useAIReplyStream';
@@ -12,7 +12,7 @@ import { ThreadPageHeader } from './thread-page-header';
 import { ThreadTagsManager, type ThreadTagItem } from './thread-tags-manager';
 import { SaiViewTransition } from '@/components/ui/view-transition';
 import { ThreadExternalPreview } from '@/components/thread/ExternalLinkPreview';
-import { ChevronDown, Loader2, Pin, AlertCircle } from 'lucide-react';
+import { ArrowUp, ChevronDown, Loader2, Pin, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useThreadSync } from '@/hooks/thread/use-thread-sync';
 import { useThreadReadReceipts } from '@/hooks/thread/use-thread-read-receipts';
@@ -80,19 +80,22 @@ function LoadMoreButton({
   remaining: number;
   onLoadMore: () => void;
 }) {
-  if (isLoading) {
-    return (
-      <Button variant="outline" size="sm" onClick={onLoadMore} disabled>
-        <Loader2 size={14} className="animate-spin" />
-        Loading...
-      </Button>
-    );
-  }
+  const label = remaining > 0 ? `Load older messages (${remaining} remaining)` : 'Load older messages';
 
   return (
-    <Button variant="outline" size="sm" onClick={onLoadMore}>
-      Load older messages ({remaining} remaining)
-    </Button>
+    <div className="flex min-h-9 items-center justify-center" aria-live="polite" aria-atomic="true">
+      {isLoading ? (
+        <div className="flex items-center gap-2 rounded-control border border-line bg-surface px-3 py-1.5 text-xs text-ink-2 shadow-sm">
+          <Loader2 size={14} className="animate-spin text-brand" aria-hidden />
+          <span>Loading older messages…</span>
+          <span className="sr-only">Loading older messages</span>
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" onClick={onLoadMore} aria-label={label}>
+          {label}
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -218,6 +221,7 @@ export function ThreadLiveWrapper({
     isPollingStale,
   } = sync;
   const threadMessages = sync.threadMessages;
+  const prependAnchorRef = useRef<{ scrollTop: number; scrollHeight: number; prevDisplayed: number } | null>(null);
 
   // Stable — used by read-receipts hook
   const isAtBottom = useCallback(() => {
@@ -311,7 +315,7 @@ export function ThreadLiveWrapper({
   }
 
   function handleMessagePosted(newMessage: Message, meta?: AiInlineMeta) {
-    threadMessages.addMessage(newMessage);
+    threadMessages.addMessage(newMessage, { optimisticId: meta?.optimisticId });
 
     const aiInline = resolveAiInlineStatus(meta, newMessage.content);
     if (aiInline === 'streaming') {
@@ -334,22 +338,52 @@ export function ThreadLiveWrapper({
   }
 
   // Load more observer
+  const { hasMoreMessages, loadMoreMessages, displayedCount } = threadMessages;
+  const wrappedLoadMoreMessages = useCallback(async () => {
+    const el = scrollContainerRef.current;
+    if (el) {
+      prependAnchorRef.current = {
+        scrollTop: el.scrollTop,
+        scrollHeight: el.scrollHeight,
+        prevDisplayed: displayedCount,
+      };
+    }
+    try {
+      await loadMoreMessages();
+    } catch {
+      prependAnchorRef.current = null;
+    }
+  }, [displayedCount, loadMoreMessages]);
+
+  useLayoutEffect(() => {
+    const anchor = prependAnchorRef.current;
+    const el = scrollContainerRef.current;
+    if (!anchor || !el) return;
+    if (displayedCount > anchor.prevDisplayed) {
+      const delta = el.scrollHeight - anchor.scrollHeight;
+      if (delta !== 0) {
+        el.scrollTop = anchor.scrollTop + delta;
+      }
+      prependAnchorRef.current = null;
+    }
+  }, [displayedCount]);
+
   useEffect(() => {
     const sentinel = loadMoreSentinelRef.current;
     const root = scrollContainerRef.current;
-    if (!sentinel || !root || !threadMessages.hasMoreMessages) return;
+    if (!sentinel || !root || !hasMoreMessages) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          void threadMessages.loadMoreMessages();
+          void wrappedLoadMoreMessages();
         }
       },
       { root, rootMargin: SENTINEL_ROOT_MARGIN }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [threadMessages]);
+  }, [hasMoreMessages, wrappedLoadMoreMessages]);
 
   // Cleanup (AI timers are owned by useAiInlineStatus)
   useEffect(() => {
@@ -380,7 +414,8 @@ export function ThreadLiveWrapper({
   const isEmptyThread = liveMessages.length === 0;
   const hasMoreToLoad = threadMessages.hasMoreMessages;
   const isLoadingMore = threadMessages.isLoadingMore;
-  const remainingToLoad = threadMessages.totalMessageCount - threadMessages.displayedCount;
+  // Clamp: live arrivals can make displayed totals stale; never show a negative/confusing count.
+  const remainingToLoad = Math.max(0, threadMessages.totalMessageCount - threadMessages.displayedCount);
   const showScrollButton = isScrolledUp;
 
   // Scroll handlers — plain functions
@@ -431,6 +466,7 @@ export function ThreadLiveWrapper({
         className="flex-1 overflow-y-auto px-6 py-4"
         role="log"
         aria-live="polite"
+        aria-relevant="additions"
         aria-label="Thread messages"
         onScroll={handleViewportScroll}
       >
@@ -474,9 +510,16 @@ export function ThreadLiveWrapper({
             <ErrorBoundary>
               {hasMoreToLoad && (
                 <>
+                  {readReceipts.unreadCount > 0 && !readReceipts.firstUnreadMessageId && (
+                    <div className="mb-3 flex justify-center">
+                      <p className="rounded-card border border-line bg-surface px-3 py-1.5 text-xs text-ink-2 shadow-card">
+                        {readReceipts.unreadCount} unread message{readReceipts.unreadCount === 1 ? '' : 's'} may be above — load older to find them.
+                      </p>
+                    </div>
+                  )}
                   <div ref={loadMoreSentinelRef} aria-hidden className="h-px" />
                   <div className="mb-4 flex justify-center">
-                    <LoadMoreButton isLoading={isLoadingMore} remaining={remainingToLoad} onLoadMore={threadMessages.loadMoreMessages} />
+                    <LoadMoreButton isLoading={isLoadingMore} remaining={remainingToLoad} onLoadMore={wrappedLoadMoreMessages} />
                   </div>
                 </>
               )}
@@ -499,18 +542,31 @@ export function ThreadLiveWrapper({
 
       {showScrollButton && (
         <div className="absolute bottom-32 right-6 z-30 flex flex-col items-center gap-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
+          {readReceipts.firstUnreadMessageId && (
+            <Button
+              size="icon"
+              variant="outline"
+              className="w-9 h-9 rounded-full border-line bg-surface text-ink-2 shadow-linear-lg hover:bg-hover hover:text-ink"
+              onClick={() => readReceipts.scrollToFirstUnread()}
+              title="Jump to first unread"
+              aria-label={readReceipts.unreadCount > 0 ? `Jump to first unread message (${readReceipts.unreadCount} unread)` : 'Jump to first unread message'}
+            >
+              <ArrowUp size={16} strokeWidth={2.5} aria-hidden />
+            </Button>
+          )}
           <Button
             size="icon"
             className="relative w-9 h-9 rounded-full bg-brand hover:bg-brand/90 text-primary-foreground shadow-linear-lg hover:scale-110 active:scale-95"
             onClick={handleScrollToBottom}
-            title="Scroll to bottom"
+            title={readReceipts.unreadCount > 0 ? `New messages (${readReceipts.unreadCount > 99 ? '99+' : readReceipts.unreadCount}) — scroll to bottom` : 'Scroll to bottom'}
+            aria-label={readReceipts.unreadCount > 0 ? `Scroll to latest messages (${readReceipts.unreadCount} new)` : 'Scroll to bottom'}
           >
             {readReceipts.unreadCount > 0 && (
-              <span className="absolute -top-2 -right-2 min-w-4.5 h-4.5 rounded-full bg-brand text-primary-foreground text-xs font-bold flex items-center justify-center px-1 border-2 border-background">
+              <span className="absolute -top-2 -right-2 min-w-4.5 h-4.5 rounded-full bg-brand text-primary-foreground text-xs font-bold flex items-center justify-center px-1 border-2 border-background" aria-hidden>
                 {readReceipts.unreadCount > 99 ? '99+' : readReceipts.unreadCount}
               </span>
             )}
-            <ChevronDown size={16} strokeWidth={2.5} />
+            <ChevronDown size={16} strokeWidth={2.5} aria-hidden />
           </Button>
         </div>
       )}
@@ -527,15 +583,6 @@ export function ThreadLiveWrapper({
             canManagePoll={canManagePoll}
             showPoll={showPoll}
             onTogglePoll={setShowPoll}
-            onPollCreated={(newPoll) => {
-              setCurrentPoll({
-                id: newPoll.id,
-                question: newPoll.question,
-                options: newPoll.options,
-                isActive: newPoll.isActive,
-                expiresAt: newPoll.expiresAt,
-              });
-            }}
           />
         </div>
       </div>

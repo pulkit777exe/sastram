@@ -49,6 +49,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
     measureElement: (element) => element?.getBoundingClientRect().height ?? 40,
     overscan: REPLY_OVERSCAN,
     enabled: shouldVirtualize,
+    getItemKey: (index) => replies[index]?.id ?? index,
   });
 
   if (replies.length === 0) return null;
@@ -82,8 +83,8 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
         </span>
 
         {lastReply && !expanded && (
-          <span className="text-xs text-muted-foreground/70 truncate flex-1 min-w-0">
-            <span className="font-medium text-foreground/60 mr-1">
+          <span className="text-xs text-ink-3 truncate flex-1 min-w-0">
+            <span className="font-medium text-ink-2 mr-1">
               {lastReply.sender?.name?.split(' ')[0]}:
             </span>
             {lastReply.content.slice(0, 60)}{lastReply.content.length > 60 ? '…' : ''}
@@ -93,7 +94,8 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
         <Button
           variant="ghost"
           size="icon"
-          className="ml-auto size-6 shrink-0 text-muted-foreground/50 hover:bg-muted/60 hover:text-brand"
+          aria-label={expanded ? 'Collapse replies' : 'Expand replies'}
+          className="ml-auto size-6 shrink-0 text-ink-3 hover:bg-hover hover:text-brand"
           onClick={(e) => {
             e.stopPropagation();
             setExpanded((p) => !p);
@@ -164,7 +166,7 @@ export const InlineReplyThread = React.memo(function InlineReplyThread({ replies
           <Button
             variant="ghost"
             size="sm"
-            className="text-xs font-semibold text-muted-foreground hover:text-brand px-2 py-1 w-fit h-auto mt-0.5"
+            className="text-xs font-semibold text-ink-3 hover:text-brand px-2 py-1 w-fit h-auto mt-0.5"
             onClick={() => onReplyClick?.()}
           >
             <MessageCircle size={11} className="mr-1.5" />
@@ -185,7 +187,7 @@ function ReplyItem({
 }) {
   return (
     <div
-      className="flex items-start gap-2 text-xs py-1 px-2 rounded-control hover:bg-muted/20 cursor-pointer group/reply transition-colors"
+      className="flex items-start gap-2 text-xs py-1 px-2 rounded-control hover:bg-hover/50 cursor-pointer group/reply transition-colors"
       onClick={() => onReplyClick?.(reply.id)}
     >
       <Avatar className="w-4 h-4 mt-0.5 shrink-0">
@@ -195,10 +197,10 @@ function ReplyItem({
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0 leading-relaxed">
-        <span className="font-semibold text-foreground/80 mr-1.5">
+        <span className="font-semibold text-ink/80 mr-1.5">
           {reply.sender?.name?.split(' ')[0] || 'Anonymous'}
         </span>
-        <span className="text-muted-foreground/80">{reply.content}</span>
+        <span className="text-ink-3">{reply.content}</span>
       </div>
     </div>
   );

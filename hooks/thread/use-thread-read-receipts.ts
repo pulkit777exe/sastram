@@ -55,13 +55,37 @@ export function useThreadReadReceipts({
     [isAtBottom, threadId, liveMessagesRef]
   );
 
-  // Auto-mark as read after delay if there are unreads
+  // Auto-mark as read after delay if there are unreads, but only while the
+  // document is actually being viewed. If hidden when the timer fires, mark once
+  // it becomes visible again.
   useEffect(() => {
     if (unreadCount <= 0) return;
-    const timer = setTimeout(() => {
-      void markThreadAsRead(true);
-    }, AUTO_MARK_READ_DELAY_MS);
-    return () => clearTimeout(timer);
+
+    let visibilityHandler: (() => void) | null = null;
+    const markIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void markThreadAsRead(true);
+      } else {
+        visibilityHandler = () => {
+          if (document.visibilityState === 'visible') {
+            void markThreadAsRead(true);
+            if (visibilityHandler) {
+              document.removeEventListener('visibilitychange', visibilityHandler);
+              visibilityHandler = null;
+            }
+          }
+        };
+        document.addEventListener('visibilitychange', visibilityHandler);
+      }
+    };
+
+    const timer = setTimeout(markIfVisible, AUTO_MARK_READ_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+      if (visibilityHandler) {
+        document.removeEventListener('visibilitychange', visibilityHandler);
+      }
+    };
   }, [unreadCount, markThreadAsRead]);
 
   const scrollToFirstUnread = useCallback(() => {

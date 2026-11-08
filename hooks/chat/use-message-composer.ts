@@ -294,7 +294,7 @@ export function useMessageComposer(options: UseMessageComposerOptions): UseMessa
           aiInline = 'limited';
         }
 
-        onMessagePosted?.(transformedMessage, { aiInline });
+        onMessagePosted?.(transformedMessage, { aiInline, optimisticId: tempId });
         onSuccess?.();
 
         if (result.data.aiInlineLimited) {

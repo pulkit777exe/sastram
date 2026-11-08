@@ -28,9 +28,22 @@ export function usePollRefresh({ threadId, initialPoll }: UsePollRefreshOptions)
   const [pollResults, setPollResults] = useState<PollResults | null>(null);
   const [pollRefreshKey, setPollRefreshKey] = useState(0);
   const pollRef = useRef(currentPoll);
+  const prevInitialPollIdRef = useRef<string | null>(initialPoll?.id ?? null);
+
   useEffect(() => {
     pollRef.current = currentPoll;
   }, [currentPoll]);
+
+  useEffect(() => {
+    const nextId = initialPoll?.id ?? null;
+    if (nextId !== prevInitialPollIdRef.current) {
+      prevInitialPollIdRef.current = nextId;
+      setCurrentPoll(initialPoll);
+      if (!initialPoll) {
+        setPollResults(null);
+      }
+    }
+  }, [initialPoll]);
   const cancelledRef = useRef(false);
   useEffect(() => () => { cancelledRef.current = true; }, []);
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useLayoutEffect, useEffect, useId } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -104,6 +104,7 @@ export function MessageList({ messages, firstUnreadMessageId }: MessageListProps
     estimateSize: () => 100,
     measureElement: (element) => element?.getBoundingClientRect().height ?? 100,
     overscan: 5,
+    getItemKey: (index) => topLevelMessages[index]?.id ?? index,
   });
 
   // Auto-scroll to bottom when new messages arrive and user is at the bottom
@@ -215,11 +216,34 @@ const MessageRow = React.memo(function MessageRow({
   
   const [reactions, setReactions] = useState<MessageReaction[]>(message.reactions ?? []);
   const [isReacting, setIsReacting] = useState(false);
+  const lastSyncedReactionsRef = useRef(message.reactions);
 
-  const [_isPinning, setIsPinning] = useState(false);
-  
+  useEffect(() => {
+    if (isReacting) return;
+    if (message.reactions !== lastSyncedReactionsRef.current) {
+      lastSyncedReactionsRef.current = message.reactions;
+      setReactions(message.reactions ?? []);
+    }
+  }, [message.reactions, isReacting]);
+
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const deleteDialogLabelId = useId();
+  const deleteDialogDescId = useId();
+  const deleteCancelRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!showDeleteConfirm) return;
+    deleteCancelRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setShowDeleteConfirm(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showDeleteConfirm]);
 
   const isOwnMessage = message.senderId === currentUser.id;
   const isShowingReplyBox = activeReplyId === message.id;
@@ -346,7 +370,7 @@ const MessageRow = React.memo(function MessageRow({
       <div
         id={`message-${message.id}`}
         className={cn(
-          "group flex gap-3 px-3 py-1.5 rounded-control hover:bg-muted/30 relative transition-colors duration-75",
+          "group flex gap-3 px-3 py-1.5 rounded-control hover:bg-hover/40 relative transition-colors duration-75",
           isCompact && "pl-13",
           isShowingReplyBox && "bg-brand/10 dark:bg-brand/10"
         )}
@@ -354,7 +378,7 @@ const MessageRow = React.memo(function MessageRow({
         {isCompact ? (
           <CompactTimestamp time={message.createdAt} />
         ) : (
-          <Avatar className="w-8 h-8 mt-0.5 shrink-0 ring-1 ring-border/30">
+          <Avatar className="w-8 h-8 mt-0.5 shrink-0 ring-1 ring-line/30">
             <AvatarImage src={message.sender?.image || ''} />
             <AvatarFallback className="bg-brand/10 text-brand text-xs font-bold">
               {message.sender?.name?.substring(0, 2).toUpperCase() || 'U'}
@@ -365,7 +389,7 @@ const MessageRow = React.memo(function MessageRow({
         <div className="flex-1 min-w-0">
           {!isCompact && (
             <div className="flex items-baseline gap-2 mb-0.5 flex-wrap">
-              <span className="text-sm font-semibold text-foreground leading-none">
+              <span className="text-sm font-semibold text-ink leading-none">
                 {message.sender?.name || 'Anonymous'}
               </span>
               {isOwnMessage && (
@@ -389,7 +413,7 @@ const MessageRow = React.memo(function MessageRow({
                 </Badge>
               )}
               {message.truncated && (
-                <span className="text-xs text-muted-foreground/60 italic">
+                <span className="text-xs text-ink-3/60 italic">
                   (truncated)
                 </span>
               )}
@@ -399,7 +423,7 @@ const MessageRow = React.memo(function MessageRow({
                   Pinned
                 </span>
               )}
-              <span className="text-xs text-muted-foreground/50 font-medium">
+              <span className="text-xs text-ink-3/60 font-medium">
                 <TimeAgo date={message.createdAt} />
               </span>
               {message.isEdited && (
@@ -451,13 +475,13 @@ const MessageRow = React.memo(function MessageRow({
                 <span className="h-1 w-1 rounded-full bg-brand/60" />
                 Synthesis
               </div>
-              <div className="text-foreground/85 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
+              <div className="text-ink/85 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
                 {isAiNotConfigured(message.content) ? (
                   <AiNotConfiguredNotice />
                 ) : message.content ? (
                   renderContent(message.content)
                 ) : (
-                  <div className="flex items-center gap-2 text-muted-foreground/60 text-xs">
+                  <div className="flex items-center gap-2 text-ink-3 text-xs">
                     <Loader2 size={12} className="animate-spin" />
                     Generating…
                   </div>
@@ -465,7 +489,7 @@ const MessageRow = React.memo(function MessageRow({
               </div>
             </div>
           ) : (
-            <div className="text-foreground/80 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
+            <div className="text-ink/85 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
               {renderContent(message.content)}
             </div>
           )}
@@ -547,7 +571,6 @@ const MessageRow = React.memo(function MessageRow({
               onEdit={canEdit ? () => setIsEditing(true) : undefined}
               onReact={handleToggleReaction}
               onPin={canPin ? async () => {
-                setIsPinning(true);
                 const wasPinned = message.isPinned;
                 onMessageUpdate(message.id, { isPinned: !wasPinned });
                 const res = await pinMessage({ messageId: message.id });
@@ -555,7 +578,6 @@ const MessageRow = React.memo(function MessageRow({
                   onMessageUpdate(message.id, { isPinned: wasPinned });
                   toasts.error('Failed to pin message');
                 }
-                setIsPinning(false);
               } : undefined}
               onDelete={canDelete ? () => setShowDeleteConfirm(true) : undefined}
               isPinned={message.isPinned}
@@ -567,8 +589,15 @@ const MessageRow = React.memo(function MessageRow({
         )}
 
         {showDeleteConfirm && (
-          <div className="absolute right-4 top-10 z-30 flex items-center gap-2 rounded-control border border-line bg-surface p-2 text-xs shadow-linear-lg">
-            <span className="font-medium text-destructive">Delete message?</span>
+          <div
+            role="alertdialog"
+            aria-modal="false"
+            aria-labelledby={deleteDialogLabelId}
+            aria-describedby={deleteDialogDescId}
+            className="absolute right-4 top-10 z-30 flex items-center gap-2 rounded-control border border-line bg-surface p-2 text-xs shadow-linear-lg"
+          >
+            <span id={deleteDialogLabelId} className="font-medium text-destructive">Delete message?</span>
+            <span id={deleteDialogDescId} className="sr-only">This action cannot be undone.</span>
             <Button
               size="sm"
               variant="destructive"
@@ -588,6 +617,7 @@ const MessageRow = React.memo(function MessageRow({
               Delete
             </Button>
             <Button
+              ref={deleteCancelRef}
               size="sm"
               variant="ghost"
               onClick={() => setShowDeleteConfirm(false)}

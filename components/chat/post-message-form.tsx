@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { EmojiPickerPopover } from '@/components/ui/emoji-picker-popover';
@@ -39,7 +39,6 @@ interface PostMessageFormProps {
   canManagePoll?: boolean;
   showPoll?: boolean;
   onTogglePoll?: (show: boolean) => void;
-  onPollCreated?: (poll: { id: string; threadId: string; question: string; options: string[]; isActive: boolean; expiresAt: Date | null; createdAt: Date }) => void;
 }
 
 export function PostMessageForm({
@@ -52,14 +51,13 @@ export function PostMessageForm({
   replyTo,
   onCancelReply,
   canManagePoll,
-  showPoll: showPollProp,
+  showPoll: _showPoll,
   onTogglePoll,
-  onPollCreated: _onPollCreated,
 }: PostMessageFormProps) {
-  const [showPollLocal, setShowPollLocal] = useState(false);
-  const _showPoll = showPollProp ?? showPollLocal;
-  const setShowPoll = onTogglePoll ?? setShowPollLocal;
+  void _showPoll;
   const [formatOpen, setFormatOpen] = useState(false);
+  const formatMenuId = useId();
+  const mentionListId = useId();
 
   const {
     content,
@@ -128,6 +126,19 @@ export function PostMessageForm({
     };
   }, [closeMentions, formatOpen, mentionListRef, textareaRef]);
 
+  useEffect(() => {
+    if (!formatOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setFormatOpen(false);
+        (formatButtonRef.current?.querySelector('button') as HTMLButtonElement | null)?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [formatOpen]);
+
   function getPlaceholder(): string {
     const isReply = replyTo !== null && replyTo !== undefined;
     if (isReply) {
@@ -139,6 +150,7 @@ export function PostMessageForm({
   const placeholder = getPlaceholder();
   const isReplyMode = Boolean(replyTo);
   const selectedFilePosition = isReplyMode ? '-top-20' : '-top-11';
+  const composerLabel = isReplyMode && replyTo ? `Reply to @${replyTo.userName}` : 'Message';
 
   // Tailwind class constants — grouped: layout / color / interactivity
   // Extracted to avoid 8+ class inline strings.
@@ -162,6 +174,7 @@ export function PostMessageForm({
             variant="ghost"
             size="icon"
             onClick={onCancelReply}
+            aria-label="Cancel reply"
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -178,6 +191,7 @@ export function PostMessageForm({
             variant="ghost"
             size="icon"
             className="ml-1"
+            aria-label="Remove attachment"
             onClick={() => {
               setSelectedFile(null);
               if (fileInputRef.current) fileInputRef.current.value = '';
@@ -196,12 +210,22 @@ export function PostMessageForm({
           <Textarea
             ref={textareaRef}
             name="content"
+            aria-label={composerLabel}
             placeholder={placeholder}
             value={content}
             onChange={handleChange}
             className={textareaClasses}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={mentionOpen}
+            aria-controls={mentionOpen ? mentionListId : undefined}
+            aria-activedescendant={
+              mentionOpen && mentionCandidates[activeMentionIndex]
+                ? `${mentionListId}-option-${mentionCandidates[activeMentionIndex].id}`
+                : undefined
+            }
           />
         </div>
 
@@ -209,13 +233,15 @@ export function PostMessageForm({
         <div className="flex items-center justify-between px-2 sm:px-3 py-2 bg-inset border-t border-line/60 select-none">
           <div className="flex items-center gap-0.5 sm:gap-1">
             <Button
+              type="button"
               variant="ghost"
               size="icon"
+              aria-label="Attach file"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-4.5 w-4.5" />
             </Button>
-            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
+            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} aria-label="Choose file to attach" />
 
             <EmojiPickerPopover
               side="top"
@@ -233,18 +259,23 @@ export function PostMessageForm({
               }
             />
 
-            <Button variant="ghost" size="icon" onClick={handleAtSai}>
+            <Button type="button" variant="ghost" size="icon" aria-label="Mention @sai" onClick={handleAtSai}>
               <AtSign className="h-4 w-4" />
             </Button>
 
             <div className="relative">
               <div ref={formatButtonRef}>
                 <Button
+                  type="button"
                   variant="ghost"
                   size="icon"
+                  aria-label="Formatting options"
+                  aria-haspopup="menu"
+                  aria-expanded={formatOpen}
+                  aria-controls={formatMenuId}
                   onClick={() => setFormatOpen((o) => !o)}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="M4 7V4h16v3" />
                     <path d="M9 20h6" />
                     <path d="M12 4v16" />
@@ -252,30 +283,44 @@ export function PostMessageForm({
                 </Button>
               </div>
               {formatOpen && (
-                <div ref={formatPanelRef} className="absolute bottom-10 left-0 z-30 w-36 rounded-card border border-line bg-surface p-1 shadow-overlay">
+                <div
+                  ref={formatPanelRef}
+                  id={formatMenuId}
+                  role="menu"
+                  aria-label="Formatting options"
+                  className="absolute bottom-10 left-0 z-30 w-36 rounded-card border border-line bg-surface p-1 shadow-overlay"
+                >
                   <Button
+                    type="button"
                     variant="ghost"
+                    role="menuitem"
                     className="w-full justify-start"
                     onClick={() => { handleBold(); setFormatOpen(false); }}
                   >
                     Bold
                   </Button>
                   <Button
+                    type="button"
                     variant="ghost"
+                    role="menuitem"
                     className="w-full justify-start"
                     onClick={() => { handleItalic(); setFormatOpen(false); }}
                   >
                     Italic
                   </Button>
                   <Button
+                    type="button"
                     variant="ghost"
+                    role="menuitem"
                     className="w-full justify-start"
                     onClick={() => { handleCode(); setFormatOpen(false); }}
                   >
                     Code
                   </Button>
                   <Button
+                    type="button"
                     variant="ghost"
+                    role="menuitem"
                     className="w-full justify-start"
                     onClick={() => { handleLink(); setFormatOpen(false); }}
                   >
@@ -283,9 +328,11 @@ export function PostMessageForm({
                   </Button>
                   {canManagePoll && (
                     <Button
+                      type="button"
                       variant="ghost"
+                      role="menuitem"
                       className="w-full justify-start"
-                      onClick={() => { setShowPoll(true); setFormatOpen(false); }}
+                      onClick={() => { onTogglePoll?.(true); setFormatOpen(false); }}
                     >
                       Poll
                     </Button>
@@ -295,13 +342,19 @@ export function PostMessageForm({
             </div>
           </div>
 
-          <Button type="submit" size="icon" disabled={isSubmitting || !canSubmit}>
+          <Button
+            type="submit"
+            size="icon"
+            aria-label={isSubmitting ? 'Sending message' : 'Send message'}
+            disabled={isSubmitting || !canSubmit}
+          >
             {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
           </Button>
         </div>
       </div>
 
       <MentionSuggest
+        id={mentionListId}
         open={mentionOpen}
         candidates={mentionCandidates}
         activeIndex={activeMentionIndex}

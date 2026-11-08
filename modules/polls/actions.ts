@@ -333,9 +333,20 @@ export const getUserVoteAction = createServerAction(
   async ({ pollId }) => {
     try {
       const session = await requireSession();
+      const fullPoll = await getPollByIdRepo(pollId);
+      if (!fullPoll) {
+        return pollNotFound();
+      }
+      if (fullPoll.threadId) {
+        await requireReadOrThrow(fullPoll.threadId, session.user.id, session.user.role as Role);
+      }
       const vote = await getUserVoteRepo(pollId, session.user.id);
       return actionSuccess(vote);
     } catch (error) {
+      const mapped = toActionError(error);
+      if (mapped !== null) {
+        return mapped;
+      }
       logger.error('[getUserVote]', error);
       return internalError();
     }

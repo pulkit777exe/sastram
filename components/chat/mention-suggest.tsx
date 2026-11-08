@@ -19,6 +19,7 @@ interface MentionSuggestProps {
   onSelect: (candidate: MentionCandidate) => void;
   onHover: (index: number) => void;
   listRef: RefObject<HTMLDivElement | null>;
+  id?: string;
 }
 
 export function MentionSuggest({
@@ -28,44 +29,55 @@ export function MentionSuggest({
   onSelect,
   onHover,
   listRef,
+  id = 'mention-suggestions',
 }: MentionSuggestProps) {
   if (!open || candidates.length === 0) return null;
 
   return (
     <div
       ref={listRef}
+      id={id}
+      role="listbox"
+      aria-label="Mention suggestions"
       className="absolute bottom-13 left-4 z-30 w-70 rounded-card border border-line bg-popover shadow-linear-xl overflow-hidden"
     >
       <div className="max-h-56 overflow-y-auto py-1.5">
-        {candidates.map((candidate, index) => (
-          <Button
-            variant="ghost"
-            key={candidate.id}
-            className={cn(
-              'w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 h-auto justify-start',
-              index === activeIndex
-                ? 'bg-brand/10 text-brand'
-                : 'hover:bg-muted/50 text-foreground'
-            )}
-            onMouseEnter={() => onHover(index)}
-            onClick={() => onSelect(candidate)}
-          >
-            <Avatar className="size-6 shrink-0">
-              <AvatarImage src={candidate.image ?? undefined} alt={candidate.name ?? candidate.handle} />
-              <AvatarFallback className="text-xs font-medium">
-                {(candidate.name ?? candidate.handle).charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col min-w-0">
-              <span className="font-semibold truncate">
-                {candidate.name || candidate.handle}
-              </span>
-              <span className="text-xs text-muted-foreground truncate">
-                @{candidate.handle}
-              </span>
-            </div>
-          </Button>
-        ))}
+        {candidates.map((candidate, index) => {
+          const optionId = `${id}-option-${candidate.id}`;
+          const selected = index === activeIndex;
+          return (
+            <Button
+              variant="ghost"
+              key={candidate.id}
+              id={optionId}
+              role="option"
+              aria-selected={selected}
+              className={cn(
+                'w-full px-3 py-2 text-left text-xs flex items-center gap-2.5 h-auto justify-start',
+                selected
+                  ? 'bg-brand/10 text-brand'
+                  : 'hover:bg-muted/50 text-foreground'
+              )}
+              onMouseEnter={() => onHover(index)}
+              onClick={() => onSelect(candidate)}
+            >
+              <Avatar className="size-6 shrink-0">
+                <AvatarImage src={candidate.image ?? undefined} alt={candidate.name ?? candidate.handle} />
+                <AvatarFallback className="text-xs font-medium">
+                  {(candidate.name ?? candidate.handle).charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col min-w-0">
+                <span className="font-semibold truncate">
+                  {candidate.name || candidate.handle}
+                </span>
+                <span className="text-xs text-muted-foreground truncate">
+                  @{candidate.handle}
+                </span>
+              </div>
+            </Button>
+          );
+        })}
       </div>
     </div>
   );

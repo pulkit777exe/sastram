@@ -27,3 +27,79 @@ export async function upsertThreadReadReceipt(params: {
     logger.error('[upsertThreadReadReceipt]', error);
   }
 }
+
+export interface ThreadUnreadState {
+  unreadCount: number;
+  firstUnreadMessageId: string | null;
+  lastReadMessageId: string | null;
+}
+
+type UnreadWhere = {
+  threadId: string;
+  deletedAt: null;
+  senderId?: { not: string };
+  OR?: Array<
+    | { createdAt: { gt: Date } }
+    | { createdAt: Date; id: { gt: string } }
+  >;
+};
+
+/**
+ * Server-authoritative unread state for a user in a thread.
+ * Unread = non-deleted messages after the read receipt marker, excluding the user's own messages.
+ * If there is no valid marker, counts from the beginning of the thread.
+ */
+export async function getThreadUnreadState(
+  threadId: string,
+  userId: string
+): Promise<ThreadUnreadState> {
+  try {
+    const receipt = await prisma.readReceipt.findUnique({
+      where: { threadId_userId: { threadId, userId } },
+      select: { lastReadMessageId: true },
+    });
+
+    let marker: { createdAt: Date; id: string } | null = null;
+    if (receipt?.lastReadMessageId) {
+      marker = await prisma.message.findFirst({
+        where: {
+          id: receipt.lastReadMessageId,
+          threadId,
+          deletedAt: null,
+        },
+        select: { id: true, createdAt: true },
+      });
+    }
+
+    const where: UnreadWhere = {
+      threadId,
+      deletedAt: null,
+      senderId: { not: userId },
+    };
+
+    if (marker) {
+      where.OR = [
+        { createdAt: { gt: marker.createdAt } },
+        { createdAt: marker.createdAt, id: { gt: marker.id } },
+      ];
+    }
+
+    const [unreadCount, firstUnread] = await Promise.all([
+      prisma.message.count({ where }),
+      prisma.message.findFirst({
+        where,
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        select: { id: true },
+      }),
+    ]);
+
+    return {
+      unreadCount,
+      firstUnreadMessageId: firstUnread?.id ?? null,
+      lastReadMessageId: marker?.id ?? receipt?.lastReadMessageId ?? null,
+    };
+  } catch (error) {
+    logger.error('[getThreadUnreadState]', error);
+    return { unreadCount: 0, firstUnreadMessageId: null, lastReadMessageId: null };
+  }
+}

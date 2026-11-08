@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { Reply, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,6 +44,8 @@ export function InlineReplyBox({
   onOptimisticMessage,
 }: InlineReplyBoxProps) {
   const replyDepth = Math.min(parentMessage.depth + 1, MAX_VISUAL_DEPTH);
+  const errorId = useId();
+  const mentionListId = useId();
 
   const {
     content,
@@ -118,6 +120,7 @@ export function InlineReplyBox({
             variant="ghost"
             size="icon"
             onClick={onCancel}
+            aria-label="Cancel reply"
           >
             <X size={14} />
           </Button>
@@ -134,6 +137,9 @@ export function InlineReplyBox({
             <div className={cn('t-input', error && 'is-error')}>
               <Textarea
                 ref={textareaRef}
+                aria-label={`Reply to @${parentMessage.sender?.name || 'Anonymous'}`}
+                aria-invalid={!!error}
+                aria-describedby={error ? errorId : undefined}
                 value={content}
                 onChange={(e) => {
                   handleChange(e);
@@ -143,10 +149,25 @@ export function InlineReplyBox({
                 className="min-h-15 max-h-50 text-sm resize-none shadow-none border-0 bg-transparent p-0 focus-visible:ring-0"
                 onKeyDown={handleKeyDown}
                 onBlur={handleBlur}
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={mentionOpen}
+                aria-controls={mentionOpen ? mentionListId : undefined}
+                aria-activedescendant={
+                  mentionOpen && mentionCandidates[activeMentionIndex]
+                    ? `${mentionListId}-option-${mentionCandidates[activeMentionIndex].id}`
+                    : undefined
+                }
               />
             </div>
 
-            <p className="t-error-msg text-xs text-destructive mt-1">{error || 'Reply cannot be empty'}</p>
+            <p
+              id={errorId}
+              role={error ? 'alert' : undefined}
+              className="t-error-msg text-xs text-destructive mt-1"
+            >
+              {error || 'Reply cannot be empty'}
+            </p>
 
             <div className="flex items-center justify-end gap-2 mt-1.5">
               <Button
@@ -170,6 +191,7 @@ export function InlineReplyBox({
       </div>
 
       <MentionSuggest
+        id={mentionListId}
         open={mentionOpen}
         candidates={mentionCandidates}
         activeIndex={activeMentionIndex}

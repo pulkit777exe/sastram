@@ -46,6 +46,14 @@ function syncThreadPolling(options: InternalPollingOptions): () => void {
   let failureCount = 0;
   let cancelled = false;
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let inFlight = false;
+
+  function clearScheduled(): void {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  }
 
   // Single poll attempt — updates backoff counters and merges new messages
   async function pollOnce(): Promise<void> {
@@ -100,16 +108,30 @@ function syncThreadPolling(options: InternalPollingOptions): () => void {
     }
   }
 
+  async function runPollCycle(includeExtras: boolean): Promise<void> {
+    if (cancelled || inFlight) return;
+    inFlight = true;
+    try {
+      await pollOnce();
+      if (includeExtras) {
+        // Shared clock: extras (poll refresh) ride the same visible tick.
+        await onTickExtra?.().catch(() => {});
+      }
+    } finally {
+      inFlight = false;
+    }
+  }
+
   // Schedule next poll with adaptive delay
   function scheduleNext(): void {
     if (cancelled) return;
+    clearScheduled();
     const isFastMode = Object.values(aiInlineStatusRef.current).includes('pending');
     const delay = isFastMode ? FAST_INTERVAL_MS : currentInterval;
     timeoutId = setTimeout(async () => {
+      timeoutId = null;
       if (document.visibilityState === 'visible') {
-        await pollOnce();
-        // Shared clock: extras (poll refresh) ride the same visible tick.
-        await onTickExtra?.().catch(() => {});
+        await runPollCycle(true);
       }
       scheduleNext();
     }, delay);
@@ -118,17 +140,24 @@ function syncThreadPolling(options: InternalPollingOptions): () => void {
   // Resume immediately when tab becomes visible
   function onVisibilityChange(): void {
     if (document.visibilityState === 'visible') {
-      if (timeoutId) clearTimeout(timeoutId);
-      pollOnce().finally(scheduleNext);
+      clearScheduled();
+      if (!inFlight) {
+        void runPollCycle(false).then(() => {
+          if (!cancelled) scheduleNext();
+        });
+      }
+      // If a poll is already in flight, its active cycle will schedule next.
     }
   }
 
-  pollOnce().finally(scheduleNext);
+  void runPollCycle(false).then(() => {
+    if (!cancelled) scheduleNext();
+  });
   document.addEventListener('visibilitychange', onVisibilityChange);
 
   return () => {
     cancelled = true;
-    if (timeoutId) clearTimeout(timeoutId);
+    clearScheduled();
     document.removeEventListener('visibilitychange', onVisibilityChange);
   };
 }

@@ -13,18 +13,7 @@ import {
 import { ThreadDataProvider, ThreadUIStateProvider } from './thread-context';
 import { MessageList } from './message-list';
 
-function findNodeById(nodes: MessageNode[], id: string): MessageNode | null {
-  const stack = [...nodes];
-  while (stack.length > 0) {
-    const node = stack.pop();
-    if (!node) continue;
-    if (node.id === id) return node;
-    if (node.children.length > 0) {
-      stack.push(...node.children);
-    }
-  }
-  return null;
-}
+
 
 function collectAncestorIds(nodes: MessageNode[], targetId: string): string[] {
   // Build a parent lookup table with an explicit loop — no recursion, no spread
@@ -105,7 +94,6 @@ export function CommentTree({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const focusedId = searchParams.get('focus');
 
   useEffect(() => {
     const states = loadCollapseStates(threadId);
@@ -118,10 +106,6 @@ export function CommentTree({
 
   // Pure: tree derives directly from props via useMemo — no local shadow copy.
   const tree = useMemo(() => buildMessageTree(messages), [messages]);
-  const _focusedNode = useMemo(
-    () => (focusedId ? findNodeById(tree, focusedId) : null),
-    [tree, focusedId]
-  );
 
   const toggleCollapse = useCallback(
     (messageId: string) => {
@@ -202,12 +186,7 @@ export function CommentTree({
     [router, pathname, searchParams]
   );
 
-  const _clearFocus = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('focus');
-    const query = params.toString();
-    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }, [router, pathname, searchParams]);
+
 
   const dataContextValue = useMemo(
     () => ({

@@ -112,6 +112,7 @@ function ActionBtn({
       variant="ghost"
       size="icon"
       title={title}
+      aria-label={title}
       onClick={onClick}
       className={cn(
         'w-7 h-7 text-muted-foreground hover:bg-muted hover:text-foreground',
