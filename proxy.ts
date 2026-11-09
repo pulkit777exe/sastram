@@ -126,25 +126,7 @@ export default async function proxy(request: NextRequest) {
   // out; this helper understands both forms.
   const sessionCookie = getSessionCookie(request);
 
-  if (!sessionCookie && !isPublic && !isPublicThreadPath(pathname)) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('reason', 'unauthorized');
-    loginUrl.searchParams.set('redirect', `${pathname}${search}`);
-    const response = NextResponse.redirect(loginUrl);
-    response.headers.set('x-request-id', requestId);
-    return applySecurityHeaders(response, nonce);
-  }
-
-  // NOTE: The /login → /dashboard redirect was removed because proxy.ts
-  // only checks cookie existence, not session validity. When a session
-  // expires in the DB but the cookie persists, this caused an infinite
-  // redirect loop: proxy sends /login → /dashboard, layout sends
-  // /dashboard → /login. The login page now handles the redirect
-  // server-side via getSession().
-
-  // Public endpoints normally enforce their own limits. The Sentry tunnel is
-  // the exception: it must accept unauthenticated POSTs and would otherwise be
-  // an unbounded relay into the Sentry quota.
+  // Apply rate limiting before redirects to prevent abuse
   if (pathname === '/monitoring' && getEnv().RATE_LIMIT_ENABLED) {
     const ip = getRequestIp(request);
     const { success } = await rateLimit({ key: `monitoring:${ip}`, type: 'api' });
@@ -165,6 +147,22 @@ export default async function proxy(request: NextRequest) {
       return applySecurityHeaders(response, nonce);
     }
   }
+
+  if (!sessionCookie && !isPublic && !isPublicThreadPath(pathname)) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('reason', 'unauthorized');
+    loginUrl.searchParams.set('redirect', `${pathname}${search}`);
+    const response = NextResponse.redirect(loginUrl);
+    response.headers.set('x-request-id', requestId);
+    return applySecurityHeaders(response, nonce);
+  }
+
+  // NOTE: The /login → /dashboard redirect was removed because proxy.ts
+  // only checks cookie existence, not session validity. When a session
+  // expires in the DB but the cookie persists, this caused an infinite
+  // redirect loop: proxy sends /login → /dashboard, layout sends
+  // /dashboard → /login. The login page now handles the redirect
+  // server-side via getSession().
 
   const unsafeMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
   // Exempt machine-to-machine endpoints: QStash has its own timing-safe
@@ -202,10 +200,15 @@ export default async function proxy(request: NextRequest) {
     }
 
     if (!origin && !referer) {
-      return NextResponse.json(
-        { error: 'CSRF validation failed: Missing Origin/Referer' },
-        { status: HTTP_STATUS.FORBIDDEN }
-      );
+      const host = request.headers.get('host');
+      if (host && host === appUrl.host) {
+        // Allow same-host requests without Origin/Referer (e.g. some server-side or same-origin calls)
+      } else {
+        return NextResponse.json(
+          { error: 'CSRF validation failed: Missing Origin/Referer' },
+          { status: HTTP_STATUS.FORBIDDEN }
+        );
+      }
     }
   }
 

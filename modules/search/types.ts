@@ -3,17 +3,14 @@ export type SearchThreadResult = {
   name: string;
   slug: string;
   description: string | null;
+  aiSummary?: string | null;
   messageCount: number;
+  createdAt?: Date;
   creator: {
     id: string;
     name: string | null;
-    email: string;
     image: string | null;
-  };
-  _count: {
-    messages: number;
-    members: number;
-  };
+  } | null;
 };
 
 export type SearchMessageResult = {
@@ -23,9 +20,8 @@ export type SearchMessageResult = {
   sender: {
     id: string;
     name: string | null;
-    email: string;
     image: string | null;
-  };
+  } | null;
   thread: {
     id: string;
     name: string;
@@ -36,9 +32,8 @@ export type SearchMessageResult = {
 export type SearchUserResult = {
   id: string;
   name: string | null;
-  email: string;
   image: string | null;
-  bio: string | null;
+  bio?: string | null;
   followerCount: number;
   followingCount: number;
 };

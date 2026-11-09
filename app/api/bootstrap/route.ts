@@ -4,6 +4,8 @@ import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { getUserBootstrapProfile } from '@/modules/users/repository';
 import { getUnreadCount } from '@/modules/notifications/repository';
 import { getUserActivity } from '@/modules/activity/repository';
+import { rateLimit } from '@/lib/services/rate-limit';
+import { logger } from '@/lib/infrastructure/logger';
 
 export async function GET() {
   let session;
@@ -13,31 +15,38 @@ export async function GET() {
     return NextResponse.json(fail('AUTH_REQUIRED', 'No active session'), { status: HTTP_STATUS.UNAUTHORIZED });
   }
 
+  const rl = await rateLimit({ key: `bootstrap:${session.user.id}`, type: 'api' });
+  if (!rl.success) {
+    return NextResponse.json(fail('RATE_LIMITED', 'Too many requests'), { status: HTTP_STATUS.RATE_LIMITED });
+  }
+
   const userId = session.user.id;
 
   try {
-    const [user, unreadNotificationCount, activity] =
-      await Promise.all([
-        getUserBootstrapProfile(userId),
-        getUnreadCount(userId),
-        getUserActivity(userId, 5, 0),
-      ]);
+    const [user, unreadNotificationCount, activity] = await Promise.all([
+      getUserBootstrapProfile(userId),
+      getUnreadCount(userId),
+      getUserActivity(userId, 5, 0),
+    ]);
 
     if (!user) {
       return NextResponse.json(fail('NOT_FOUND', 'User not found'), { status: HTTP_STATUS.NOT_FOUND });
     }
 
-    return NextResponse.json(ok({
-      user: {
-        id: user.id,
-        name: user.name,
-        image: user.image ?? null,
-        role: user.role,
-      },
-      unreadNotificationCount,
-      recentActivity: activity.activities.slice(0, 5),
-    }));
-  } catch {
+    return NextResponse.json(
+      ok({
+        user: {
+          id: user.id,
+          name: user.name,
+          image: user.image ?? null,
+          role: user.role,
+        },
+        unreadNotificationCount,
+        recentActivity: activity.activities.slice(0, 5),
+      })
+    );
+  } catch (error) {
+    logger.error('[bootstrap] GET failed', error);
     return NextResponse.json(fail('INTERNAL_ERROR', 'Failed to load bootstrap data'), { status: HTTP_STATUS.INTERNAL });
   }
 }

@@ -76,7 +76,7 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
                   where: { id: dbSession.user.id, deletedAt: null },
                   select: { role: true, status: true, preferences: true },
                 });
-                if (fullUser) {
+                if (fullUser && fullUser.status !== 'BANNED' && fullUser.status !== 'SUSPENDED') {
                   return {
                     user: {
                       id: dbSession.user.id,
@@ -123,7 +123,7 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
             where: { id: dbSession.user.id, deletedAt: null },
             select: { role: true, status: true, preferences: true },
           });
-          if (fullUser) {
+          if (fullUser && fullUser.status !== 'BANNED' && fullUser.status !== 'SUSPENDED') {
             return {
               user: {
                 id: dbSession.user.id,

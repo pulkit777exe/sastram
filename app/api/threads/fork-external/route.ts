@@ -18,7 +18,18 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   const { success } = await rateLimit({ key: `fork-external:${session.user.id}`, type: 'api' });
   if (!success) return NextResponse.json(fail('RATE_LIMITED', 'Too many external forks, slow down'), { status: HTTP_STATUS.RATE_LIMITED });
 
-  const body = bodySchema.parse(await request.json());
+  let json: unknown;
+  try {
+    json = await request.json();
+  } catch {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const parsed = bodySchema.safeParse(json);
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? 'Invalid request';
+    return NextResponse.json(fail('VALIDATION_ERROR', message), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const body = parsed.data;
   if (!isSafePublicUrl(body.url)) {
     return NextResponse.json(fail('VALIDATION_ERROR', 'URL must be a public http/https URL'), { status: HTTP_STATUS.BAD_REQUEST });
   }

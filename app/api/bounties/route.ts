@@ -12,7 +12,20 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   const session = await requireSessionOrThrow();
   const { success } = await rateLimit({ key: `bounties:${session.user.id}`, type: 'api' });
   if (!success) return NextResponse.json(fail('RATE_LIMITED', 'Too many bounty attempts, try later'), { status: HTTP_STATUS.RATE_LIMITED });
-  const body = postSchema.parse(await request.json());
+
+  let json: unknown;
+  try {
+    json = await request.json();
+  } catch {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const parsed = postSchema.safeParse(json);
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? 'Invalid request';
+    return NextResponse.json(fail('VALIDATION_ERROR', message), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const body = parsed.data;
+
   await requireReadOrThrow(body.threadId, session.user.id, session.user.role as never);
   const bounty = await createBounty(body.threadId, session.user.id, body.amount);
   return NextResponse.json(ok(bounty), { status: HTTP_STATUS.OK });

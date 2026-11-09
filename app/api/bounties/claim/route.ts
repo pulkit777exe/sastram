@@ -17,7 +17,19 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     });
   }
 
-  const { threadId } = claimSchema.parse(await request.json());
+  let json: unknown;
+  try {
+    json = await request.json();
+  } catch {
+    return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid JSON body'), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const parsed = claimSchema.safeParse(json);
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? 'Invalid request';
+    return NextResponse.json(fail('VALIDATION_ERROR', message), { status: HTTP_STATUS.BAD_REQUEST });
+  }
+  const { threadId } = parsed.data;
+
   const thread = await requireReadOrThrow(threadId, session.user.id, session.user.role);
 
   // Bounties are points contributed by the community; only the thread creator

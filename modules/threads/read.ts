@@ -275,19 +275,50 @@ function mapDbMessageToThreadMessage(
   };
 }
 
+const MESSAGE_CURSOR_SEPARATOR = '|';
+
+function parseMessageCursor(raw: string | null | undefined): { createdAt: Date; id: string } | null {
+  if (!raw) return null;
+  const sepIndex = raw.lastIndexOf(MESSAGE_CURSOR_SEPARATOR);
+  if (sepIndex === -1) return null;
+  const datePart = raw.slice(0, sepIndex);
+  const id = raw.slice(sepIndex + 1);
+  if (!id) return null;
+  const createdAt = new Date(datePart);
+  if (Number.isNaN(createdAt.getTime())) return null;
+  return { createdAt, id };
+}
+
+function formatMessageCursor(message: { id: string; createdAt: Date }): string {
+  return `${message.createdAt.toISOString()}${MESSAGE_CURSOR_SEPARATOR}${message.id}`;
+}
+
 async function buildMessageWhereClause(
   threadId: string,
   cursor?: string | null
 ): Promise<Prisma.MessageWhereInput> {
   const where: Prisma.MessageWhereInput = { threadId, ...IS_NOT_DELETED };
   if (!cursor) return where;
+
+  const parsed = parseMessageCursor(cursor);
+  if (parsed) {
+    // KISS: handle same-timestamp messages by tie-breaking on id (cuid is time-ordered)
+    // where (createdAt < cursorCreatedAt) OR (createdAt == cursorCreatedAt AND id < cursorId)
+    return {
+      ...where,
+      OR: [
+        { createdAt: { lt: parsed.createdAt } },
+        { createdAt: parsed.createdAt, id: { lt: parsed.id } },
+      ],
+    };
+  }
+
+  // Backward compatibility: if cursor is just an id, fall back to lookup
   const cursorMessage = await prisma.message.findUnique({
     where: { id: cursor },
     select: { createdAt: true, id: true },
   });
   if (!cursorMessage) return where;
-  // KISS: handle same-timestamp messages by tie-breaking on id (cuid is time-ordered)
-  // where (createdAt < cursorCreatedAt) OR (createdAt == cursorCreatedAt AND id < cursorId)
   return {
     ...where,
     OR: [
@@ -376,7 +407,7 @@ export async function getThreadMessagesPaginated(
   return {
     messages: page.map((m) => mapDbMessageToThreadMessage(m as never, reactionsByMessage, userReactionsByMessage)),
     hasMore,
-    nextCursor: hasMore && page.length > 0 ? page[page.length - 1].id : null,
+    nextCursor: hasMore && page.length > 0 ? formatMessageCursor(page[page.length - 1]) : null,
     totalCount,
   };
 }
