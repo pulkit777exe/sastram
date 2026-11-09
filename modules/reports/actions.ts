@@ -441,6 +441,15 @@ export async function getReportWithContext(reportId: string) {
         messageCount: report.message.thread.messageCount,
         surroundingMessages: mapSurroundingMessages(surroundingMessages, report.messageId),
       },
+      reporterProfile: report.reporter
+        ? {
+            id: report.reporter.id,
+            name: report.reporter.name,
+            email: report.reporter.email,
+            createdAt: report.reporter.createdAt,
+            totalReports: 0,
+          }
+        : null,
       reportedUserProfile: {
         id: report.message.sender?.id ?? 'unknown',
         email: report.message.sender?.email ?? 'unknown',
@@ -450,6 +459,7 @@ export async function getReportWithContext(reportId: string) {
         trustScore: Math.round(trustScore),
         violationHistory: mapViolationHistory(violationHistory),
       },
+      aiAnalysis: null,
       similarReports,
       reportCount: similarReports.length + 1,
     });

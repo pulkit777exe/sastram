@@ -59,7 +59,7 @@ export interface ReportWithContext extends Report {
     email: string;
     createdAt: Date;
     totalReports: number;
-  };
+  } | null;
   reportedUserProfile: {
     id: string;
     name: string | null;

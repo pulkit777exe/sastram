@@ -83,7 +83,6 @@ export async function inviteFriendToThread(formData: FormData) {
   const parsed = inviteFriendSchema.safeParse({
     threadId: formData.get('threadId'),
     email: formData.get('email'),
-    message: formData.get('message') ?? undefined,
   });
 
   if (!parsed.success) {

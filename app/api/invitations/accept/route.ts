@@ -66,12 +66,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fail(invitation.status, `This invitation has been ${invitation.status.toLowerCase()}`), { status: 410 });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.threadInvitation.update({
-        where: { id: invitationId },
-        data: { status: 'ACCEPTED', inviteeId: session.user.id },
-      });
-    }, { maxWait: 5000, timeout: 10000 });
+    await prisma.threadInvitation.update({
+      where: { id: invitationId },
+      data: { status: 'ACCEPTED', inviteeId: session.user.id },
+    });
 
     revalidatePath(`/dashboard/threads/${invitation.thread.slug}`);
     return NextResponse.json(ok({ threadSlug: invitation.thread.slug }));
