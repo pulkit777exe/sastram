@@ -14,6 +14,9 @@ export {
   createThread,
   deleteThread,
   updateThreadDNA,
+  updateThreadVerified,
+  updateThreadDetails,
+  forkThread,
 } from './write';
 
 export {

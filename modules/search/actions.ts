@@ -27,7 +27,14 @@ export const searchThreadsAction = withValidation(
   'searchThreads',
   async ({ query, limit, offset }) => {
     const session = await requireSession();
-    const result = await searchThreadsRepo(query, limit, offset, undefined, session.user.id);
+    const result = await searchThreadsRepo(
+      query,
+      limit,
+      offset,
+      undefined,
+      session.user.id,
+      session.user.role
+    );
     return actionSuccess(result);
   }
 );
@@ -37,7 +44,14 @@ export const searchMessagesAction = withValidation(
   'searchMessages',
   async ({ query, threadId, limit, offset }) => {
     const session = await requireSession();
-    const result = await searchMessagesRepo(query, threadId, limit, offset, session.user.id);
+    const result = await searchMessagesRepo(
+      query,
+      threadId,
+      limit,
+      offset,
+      session.user.id,
+      session.user.role
+    );
     return actionSuccess(result);
   }
 );

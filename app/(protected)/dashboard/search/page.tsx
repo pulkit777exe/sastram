@@ -327,7 +327,7 @@ export default function SearchPage() {
                         <Link href={ROUTES.THREAD(message.thread.slug)} prefetch={false} className="flex-1 min-w-0">
                           <p className="text-sm text-ink line-clamp-3 group-hover:text-brand">{highlight(message.content.slice(0, 280), query)}</p>
                           <p className="text-xs text-muted-foreground mt-2">
-                            by {message.sender.name || 'Unknown'} in <span className="font-medium">{message.thread.name}</span>
+                            by {message.sender?.name || 'Unknown'} in <span className="font-medium">{message.thread.name}</span>
                           </p>
                         </Link>
                         <div className="shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">

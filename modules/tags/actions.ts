@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { requireSession } from '@/modules/auth';
+import { getSession, requireSession } from '@/modules/auth';
 import { requireRole } from '@/modules/policy';
 import { requireWriteOrThrow } from '@/lib/thread-access';
 import { revalidatePath } from 'next/cache';
@@ -73,12 +73,16 @@ export const removeTagFromThreadAction = createServerAction(
 );
 
 export const getPopularTagsAction = withValidation(
-  z.object({ limit: z.number().int().positive().max(100).optional() }),
+  z.object({ limit: z.coerce.number().int().positive().max(100).optional() }),
   'getPopularTagsAction',
   async ({ limit }) => {
-    const session = await requireSession(false);
+    const session = await getSession();
     const effectiveLimit = limit ?? DEFAULT_POPULAR_TAGS_LIMIT;
-    const tags = await getPopularTagsRepo(effectiveLimit, session.user.id, session.user.role);
+    const tags = await getPopularTagsRepo(
+      effectiveLimit,
+      session?.user?.id,
+      session?.user?.role
+    );
     return actionSuccess(tags);
   }
 );

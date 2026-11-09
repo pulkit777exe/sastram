@@ -89,7 +89,7 @@ export function buildThreadDTO(
     latestMessage: null,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
-    createdBy: thread.createdBy ?? '',
+    createdBy: thread.createdBy ?? null,
     verifiedAt: (thread as unknown as { verifiedAt?: Date | null }).verifiedAt ?? null,
     resolutionScore: (thread as unknown as { resolutionScore?: number | null }).resolutionScore ?? null,
   };
