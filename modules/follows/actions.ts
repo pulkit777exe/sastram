@@ -47,8 +47,8 @@ export const followUser = createServerAction(
       return actionFailure('NOT_FOUND', 'User not found');
     }
 
-    const alreadyFollowing = await followUserRepo(session.user.id, userId);
-    if (alreadyFollowing) {
+    const created = await followUserRepo(session.user.id, userId);
+    if (!created) {
       // User is already following — don't dispatch a duplicate notification.
       revalidateFollowPaths(userId);
       return actionSuccess(null);

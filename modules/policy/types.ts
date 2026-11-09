@@ -1,1 +1,5 @@
-export type AuthPolicyRole = 'ADMIN' | 'MODERATOR' | 'USER';
+import type { UserRole } from '@/lib/config/constants';
+
+export type AuthPolicyRole = UserRole;
+
+export { USER_ROLES, type UserRole } from '@/lib/config/constants';

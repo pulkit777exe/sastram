@@ -24,7 +24,7 @@ export async function followUser(followerId: string, followingId: string) {
     });
 
     // Already following — don't double-count
-    if (existing) return existing;
+    if (existing) return false;
 
     const follow = await tx.userFollow.create({
       data: { followerId, followingId },
@@ -40,7 +40,7 @@ export async function followUser(followerId: string, followingId: string) {
       data: { followerCount: { increment: 1 } },
     });
 
-    return follow;
+    return true;
   });
 }
 

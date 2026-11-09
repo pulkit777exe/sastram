@@ -11,12 +11,18 @@ export async function recordActivity(data: {
   entityId: string;
   metadata?: unknown;
 }) {
-  return prisma.userActivity.create({
-    data: {
-      ...data,
-      metadata: data.metadata as Prisma.InputJsonValue,
-    },
-  });
+  try {
+    const { metadata, ...rest } = data;
+    return await prisma.userActivity.create({
+      data: {
+        ...rest,
+        ...(metadata !== undefined ? { metadata: metadata as Prisma.InputJsonValue } : {}),
+      },
+    });
+  } catch (error) {
+    logger.error('[recordActivity]', error);
+    throw error;
+  }
 }
 
 const DEFAULT_ACTIVITY_LIMIT = 20;

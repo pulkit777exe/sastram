@@ -69,7 +69,7 @@ export async function closePoll(pollId: string) {
 }
 
 export async function getPollById(pollId: string) {
-  return prisma.poll.findUnique({
+  const poll = await prisma.poll.findUnique({
     where: { id: pollId },
     select: {
       id: true,
@@ -81,6 +81,13 @@ export async function getPollById(pollId: string) {
       thread: { select: { id: true, slug: true, createdBy: true } },
     },
   });
+
+  if (!poll) return null;
+
+  return {
+    ...poll,
+    options: parsePollOptions(poll.options),
+  };
 }
 
 export async function getPollResults(pollId: string) {
@@ -148,8 +155,15 @@ export async function getUserVote(pollId: string, userId: string) {
 }
 
 export async function getPollByThreadId(threadId: string) {
-  return prisma.poll.findFirst({
-    where: { message: { threadId } },
+  const poll = await prisma.poll.findFirst({
+    where: { threadId },
     include: { _count: { select: { votes: true } } },
   });
+
+  if (!poll) return null;
+
+  return {
+    ...poll,
+    options: parsePollOptions(poll.options),
+  };
 }
