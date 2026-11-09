@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { cache } from 'react';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Role } from '@prisma/client';
 import type { User } from '@prisma/client';
@@ -12,6 +12,7 @@ import { AppError } from '@/lib/utils/errors';
 import { isAdmin } from '@/lib/config/permissions';
 import { safeRedirectPath } from '@/lib/utils/safe-redirect';
 import { requireReadOrThrow, requireWriteOrThrow } from '@/lib/thread-access';
+import { getSessionCookie } from 'better-auth/cookies';
 
 export type SessionUser = Pick<User, 'id' | 'email' | 'name' | 'image' | 'role' | 'status' | 'preferences'>;
 
@@ -28,33 +29,117 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 export const getSession = cache(async (): Promise<SessionPayload | null> => {
-  let session: Awaited<ReturnType<typeof auth.api.getSession>> | null;
-  try {
-    session = await withTimeout(
-      auth.api.getSession({
-        headers: await headers(),
-      }),
-      3000,
-      'getSession'
-    );
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const isDbError =
-      msg.includes('ENOTFOUND') ||
-      msg.includes('Failed to get session') ||
-      msg.includes('network error') ||
-      msg.includes('getaddrinfo') ||
-      msg.includes('ENETUNREACH') ||
-      msg.includes('timeout after') ||
-      (err as { code?: string })?.code === 'ENOTFOUND' ||
-      (err as { code?: string })?.code === 'ENETUNREACH';
-    if (isDbError) {
-      logger.warn('[auth] getSession failed - DB unavailable', {
-        error: msg.slice(0, 120),
-      });
-      throw new AppError('Service temporarily unavailable', 'SERVICE_UNAVAILABLE', 503);
+  let session: Awaited<ReturnType<typeof auth.api.getSession>> | null = null;
+  const headersList = await headers();
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      session = await withTimeout(
+        auth.api.getSession({
+          headers: headersList,
+        }),
+        attempt === 1 ? 8000 : 12000,
+        'getSession'
+      );
+      break;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isDbError =
+        msg.includes('ENOTFOUND') ||
+        msg.includes('Failed to get session') ||
+        msg.includes('network error') ||
+        msg.includes('getaddrinfo') ||
+        msg.includes('ENETUNREACH') ||
+        msg.includes('timeout after') ||
+        (err as { code?: string })?.code === 'ENOTFOUND' ||
+        (err as { code?: string })?.code === 'ENETUNREACH';
+      if (attempt === 2) {
+        if (isDbError) {
+          logger.warn('[auth] getSession failed - DB unavailable, trying fallback', {
+            error: msg.slice(0, 120),
+          });
+          // Fallback: try to read session directly from DB via cookie
+          try {
+            const cookieStore = await cookies();
+            // Build a request-like object for getSessionCookie
+            const token = getSessionCookie({
+              headers: new Headers({
+                cookie: cookieStore.toString(),
+              }),
+            } as unknown as Request);
+            if (token) {
+              const dbSession = await prisma.session.findUnique({
+                where: { token },
+                include: { user: true },
+              });
+              if (dbSession && dbSession.expiresAt > new Date() && !dbSession.user.deletedAt) {
+                const fullUser = await prisma.user.findUnique({
+                  where: { id: dbSession.user.id, deletedAt: null },
+                  select: { role: true, status: true, preferences: true },
+                });
+                if (fullUser) {
+                  return {
+                    user: {
+                      id: dbSession.user.id,
+                      email: dbSession.user.email,
+                      name: dbSession.user.name,
+                      image: dbSession.user.image ?? null,
+                      role: fullUser.role as Role,
+                      status: fullUser.status,
+                      preferences: (fullUser as unknown as { preferences: unknown }).preferences ?? {},
+                    },
+                  };
+                }
+              }
+            }
+          } catch (fallbackErr) {
+            logger.warn('[auth] getSession fallback failed', {
+              error: fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr),
+            });
+          }
+          return null;
+        }
+        throw err;
+      }
+      // brief backoff before retry
+      await new Promise((r) => setTimeout(r, 150));
     }
-    throw err;
+  }
+  if (!session) {
+    // try fallback if we somehow got here
+    try {
+      const cookieStore = await cookies();
+      const token = getSessionCookie({
+        headers: new Headers({
+          cookie: cookieStore.toString(),
+        }),
+      } as unknown as Request);
+      if (token) {
+        const dbSession = await prisma.session.findUnique({
+          where: { token },
+          include: { user: true },
+        });
+        if (dbSession && dbSession.expiresAt > new Date() && !dbSession.user.deletedAt) {
+          const fullUser = await prisma.user.findUnique({
+            where: { id: dbSession.user.id, deletedAt: null },
+            select: { role: true, status: true, preferences: true },
+          });
+          if (fullUser) {
+            return {
+              user: {
+                id: dbSession.user.id,
+                email: dbSession.user.email,
+                name: dbSession.user.name,
+                image: dbSession.user.image ?? null,
+                role: fullUser.role as Role,
+                status: fullUser.status,
+                preferences: (fullUser as unknown as { preferences: unknown }).preferences ?? {},
+              },
+            };
+          }
+        }
+      }
+    } catch {}
+    return null;
   }
 
   if (!session) {
