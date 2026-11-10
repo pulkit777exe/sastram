@@ -74,7 +74,7 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
                 void updatePreference('theme', value as UserPreferences['theme'])
               }
             >
-              <SelectTrigger className="w-full h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all">
+              <SelectTrigger className="w-full h-11 rounded-card border-line bg-field/50 text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all">
                 <SelectValue placeholder="Select theme" />
               </SelectTrigger>
               <SelectContent>
@@ -124,7 +124,7 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
                 void updatePreference('emailDigest', value as UserPreferences['emailDigest'])
               }
             >
-              <SelectTrigger className="w-full h-11 rounded-card border-line bg-background text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all">
+              <SelectTrigger className="w-full h-11 rounded-card border-line bg-field/50 text-ink focus-visible:ring-2 focus-visible:ring-brand/50 transition-all">
                 <SelectValue placeholder="Select frequency" />
               </SelectTrigger>
               <SelectContent>
@@ -281,7 +281,7 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
               value={prefs.expertiseLevel ?? 'intermediate'}
               onValueChange={(value) => void updatePreference('expertiseLevel' as keyof UserPreferences, value as UserPreferences['expertiseLevel'])}
             >
-              <SelectTrigger className="w-full h-11 rounded-card border-line bg-background">
+              <SelectTrigger className="w-full h-11 rounded-card border-line bg-field/50">
                 <SelectValue placeholder="Select level" />
               </SelectTrigger>
               <SelectContent>
