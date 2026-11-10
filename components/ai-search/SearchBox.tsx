@@ -176,7 +176,7 @@ export function SearchBox({
         </div>
       )}
 
-      {/* Composer card — KISS: same tokens as SearchInputBar inner */}
+      {/* Composer card — same tokens as SearchInputBar inner */}
       <div className="relative">
         {/* /command menu */}
         {menu && rows.length > 0 && (
@@ -285,7 +285,7 @@ export function SearchBox({
               disabled={isLoading}
               placeholder={compact ? 'Search again…' : 'Search or type / for commands…'}
               aria-label="Search query"
-              className="min-h-7 min-w-0 w-full col-span-full resize-none bg-transparent px-1 py-1 text-[15px] leading-6 text-ink outline-none wrap:anywhere placeholder:text-ink-2"
+              className="min-h-7 min-w-0 w-full col-span-full resize-none px-1 py-1 text-[15px] leading-6 text-ink outline-none wrap:anywhere placeholder:text-ink-2"
             />
 
             {/* Model picker */}

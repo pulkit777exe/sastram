@@ -159,7 +159,13 @@ export function handleStatusError(status: number, response: Response, ctx: { set
     toasts.error('Rate limit exceeded', retryAfter ? `Please wait ${retryAfter} seconds.` : 'Please wait a moment before searching again.');
     ctx.setAppState('idle'); ctx.clearStreaming(); return true;
   }
-  if (status === 503) { toasts.error('Service unavailable', 'AI features are temporarily over quota. Try again later.'); ctx.setAppState('error'); ctx.setErrorMessage('AI features are temporarily unavailable due to high demand.'); ctx.clearStreaming(); return true; }
+  if (status === 503) {
+    toasts.error("We're experiencing high demand", 'Our AI is a bit busy right now. Please try again in a moment.');
+    ctx.setAppState('error');
+    ctx.setErrorMessage("Our AI is experiencing high demand right now. Please try again in a moment.");
+    ctx.clearStreaming();
+    return true;
+  }
   return false;
 }
 
@@ -195,7 +201,14 @@ function handleBlockedPhase(message: string | undefined, ctx: { streamingDataRef
   ctx.setTaskFailed(true); ctx.setErrorMessage(message || 'Search blocked by quota or usage cap.'); ctx.streamingDataRef.current = null; ctx.setStreamingMessage(null); ctx.setAppState('blocked'); ctx.setIsStreaming(false);
 }
 function handleStreamErrorPhase(message: string | undefined, ctx: { streamingDataRef: React.MutableRefObject<ChatMessage | null>; setStreamingMessage: React.Dispatch<React.SetStateAction<ChatMessage | null>>; setErrorMessage: (s: string) => void; setAppState: (s: AppState) => void; setIsStreaming: (b: boolean) => void; setTaskFailed: (b: boolean) => void }): void {
-  ctx.setTaskFailed(true); ctx.setErrorMessage(message || 'Search failed.'); ctx.streamingDataRef.current = null; ctx.setStreamingMessage(null); ctx.setAppState('error'); ctx.setIsStreaming(false); toasts.error('Search failed');
+  const friendlyMessage = message || 'Search failed. Please try again.';
+  ctx.setTaskFailed(true);
+  ctx.setErrorMessage(friendlyMessage);
+  ctx.streamingDataRef.current = null;
+  ctx.setStreamingMessage(null);
+  ctx.setAppState('error');
+  ctx.setIsStreaming(false);
+  toasts.error('Search failed', friendlyMessage);
 }
 
 function dispatchStreamEvent(event: ReturnType<typeof parseSSELine> & object, ctx: { streamingDataRef: React.MutableRefObject<ChatMessage | null>; sessionIdRef: React.MutableRefObject<string | undefined>; phaseTimerRef: React.MutableRefObject<Set<ReturnType<typeof setTimeout>>>; setStreamingMessage: React.Dispatch<React.SetStateAction<ChatMessage | null>>; setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>; setCurrentSessionId: (s: string | undefined) => void; setCurrentStep: (n: number) => void; setAppState: (s: AppState) => void; setIsStreaming: (b: boolean) => void; setSlowHint: (b: boolean) => void; setTaskFailed: (b: boolean) => void; setErrorMessage: (s: string) => void; armSlowTimer: (p: string) => void }): void {

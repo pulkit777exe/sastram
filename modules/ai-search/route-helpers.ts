@@ -240,13 +240,16 @@ export function mapStreamError(error: unknown): { message: string; errorCode: st
   if (error instanceof AISearchError) {
     const message =
       error.status === HTTP_STATUS.SERVICE_UNAVAILABLE
-        ? 'The AI provider is temporarily unavailable (quota or rate limit). Please try again later.'
+        ? "Our AI is experiencing high demand right now. Please try again in a moment."
         : 'The AI search could not be completed. Please try again.';
     const errorCode = error.status === HTTP_STATUS.SERVICE_UNAVAILABLE ? 'PROVIDER_QUOTA' : 'SYNTHESIS_FAILED';
     return { message, errorCode };
   }
-  if (error instanceof Error && /429|quota/.test(error.message)) {
-    return { message: 'API quota exceeded. Please try again later or use a different API key.', errorCode: 'SYNTHESIS_FAILED' };
+  if (error instanceof Error && /429|quota|503|unavailable|high demand/i.test(error.message)) {
+    return {
+      message: "Our AI is experiencing high demand right now. Please try again in a moment.",
+      errorCode: 'PROVIDER_QUOTA',
+    };
   }
   return { message: 'An internal error occurred. Please try again.', errorCode: 'SYNTHESIS_FAILED' };
 }
@@ -266,7 +269,7 @@ export function mapTopLevelError(error: unknown): NextResponse {
   if (error instanceof AISearchError) {
     const message =
       error.status === HTTP_STATUS.SERVICE_UNAVAILABLE
-        ? 'The AI provider is temporarily unavailable (quota or rate limit). Please try again later.'
+        ? "Our AI is experiencing high demand right now. Please try again in a moment."
         : 'The AI search could not be completed. Please try again.';
     return NextResponse.json(fail('SERVICE_UNAVAILABLE', message), {
       status: error.status,
@@ -275,9 +278,9 @@ export function mapTopLevelError(error: unknown): NextResponse {
   }
 
   if (error instanceof Error) {
-    if (error.message.includes('429') || error.message.includes('quota')) {
+    if (/429|quota|503|unavailable|high demand/i.test(error.message)) {
       return NextResponse.json(
-        fail('SERVICE_UNAVAILABLE', 'API quota exceeded. Please try again later or use a different API key.'),
+        fail('SERVICE_UNAVAILABLE', "Our AI is experiencing high demand right now. Please try again in a moment."),
         { status: HTTP_STATUS.SERVICE_UNAVAILABLE, headers: { 'Cache-Control': 'no-store' } }
       );
     }

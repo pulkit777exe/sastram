@@ -106,6 +106,9 @@ interface StructuredSynthesis {
   citations: Citation[];
   queryType: QueryType;
   conflictData: ConflictInfo | null;
+  plan?: unknown;
+  evidence?: unknown;
+  gaps?: unknown;
 }
 
 export function parseStructuredSynthesis(raw: string, sources: Source[]): StructuredSynthesis {
@@ -150,6 +153,9 @@ export function parseStructuredSynthesis(raw: string, sources: Source[]): Struct
       citations,
       queryType,
       conflictData: parsed.conflictData ?? null,
+      plan: parsed.plan,
+      evidence: parsed.evidence,
+      gaps: parsed.gaps,
     };
   } catch (err) {
     logger.warn('[ai-search] Structured synthesis parse failed, falling back to raw text', {
@@ -228,7 +234,10 @@ Schema:
   "text": string,
   "citations": [{ "marker": number, "sourceId": string }],
   "queryType": "factual" | "opinion" | "technical" | "comparison",
-  "conflictData": null | { "detected": boolean, "description": string, "sideA": string, "sideB": string }
+  "conflictData": null | { "detected": boolean, "description": string, "sideA": string, "sideB": string },
+  "plan": { "steps": [{ "id": string, "title": string, "description": string?, "status": "pending"|"done"|"skipped"? }], "summary": string? },
+  "evidence": [{ "id": string, "sourceId": string, "claim": string, "excerpt": string?, "confidence": number? }],
+  "gaps": { "gaps": string[], "suggestions": string[]? }
 }
 
 STRICT rules:
@@ -239,6 +248,7 @@ STRICT rules:
 5. If query type is "comparison", include a Verdict section with a clear recommendation.
 6. Max 400 words total. Light markdown (bold, bullets) is allowed. No headers with #.
 7. Set "conflictData" to a detected conflict object only if sources genuinely contradict each other (not mere opinion differences); otherwise null.
+8. Optionally include "plan" with key research steps taken to answer, "evidence" mapping strong claims to sourceIds with short excerpts, and "gaps" listing unanswered questions or missing info. Omit these if not relevant.
 ${conflictNote}
 
 IMPORTANT:
@@ -267,6 +277,9 @@ IMPORTANT:
       sourceCount: sources.length,
       conflictData: parsed.conflictData ?? conflictData,
       processingTimeMs: 0,
+      plan: parsed.plan as SynthesisResult['plan'],
+      evidence: parsed.evidence as SynthesisResult['evidence'],
+      gaps: parsed.gaps as SynthesisResult['gaps'],
     };
   } catch (error) {
     logger.error('Synthesis failed:', error);
@@ -277,7 +290,7 @@ IMPORTANT:
     let message: string;
     let errorStatus: number;
     if (isQuota) {
-      message = 'The AI provider is temporarily over quota. Please try again later.';
+      message = "Our AI is experiencing high demand right now. Please try again in a moment.";
       errorStatus = 503;
     } else {
       message = 'Synthesis failed due to an AI provider error. Please try again.';

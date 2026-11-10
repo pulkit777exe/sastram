@@ -53,6 +53,31 @@ export interface Citation {
   sourceId: string;
 }
 
+export interface ResearchPlanStep {
+  id: string;
+  title: string;
+  description?: string;
+  status?: 'pending' | 'done' | 'skipped';
+}
+
+export interface ResearchPlan {
+  steps: ResearchPlanStep[];
+  summary?: string;
+}
+
+export interface ResearchEvidence {
+  id: string;
+  sourceId: string;
+  claim: string;
+  excerpt?: string;
+  confidence?: number;
+}
+
+export interface ResearchGaps {
+  gaps: string[];
+  suggestions?: string[];
+}
+
 export interface SynthesisResult {
   /** Citable prose with inline [n] markers. Single source of truth. */
   text: string;
@@ -63,6 +88,9 @@ export interface SynthesisResult {
   processingTimeMs: number;
   cachedAt?: string;
   citations?: Citation[];
+  plan?: ResearchPlan;
+  evidence?: ResearchEvidence[];
+  gaps?: ResearchGaps;
 }
 
 export interface AISearchResponse {
