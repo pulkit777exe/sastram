@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { visibilityFilter } from '@/lib/thread-access';
-import { Prisma, Role } from '@prisma/client';
+import { Prisma, ProfilePrivacy, Role } from '@prisma/client';
 
 const insensitive = 'insensitive' as const;
 
@@ -241,9 +241,31 @@ export async function searchUsers(query: string, limit: number = 20, offset: num
     for (const term of searchTerms) {
       or.push({ name: { contains: term, mode: insensitive } });
     }
+
+    // Privacy is part of the candidate query, not a post-filter: an
+    // unauthorized private profile must not affect matching, scoring, or the
+    // result window. FOLLOWERS_ONLY is visible only to its followers; the
+    // viewer always sees their own profile.
+    const privacyWhere: Prisma.UserWhereInput =
+      viewerId && viewerId.length > 0
+        ? {
+            OR: [
+              { id: viewerId },
+              { profilePrivacy: ProfilePrivacy.PUBLIC },
+              {
+                profilePrivacy: ProfilePrivacy.FOLLOWERS_ONLY,
+                // `User.following` is the relation to UserFollow rows where
+                // this candidate is the followed user; require the viewer to
+                // be the follower.
+                following: { some: { followerId: viewerId } },
+              },
+            ],
+          }
+        : { profilePrivacy: ProfilePrivacy.PUBLIC };
+
     const where: Prisma.UserWhereInput = {
       ...IS_ACTIVE_NOT_DELETED_USER,
-      OR: or,
+      AND: [{ OR: or }, privacyWhere],
     };
 
     // Window, not pool (see searchThreads): page + one probe row, no

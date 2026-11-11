@@ -1,6 +1,6 @@
 # View Transitions on Thread + SaiSearch — Spec
 
-Status: implemented (2026-10-11 re-audit). Shipped behind `NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED` (default on), SSR-safe + `prefers-reduced-motion` guard. Originally drafted pre-implementation; sections below marked where the final code diverged from the draft.
+Status: implemented (2026-10-11 re-audit). Shipped behind `NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED` (default on), SSR-safe + `prefers-reduced-motion` guard. Originally drafted pre-implementation; sections below marked where the final code diverged from the draft. Phase 1 (2026-11-11) re-verified on React 19.3.1: an async update reaches `document.startViewTransition` through `SaiViewTransition`, so the wrapper is not a no-op.
 
 Scope: thread page (`/dashboard/threads/[slug]`) and SaiSearch (`/dashboard/sai-search`).
 Source skills (summary-only, per your instruction):

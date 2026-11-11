@@ -3,22 +3,21 @@
  *
  * Snippets are other users' code executed in the viewer's browser after an
  * explicit Run click. `new Function('console', prelude + code)` scopes the
- * snippet: every name below resolves to `undefined` inside snippet scope via
- * `const` shadowing, while the page / worker runtimes keep working.
+ * snippet inside a sandboxed iframe: every name below resolves to `undefined`
+ * inside snippet scope via `const` shadowing, while the sandbox runtime keeps
+ * working.
  *
- * Threat model: a snippet calling `fetch('/api/...')` would ride the viewer's
- * same-origin session; `postMessage` could forge completion output.
+ * Threat model: a snippet calling `fetch('/api/...')` could ride the viewer's
+ * session if it ran same-origin; `postMessage` could forge completion output.
  *
  * Why each entry:
  * - fetch / XMLHttpRequest / WebSocket / EventSource / WebTransport /
  *   BroadcastChannel / navigator (sendBeacon): network exfiltration as the viewer.
- * - importScripts: pulls remote code into the worker.
+ * - importScripts: pulls remote code into the sandbox.
  * - self / globalThis: escape hatches back to the real global (and its fetch).
  * - postMessage / onmessage / close: forging completion messages, killing runs.
  * - Function: nested constructors run in *global* scope, escaping these
- *   shadows. (Direct `eval` stays in snippet scope and only sees the shadows;
- *   indirect eval and nested constructors are additionally blocked by the
- *   worker CSP in production, which carries no `unsafe-eval`.)
+ *   shadows. (Direct `eval` stays in snippet scope and only sees the shadows.)
  */
 const WORKER_NEUTERED = [
   'fetch',
@@ -38,8 +37,9 @@ const WORKER_NEUTERED = [
 ] as const;
 
 /**
- * Extra neutering for the main-thread fallback path, which (unlike the blob
- * Worker) shares the page DOM. Applied on top of WORKER_NEUTERED.
+ * Extra neutering for iframe execution, which (unlike a dedicated Worker)
+ * shares a DOM and storage surface even though the sandbox makes it opaque.
+ * Applied on top of WORKER_NEUTERED.
  */
 const MAIN_THREAD_EXTRA = [
   'document',
@@ -68,7 +68,7 @@ export function buildSandboxPrelude(): string {
   return buildPrelude(WORKER_NEUTERED);
 }
 
-/** Worker prelude + DOM/storage neutering for main-thread fallback runs. */
+/** Sandbox prelude + DOM/storage neutering for the iframe. */
 export function buildMainThreadPrelude(): string {
   return buildPrelude([...WORKER_NEUTERED, ...MAIN_THREAD_EXTRA]);
 }
@@ -78,7 +78,7 @@ export function neuteredNames(): string[] {
   return [...WORKER_NEUTERED];
 }
 
-/** DOM names additionally neutered on the main-thread fallback path. */
+/** DOM names additionally neutered in the iframe. */
 export function mainThreadExtraNames(): string[] {
   return [...MAIN_THREAD_EXTRA];
 }

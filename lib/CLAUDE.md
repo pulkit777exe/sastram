@@ -41,7 +41,7 @@ Business logic services.
 - `soft-delete-purge.ts` - Purges soft-deleted users after 30 days
 - `usage-check.ts` - Usage limit checks
 - `user-memory.ts` - Weekly expertiseLevel inference (50 active users, `threadDna` + `AiSearchSession.queryType`)
-- `knowledge-promotion.ts` - Auto-promotes verified high-score threads (`resolutionScore > 85` + `verifiedAt` → `KnowledgePage`)
+- `knowledge-promotion.ts` - Auto-promotes PUBLIC, verified, current threads with `resolutionScore > 85` and a real `aiSummary` into `KnowledgePage`; demotes pages whose thread stops qualifying and bumps `version` only on content change
 
 ### `lib/infrastructure/`
 Database, cache, logging.

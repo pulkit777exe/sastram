@@ -98,6 +98,32 @@ successfully before `app` starts.
 docker compose up --build
 ```
 
+### Database adapter selection (Docker and Neon)
+
+`lib/infrastructure/prisma.ts` picks the driver adapter from the connection
+string:
+
+- URLs whose host contains `neon.tech` or `-pooler.` use `PrismaNeon`
+  (`@prisma/adapter-neon`).
+- Every other URL uses `PrismaPg` (`@prisma/adapter-pg`), including the local
+  PostgreSQL service in `docker-compose.yml`.
+
+So the default Compose stack exercises the `PrismaPg` path, not the Neon
+adapter. To verify the Neon adapter in Docker, point the app container at a
+pooled Neon URL:
+
+```bash
+DATABASE_URL='postgresql://...-pooler...neon.tech/...' \
+  docker compose up --build
+```
+
+Run migrations against the direct (unpooled) endpoint first, either from the
+host with `bun run db:deploy` or by overriding the `migrate` service's
+`DATABASE_URL`. The Docker daemon is not available in every development/CI
+environment; when it is unavailable, adapter selection can still be checked by
+inspection against the rules above, but a live container run is required before
+claiming Docker+Neon is verified.
+
 ## 3. Probes
 
 | Endpoint | Purpose | Expected |
@@ -123,10 +149,14 @@ Vercel schedules four cron paths from `vercel.json`:
 | --- | --- | --- |
 | `update-threads` | 03:00 | AI refresh, retention/purge, counter reconciliation |
 | `cleanup-blobs` | 04:00 | Delete orphaned uploads |
-| `promote-knowledge` | 05:00 | Promote verified high-confidence threads |
-| `daily-digest` | 09:00, 09:15, 09:30, 09:45 | Newsletter/digest delivery, paged with per-subscription checkpoints |
+| `promote-knowledge` | 05:00 | Promote verified high-confidence public threads |
+| `daily-digest` | 09:00 | Newsletter/digest delivery, paged with per-subscription checkpoints |
 
-> **Plan constraint:** Vercel Hobby allows only one run per cron path per day. The four daily-digest runs above require Vercel Pro. On Hobby, reduce that entry to `0 9 * * *`; the route checkpoints each subscription and will process what fits in its 45-second budget, then resume the remaining pages on the next day's run. Do not assume the four-run drain behavior on Hobby.
+> **Plan constraint:** Vercel Hobby allows only one run per cron path per day.
+> All schedules in `vercel.json` are daily. `daily-digest` processes what fits in
+> its 45-second budget and checkpoints each subscription; remaining pages resume
+> on the next day's run. A second run on the same day skips subscriptions already
+> attempted today.
 
 Every route under `/api/cron` requires `Authorization: Bearer $CRON_SECRET`.
 Vercel sends this automatically when `CRON_SECRET` is configured. For another
@@ -138,9 +168,11 @@ and read notifications older than 90 days. Soft-deleted users/threads are
 hard-purged after 30 days.
 
 `daily-digest` processes 100 subscriptions per page with a 45-second budget and
-writes `lastAttemptedAt`/`lastSentAt`. The four 09:00 runs drain later pages
-without resending earlier ones; a crashed worker leaves the short QStash
-processing lease to expire so the delivery can be retried.
+writes `lastAttemptedAt`/`lastSentAt`. Before sending, it re-reads the current
+thread rows and re-checks each recipient's read access, so a thread that turned
+private or was deleted after the subscription was created is skipped. The
+remaining pages resume on the next day's run; a crashed worker leaves the short
+QStash processing lease to expire so the delivery can be retried.
 
 ### Self-hosted scheduler
 
@@ -151,7 +183,7 @@ jobs from host cron (or your orchestrator) with the production secret:
 0 3 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://sastram.example/api/cron/update-threads
 0 4 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://sastram.example/api/cron/cleanup-blobs
 0 5 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://sastram.example/api/cron/promote-knowledge
-0,15,30,45 9 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://sastram.example/api/cron/daily-digest
+0 9 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://sastram.example/api/cron/daily-digest
 ```
 
 QStash delivers `/api/jobs` with an Upstash signature. `QSTASH_CURRENT_SIGNING_KEY`

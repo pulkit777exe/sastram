@@ -79,8 +79,6 @@ export async function GET(req: NextRequest) {
               id: true,
               name: true,
               slug: true,
-              createdBy: true,
-              visibility: true,
             },
           },
           // The denormalized email is only a snapshot. Resolve the account's
@@ -118,16 +116,30 @@ export async function GET(req: NextRequest) {
       cursor = batch.length === BATCH_SIZE ? batch[batch.length - 1].id : undefined;
 
       // A subscription is a hint, not proof of access: invitations can be
-      // revoked and a public thread can become private after someone subscribes.
-      // Resolve each thread's current readers for this page.
+      // revoked and a public thread can become private or deleted after someone
+      // subscribes. Re-read the current thread rows in one query for this page,
+      // then resolve the current readers from those rows.
+      const batchThreadIds = [...new Set(batch.map((sub) => sub.thread.id))];
+      const currentThreads = await prisma.thread.findMany({
+        where: { id: { in: batchThreadIds }, deletedAt: null },
+        select: { id: true, createdBy: true, visibility: true },
+      });
+      const currentThreadById = new Map(
+        currentThreads.map((thread) => [
+          thread.id,
+          {
+            threadId: thread.id,
+            createdBy: thread.createdBy,
+            visibility: thread.visibility,
+          } satisfies ThreadAccessContext,
+        ])
+      );
+
       const threadContexts = new Map<string, ThreadAccessContext>();
       const subscribersByThread = new Map<string, string[]>();
       for (const sub of batch) {
-        threadContexts.set(sub.thread.id, {
-          threadId: sub.thread.id,
-          createdBy: sub.thread.createdBy,
-          visibility: sub.thread.visibility,
-        });
+        const current = currentThreadById.get(sub.thread.id);
+        if (current) threadContexts.set(sub.thread.id, current);
         if (!sub.userId) continue;
         const subscriberIds = subscribersByThread.get(sub.threadId) ?? [];
         subscriberIds.push(sub.userId);
@@ -170,7 +182,7 @@ export async function GET(req: NextRequest) {
 
           const canDeliver = sub.userId
             ? readableByThread.get(sub.threadId)?.has(sub.userId) === true
-            : sub.thread.visibility === 'PUBLIC';
+            : currentThreadById.get(sub.threadId)?.visibility === 'PUBLIC';
           if (!canDeliver) {
             results.skipped++;
             continue;

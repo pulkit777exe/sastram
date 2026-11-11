@@ -27,7 +27,7 @@ The audit recorded **18 findings**: 1 critical, 6 high, 8 medium, and 3 low-risk
 | **Reliability / correctness** | 3 | C9, M2, M4 |
 | **Simplification / design** | 4 | M3, L1, L2, L3 |
 
-No active remote code execution or database compromise was found, but several issues are directly exploitable in production. C10 remains partial: bio matching/return was removed, but PRIVATE/FOLLOWERS_ONLY profiles are still discoverable through user search.
+No active remote code execution or database compromise was found, but several issues were directly exploitable in production. C10 is now closed: user search applies profile privacy in the candidate query, not only to returned fields.
 
 ---
 
@@ -122,7 +122,7 @@ No active remote code execution or database compromise was found, but several is
 
 **Evidence**: `searchUsers` filters only `status: ACTIVE, deletedAt: null` and matches `name`; it has no `profilePrivacy` predicate and no follow relationship check. `scoreUser` uses only `name` and `followerCount`. Bio is selected but stripped for non-self rows before returning.
 
-**Fix (partial)**: Removed bio from scoring and stripped `bio` from non-self results; viewer id is derived from the session rather than the client. **Still open**: exclude `PRIVATE` profiles and non-followed `FOLLOWERS_ONLY` profiles from matching and results. Until that predicate lands, C10 is partial, not closed.
+**Fix**: `searchUsers` now applies the privacy predicate in the candidate query itself: self, `PUBLIC`, or `FOLLOWERS_ONLY` with a matching `UserFollow` row. Unauthorized private profiles never affect matching, scoring, or the result window. Bio remains excluded from matching and stripped from non-self results.
 
 ### [C11] Popular Tag Counts Leak Private Activity
 **File**: `modules/tags/repository.ts`
@@ -181,7 +181,7 @@ This project does not enable Postgres row-level security in its schema or migrat
 | **C7** | `modules/polls/actions.ts` | ✅ Implemented — `messageId` cross-check added |
 | **C8** | `modules/reactions/actions.ts` + `reaction-store.ts` | ✅ Implemented — emoji max length, `deletedAt` check, `requireWriteOrThrow` |
 | **C9** | `modules/follows/actions.ts` | ✅ Implemented — conditional notification dispatch |
-| **C10** | `modules/search/repository.ts` + `modules/search/actions.ts` | ⚠️ Partial — bio no longer matched/returned; `PRIVATE`/`FOLLOWERS_ONLY` profiles still searchable |
+| **C10** | `modules/search/repository.ts` + `modules/search/actions.ts` | ✅ Implemented — privacy predicate in the candidate query; bio not matched/returned |
 | **C4** | `modules/collections/repository.ts` | ✅ Implemented — visibility filter applied before pagination |
 | **C11** | `modules/tags/repository.ts` | ✅ Implemented — exact visibility-filtered `groupBy`, no N+1 |
 
@@ -268,4 +268,4 @@ After fixes, run:
 
 ---
 
-**Total fixes implemented**: all critical and high findings are implemented except **C10**, which is partial (bio handling fixed; profile-visibility filtering still open). All medium findings (C7, C8, C9, C11, M1–M4) are implemented. L1 is closed with `inviteeId` binding plus a backfill migration; L2 needed no code change; L3 is a deployment note, not a code defect. The audit report is at `docs/AUDIT-REPORT.md`.
+**Total fixes implemented**: all critical and high findings are implemented, including C10 (privacy predicate in the user-search candidate query). All medium findings (C7, C8, C9, C11, M1–M4) are implemented. L1 is closed with `inviteeId` binding plus a backfill migration; L2 needed no code change; L3 is a deployment note, not a code defect. The audit report is at `docs/AUDIT-REPORT.md`.

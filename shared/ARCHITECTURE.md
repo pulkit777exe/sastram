@@ -12,9 +12,9 @@ The current moat features (all configurable from `Settings → Preferences`, all
 - **Canvas** (`/dashboard/canvas?left=&right=`) — side-by-side compare via `crossReference` tier sort + conflict detection
 - **Deep Research** (`GENERATE_DEEP_RESEARCH` job) — async multi-source advanced research (Tavily `research` + Exa; QStash inline in dev, async in prod)
 - **Memory** (`User.preferences.expertiseLevel`) — weekly inference from `threadDna` + `AiSearchSession`, injected in `synthesis` prompt
-- **KnowledgePage** — threads `resolutionScore > 85` + `verifiedAt` auto-promoted (current query does not yet filter to PUBLIC threads; see `docs/PROMOTION_SYSTEM.md`)
+- **KnowledgePage** — PUBLIC, non-deleted, non-outdated, human-verified threads with `resolutionScore > 85` and a real `aiSummary` are auto-promoted; pages whose thread stops meeting those rules are demoted on the next run (see `docs/PROMOTION_SYSTEM.md`)
 - **Community Jury** (`AppealVote` + 3 random `MODERATOR` 2/3 majority) — replaces single-admin appeal
-- **Code Runner** (`code-runner.tsx`) — fenced code blocks run client-side (JS in a Worker sandbox with a neutered main-thread fallback, 3s timeout; Python via Pyodide WASM)
+- **Code Runner** (`code-runner.tsx`) — fenced JS/TS blocks run client-side in a same-origin iframe sandboxed with `allow-scripts` (opaque origin, `connect-src 'none'`, 3s timeout). Python is placeholder-only because Pyodide's network-loaded runtime cannot meet the sandbox CSP.
 - **Fact-Check Badge** (`Message.factCheckStatus`) — visible on every message
 
 ---
@@ -275,7 +275,7 @@ sastram/
 ├── components/                           # React components
 │   ├── ai-search/                        # SearchBox, Sidebar, SynthesisCard, etc.
 │   ├── thread/                           # comment-tree, message-list, poll-*, etc.
-│   │   └── code-runner.tsx               # Worker-sandboxed JS runner (3s timeout) + Pyodide WASM Python
+│   │   └── code-runner.tsx               # Sandboxed-iframe JS runner (opaque origin, 3s timeout); Python placeholder
 │   ├── chat/                             # post-message-form, mention-suggest
 │   ├── dashboard/                        # sidebar, settings-form, stats-card, etc.
 │   ├── panels/                           # ThreadResolutionCard (verified+decay+effectiveScore), RelatedThreadsCard, ParticipantsCard
@@ -444,7 +444,7 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 - `/api/threads/[threadId]/challenge` — Counter-source challenge
 - `/api/threads/[threadId]/fork` — Thread fork
 - `/api/messages` — Message CRUD
-- `/api/search` — Local full-text search (tokenized, typo-tolerant, ranked)
+- `/api/search` — Local full-text search (tokenized, typo-tolerant, ranked); user results are limited to self, PUBLIC profiles, and followed FOLLOWERS_ONLY profiles
 - `/api/bounties` — Bounty create/list
 - `/api/bounties/claim` — Claim unclaimed bounties (thread creator only)
 - `/api/polls/[pollId]/resolve` — Market poll resolve
@@ -599,9 +599,9 @@ Handlers are registered in the `jobHandlers` map (`lib/queue/registry.ts`); `run
 | Endpoint | Schedule | Purpose |
 |----------|----------|---------|
 | `/api/cron/update-threads` | Daily 03:00 UTC | Batch AI metadata refresh (DNA, score, conflicts, digest), update thread relations, prewarm follow-up queries, purge soft-deleted rows, reconcile counters, auto-promote verified KnowledgePages |
-| `/api/cron/daily-digest` | 09:00, 09:15, 09:30, 09:45 UTC | Process subscriptions by frequency, generate AI summaries, send via Resend. Checkpointed (`lastAttemptedAt`) and paged (100 subscriptions, 45s budget); later runs drain later pages. The four-runs-per-day schedule requires Vercel Pro — Hobby allows only one run per cron path per day, so a Hobby deployment must consolidate to a single run (it will process what fits in the 45s budget and resume the next day). |
+| `/api/cron/daily-digest` | Daily 09:00 UTC | Process subscriptions by frequency, re-check current thread access at send time, generate AI summaries, send via Resend. Checkpointed (`lastAttemptedAt`) and paged (100 subscriptions, 45s budget); remaining pages resume on the next day's run. Hobby-compatible single daily run. |
 | `/api/cron/cleanup-blobs` | Daily 04:00 UTC | Find attachments from soft-deleted messages, delete Vercel Blob, delete DB records |
-| `/api/cron/promote-knowledge` | Daily 05:00 UTC | Auto-promote `Thread.resolutionScore > 85 && verifiedAt != null` into `KnowledgePage` (best-effort, never throws; currently no PUBLIC visibility gate) |
+| `/api/cron/promote-knowledge` | Daily 05:00 UTC | Promote PUBLIC, verified, non-outdated `Thread.resolutionScore > 85` rows with a real `aiSummary` into `KnowledgePage`; demote pages whose thread no longer qualifies (best-effort, never throws) |
 
 **Security:** All cron endpoints use `verifyCronAuth()` with timing-safe Bearer token comparison (`crypto.timingSafeEqual`).
 
@@ -636,9 +636,10 @@ This is a serverless, forum-style platform. There are no persistent WebSocket co
 - Buckets: auth(5/15min), api(100/min), upload(10/hr), message(20/min)
 
 ### Security Headers (`proxy.ts`)
-- `Content-Security-Policy` — per-request nonce-based; Report-Only in dev, **enforced in production** unless `CSP_REPORT_ONLY=true` (`proxy.ts`)
+- `Content-Security-Policy` — per-request nonce-based; Report-Only in dev, **enforced in production** unless `CSP_REPORT_ONLY=true` (`proxy.ts`). Includes `frame-src 'self'` for the code-runner iframe.
+- **Code sandbox:** `/code-sandbox` is public and returns its own strict CSP (`connect-src 'none'`, `frame-ancestors 'self'`) plus `X-Frame-Options: SAMEORIGIN`; the runner embeds it with `sandbox="allow-scripts"` (opaque origin).
 - `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
+- `X-Frame-Options: DENY` (SAMEORIGIN only on `/code-sandbox`)
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Strict-Transport-Security` (HSTS)
 - `Permissions-Policy` (no camera/mic/geo)
@@ -702,7 +703,7 @@ Five jobs: `secrets` (gitleaks), `audit` (`bun run audit:gate`), `check` (Postgr
 ## Deployment
 
 - **Host:** Vercel (serverless) by default; Docker standalone via `server.ts` for self-hosting
-- **Database:** Neon PostgreSQL (serverless, connection pooling via `pgbouncer=true`)
+- **Database:** Neon PostgreSQL (serverless, connection pooling via `pgbouncer=true`). `lib/infrastructure/prisma.ts` selects `PrismaNeon` for `neon.tech`/`-pooler` hosts and `PrismaPg` otherwise, so local Docker Compose uses the standard `pg` adapter.
 - **Redis:** Upstash (serverless)
 - **Storage:** Vercel Blob
 - **CI/CD:** Vercel Git integration (auto-deploy on main); GitHub Actions runs CI checks only

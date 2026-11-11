@@ -44,7 +44,7 @@ Thread-specific components:
 - AttachmentItem, MessageActions, EditHistory (`edit-history.tsx`), EditThreadDialog
 - AccessManagementModal, AppealMessageModal
 - VerifyNowButton
-- CodeRunner (Worker-sandboxed JS + Pyodide WASM Python)
+- CodeRunner (sandboxed-iframe JS/TS execution; Python placeholder-only because Pyodide cannot meet `connect-src 'none'`)
 - RenderContent, ExternalLinkPreview, ThreadListFilter
 
 ### `components/chat/`

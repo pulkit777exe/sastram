@@ -36,7 +36,7 @@ If you do not receive an acknowledgement within 48 hours, follow up at the fallb
 - Redis privilege escalation or cache poisoning
 - Exposure of secrets or tokens
 - Authorization bypass in thread access controls
-- Code Runner sandbox escape, or execution of untrusted code outside the Worker/Pyodide sandbox
+- Code Runner sandbox escape, or execution of untrusted code outside the sandboxed iframe (`allow-scripts`, opaque origin, `connect-src 'none'`)
 - Privacy bypasses that expose private/followers-only profiles or private thread content
 
 ## Out of Scope
