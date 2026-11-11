@@ -17,17 +17,14 @@ describe('GET /api/search', () => {
     stubs = [];
   });
 
-  it('returns 401 when unauthenticated', async () => {
+  it('allows unauthenticated public search', async () => {
     restoreStubs(...stubs);
     stubs = [];
     stubs.push(stubHeaders());
     stubs.push(...stubAuth(null));
 
     const res = await GET()(mockRequest('/api/search?q=test'));
-    const body = await res.json();
-
-    expect(res.status).to.equal(401);
-    expect(body.error?.code).to.equal('AUTH_REQUIRED');
+    expect(res.status).to.equal(200);
   });
 
   it('returns 400 when q param is missing', async () => {

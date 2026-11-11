@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { searchThreads, searchMessages, searchUsers } from '@/modules/search/repository';
-import { requireSessionOrThrow } from '@/modules/auth';
+import { getSession } from '@/modules/auth';
 import { logger } from '@/lib/infrastructure/logger';
 import { rateLimit } from '@/lib/services/rate-limit';
-import { AppError } from '@/lib/utils/errors';
+import { getRequestIp } from '@/lib/utils/request-ip';
 
-async function authenticateRequest() {
-  return requireSessionOrThrow();
-}
-
-async function checkRateLimitOrThrow(session: { user: { id: string } }): Promise<NextResponse | null> {
-  const rateLimitResult = await rateLimit(`search:${session.user.id}`);
+async function checkRateLimitOrThrow(key: string): Promise<NextResponse | null> {
+  const rateLimitResult = await rateLimit(`search:${key}`);
   if (!rateLimitResult.success) {
     return NextResponse.json(fail('RATE_LIMITED', 'Too many requests. Please try again later.'), { status: HTTP_STATUS.RATE_LIMITED });
   }
@@ -67,18 +63,18 @@ async function handleSearchByType(
   threadId: string | undefined,
   limit: number,
   offset: number,
-  session: { user: { id: string; role: unknown } }
+  viewer: { id: string; role: unknown } | null
 ) {
   if (type === 'threads') {
-    const result = await searchThreads(q, limit, offset, undefined, session.user.id, session.user.role as never);
+    const result = await searchThreads(q, limit, offset, undefined, viewer?.id, viewer?.role as never);
     return NextResponse.json(ok(result));
   }
   if (type === 'messages') {
-    const result = await searchMessages(q, threadId, limit, offset, session.user.id, session.user.role as never);
+    const result = await searchMessages(q, threadId, limit, offset, viewer?.id, viewer?.role as never);
     return NextResponse.json(ok(result));
   }
   if (type === 'users') {
-    const result = await searchUsers(q, limit, offset, session.user.id);
+    const result = await searchUsers(q, limit, offset, viewer?.id);
     return NextResponse.json(ok(result));
   }
   return NextResponse.json(
@@ -95,27 +91,16 @@ export async function GET(request: NextRequest) {
     const validationError = validateSearchParams(q, type, threadId);
     if (validationError) return validationError;
 
-    const session = await authenticateRequest();
+    const session = await getSession();
+    const viewer = session?.user ? { id: session.user.id, role: session.user.role } : null;
+    const rateKey = viewer?.id ?? getRequestIp(request);
 
-    const rateLimitError = await checkRateLimitOrThrow(session);
+    const rateLimitError = await checkRateLimitOrThrow(rateKey);
     if (rateLimitError) return rateLimitError;
 
-    return handleSearchByType(type, q as string, threadId, limit, offset, session);
+    return handleSearchByType(type, q as string, threadId, limit, offset, viewer);
   } catch (error) {
-    const isAuth = AppError.isAppError(error) && error.code === 'AUTH_REQUIRED';
-    if (!isAuth) logger.error('[search] GET failed', error);
-    let code: string;
-    let msg: string;
-    let status: number;
-    if (isAuth) {
-      code = 'AUTH_REQUIRED';
-      msg = 'Unauthorized';
-      status = HTTP_STATUS.UNAUTHORIZED;
-    } else {
-      code = 'INTERNAL_ERROR';
-      msg = 'Search failed';
-      status = HTTP_STATUS.INTERNAL;
-    }
-    return NextResponse.json(fail(code, msg), { status });
+    logger.error('[search] GET failed', error);
+    return NextResponse.json(fail('INTERNAL_ERROR', 'Search failed'), { status: HTTP_STATUS.INTERNAL });
   }
 }
