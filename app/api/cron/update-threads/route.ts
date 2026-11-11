@@ -67,11 +67,13 @@ export async function GET(req: NextRequest) {
     AiCallPath.RESOLUTION_SCORE,
     AiCallPath.CONFLICT_DETECTION,
     AiCallPath.DAILY_DIGEST,
+    AiCallPath.EMBEDDING,
   ]);
   const dnaAllowed = spendCaps[AiCallPath.THREAD_DNA] ?? { allowed: true, remaining: -1 };
   const scoreAllowed = spendCaps[AiCallPath.RESOLUTION_SCORE] ?? { allowed: true, remaining: -1 };
   const conflictAllowed = spendCaps[AiCallPath.CONFLICT_DETECTION] ?? { allowed: true, remaining: -1 };
   const digestAllowed = spendCaps[AiCallPath.DAILY_DIGEST] ?? { allowed: true, remaining: -1 };
+  const embeddingAllowed = spendCaps[AiCallPath.EMBEDDING] ?? { allowed: true, remaining: -1 };
 
   try {
     let totalProcessed = 0;
@@ -304,6 +306,19 @@ export async function GET(req: NextRequest) {
       } else {
         totalJobsDropped++;
         logger.warn('[cron/update-threads] staleness batch check was not enqueued');
+      }
+    }
+
+    // Incremental embedding backfill (Phase 3): small batches via QStash under AI spend cap.
+    // Each worker run embeds a capped batch; cron enqueues a few bounded jobs per run.
+    if (embeddingAllowed.allowed) {
+      const embeddingJobs: Array<Promise<EnqueueJobResult>> = [];
+      pushBoundedJob(embeddingJobs, AIJobType.GENERATE_EMBEDDINGS_BACKFILL, { target: 'threads', cronJob: true });
+      pushBoundedJob(embeddingJobs, AIJobType.GENERATE_EMBEDDINGS_BACKFILL, { target: 'knowledge_pages', cronJob: true });
+      const embOutcomes = await Promise.allSettled(embeddingJobs);
+      for (const outcome of embOutcomes) {
+        if (outcome.status === 'fulfilled' && outcome.value.ok) totalJobsAdded++;
+        else totalJobsDropped++;
       }
     }
 

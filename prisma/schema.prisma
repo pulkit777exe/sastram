@@ -239,6 +239,8 @@ model Thread {
   isOutdated      Boolean   @default(false)
   aiSummary       String?   @db.Text
   threadDna       Json?
+  embedding       Unsupported("vector(768)")?
+  embeddingModel  String?
   deletedAt       DateTime?
   forkedFromId    String?
 
@@ -822,12 +824,14 @@ model CollectionItem {
 }
 
 model KnowledgePage {
-  id                 String   @id @default(cuid())
-  threadId           String   @unique
-  version            Int      @default(1)
-  synthesizedContent String   @db.Text
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                 String                    @id @default(cuid())
+  threadId           String                    @unique
+  version            Int                       @default(1)
+  synthesizedContent String                    @db.Text
+  embedding          Unsupported("vector(768)")?
+  embeddingModel     String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
 
   thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 

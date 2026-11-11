@@ -114,3 +114,12 @@ export interface DeepResearchJobData {
   collectionId?: string;
   sessionId?: string;
 }
+
+
+export interface EmbeddingBackfillJobData {
+  /** Optional target: 'threads' | 'knowledge_pages' | 'all'. Defaults to 'all'. */
+  target?: 'threads' | 'knowledge_pages' | 'all';
+  batchSize?: number;
+  /** Cursor/thread ids hint not required; worker selects next missing rows. */
+  cronJob?: boolean;
+}
