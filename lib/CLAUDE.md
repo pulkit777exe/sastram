@@ -45,7 +45,7 @@ Business logic services.
 
 ### `lib/infrastructure/`
 Database, cache, logging.
-- `prisma.ts` - Prisma Client (Neon adapter, global singleton)
+- `prisma.ts` - Prisma Client (Neon adapter on Neon hosts, PrismaPg otherwise; global singleton)
 - `logger.ts` - Structured logging with `scrub()` (masks emails, tokens, secrets)
 - `redis-upstash.ts` - Upstash REST Redis (quotas, rate limits, idempotency, spend cap, job dedup). Only Redis client — there is no ioredis/TCP client and no `redis.ts`.
 
@@ -79,9 +79,6 @@ Genuinely shared utility functions.
 - `sse.ts` - SSE single owner (`sseChunk` / `sseEvent` / `createSSEStream` / `parseSSE`)
 - `view-transitions.ts` - `isViewTransitionsEnabled()` + `supportsViewTransitions()`
 
-### `lib/actions/`
-- `result.ts` - Removed — the deprecated re-export shim was deleted; `ActionEnvelope`, `ActionErrorCode`, `actionSuccess`, `actionFailure` live in `lib/utils/server-action.ts`
-
 ### `lib/schemas/`
 Zod validation schemas.
 - `api.ts` - API request/response schemas
@@ -89,8 +86,8 @@ Zod validation schemas.
 - `user-preferences.ts` - User preference schema (expertiseLevel + moat toggles)
 
 ### `lib/queue/`
-Background job definitions and handlers (9 AI job types in `config.ts` + the `email` job = 10 handlers in the registry).
-- `config.ts` - `AIJobType` enum (9 AI job types)
+Background job definitions and handlers (AI job types in `config.ts` plus the `email` job).
+- `config.ts` - `AIJobType` enum
 - `types.ts` - Job data interfaces (discriminated union, incl. `EmailJobData`)
 - `registry.ts` - `jobHandlers` map — the single registration seam
 - `workers/ai-jobs.ts` - Coalesced AI job handlers (summary, DNA, score, conflicts, digest, staleness, insight notifications, deep research)

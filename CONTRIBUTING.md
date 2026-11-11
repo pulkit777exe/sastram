@@ -62,13 +62,16 @@ Each feature module in `modules/` follows a consistent pattern:
 
 ```
 modules/<feature>/
-  actions/        — Server actions (createServerAction)
-  repository/     — Database access layer
-  schemas.ts      — Zod validation schemas
-  types.ts        — TypeScript types
-  service.ts      — Business logic
-  index.ts        — Public API barrel export
+  actions.ts      — Server actions (createServerAction)
+  repository.ts   — Database access layer
+  service.ts      — Business logic (optional)
+  schemas.ts      — Zod validation schemas (most modules)
+  types.ts        — TypeScript types (optional)
+  index.ts        — Public exports (optional)
+  ...             — Module-specific flat files
 ```
+
+Modules are flat: no `actions/`, `repository/`, `ports/`, or `adapters/` subdirectories. Test seams are flat files (`store.ts`, `effects.ts`, `side-effects.ts`).
 
 ### Authorization Patterns
 
@@ -110,8 +113,8 @@ modules/      — Domain modules
 lib/          — Core utilities, services, infrastructure
 components/   — UI components
 hooks/        — React hooks (chat, thread, AI streaming, preferences)
-prisma/       — Database schema (35 models)
+prisma/       — Database schema and migrations
 test/         — Mocha suite + Playwright e2e (e2e runs in CI's e2e job)
 ```
 
-See [CLAUDE.md](./CLAUDE.md) for full architecture details.
+See [shared/ARCHITECTURE.md](./shared/ARCHITECTURE.md) for the canonical architecture reference and [CLAUDE.md](./CLAUDE.md) for the condensed operational guide.

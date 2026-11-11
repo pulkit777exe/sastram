@@ -117,7 +117,7 @@ load balancer must never act on a cached healthy result.
 
 ## 4. Scheduled jobs
 
-Vercel schedules four jobs from `vercel.json`:
+Vercel schedules four cron paths from `vercel.json`:
 
 | Job | UTC | Purpose |
 | --- | --- | --- |
@@ -125,6 +125,8 @@ Vercel schedules four jobs from `vercel.json`:
 | `cleanup-blobs` | 04:00 | Delete orphaned uploads |
 | `promote-knowledge` | 05:00 | Promote verified high-confidence threads |
 | `daily-digest` | 09:00, 09:15, 09:30, 09:45 | Newsletter/digest delivery, paged with per-subscription checkpoints |
+
+> **Plan constraint:** Vercel Hobby allows only one run per cron path per day. The four daily-digest runs above require Vercel Pro. On Hobby, reduce that entry to `0 9 * * *`; the route checkpoints each subscription and will process what fits in its 45-second budget, then resume the remaining pages on the next day's run. Do not assume the four-run drain behavior on Hobby.
 
 Every route under `/api/cron` requires `Authorization: Bearer $CRON_SECRET`.
 Vercel sends this automatically when `CRON_SECRET` is configured. For another

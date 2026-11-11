@@ -109,4 +109,4 @@ Components use client-side rendering where needed. React hooks + `hooks/` (long 
 
 ## Testing Notes
 
-Component coverage exists in `test/` (Mocha + Testing Library): `components`, `thread-components`, `thread-details-panel`, `chat-message-list`, `overflow-menu`, `search-input-bar`, `thread-sync`, `use-now`, `view-transition`. E2E coverage in `test/e2e/` (Playwright: `smoke`, `collections`, `thread-edit`) — run in CI's `e2e` job.
+Component coverage exists in `test/` (Mocha + Testing Library): `components`, `thread-components`, `thread-details-panel`, `chat-message-list`, `overflow-menu`, `search-input-bar`, `thread-sync`, `use-now`, `view-transition`. E2E coverage in `test/e2e/` (Playwright: `smoke`, `collections`, `thread-edit`, `ux-fixes`) — run in CI's `e2e` job.

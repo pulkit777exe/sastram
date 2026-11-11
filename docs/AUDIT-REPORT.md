@@ -1,8 +1,8 @@
 # Sastram Modules Security & Simplification Audit Report
 
 **Date**: 2026-11-04
-**Updated**: 2026-11-06
-**Scope**: `modules/` domain code — 118 files across 24 modules
+**Updated**: 2026-11-11
+**Scope**: all domain code under `modules/` (flat, one directory per feature)
 **Objective**: Identify security vulnerabilities, simplify duplication, and close exposure gaps.
 **Deliverable**: Written report + implementation of critical/high severity fixes.
 
@@ -10,19 +10,28 @@
 
 ## 1. Executive Summary
 
-The audit found **11 high/critical security findings** and **4 medium findings** across the module domain. Three categories of issues dominate:
+The audit recorded **18 findings**: 1 critical, 6 high, 8 medium, and 3 low-risk/design questions.
 
-| Category | Count | Impact |
-|----------|-------|--------|
-| **Authorization / Access Bypass** | 5 | Users can act beyond their privileges (edit moderated content, suspended users performing writes, privacy bypass) |
-| **Data Exposure / Privacy Leaks** | 4 | Private data (bios, tag counts, thread metadata) leaks to unauthorized viewers |
-| **Input Validation / Injection** | 3 | Unvalidated/unsanitized input enables injection, unbounded growth, or link exploits |
+| Severity | Count | Findings |
+|----------|-------|----------|
+| **Critical** | 1 | C1 |
+| **High** | 6 | C2, C3, C4, C5, C6, C10 |
+| **Medium** | 8 | C7, C8, C9, C11, M1, M2, M3, M4 |
+| **Low / design** | 3 | L1, L2, L3 |
 
-Two additional findings are **medium severity** (reliability/quality) and **2 are low-risk / design questions**. No active remote code execution or database compromise was found, but several issues are directly exploitable in production.
+| Category | Count | Findings |
+|----------|-------|----------|
+| **Authorization / access bypass** | 3 | C1, C2, C7 |
+| **Data exposure / privacy leaks** | 6 | C3, C4, C5, C6, C10, C11 |
+| **Input validation / injection** | 2 | C8, M1 |
+| **Reliability / correctness** | 3 | C9, M2, M4 |
+| **Simplification / design** | 4 | M3, L1, L2, L3 |
+
+No active remote code execution or database compromise was found, but several issues are directly exploitable in production. C10 remains partial: bio matching/return was removed, but PRIVATE/FOLLOWERS_ONLY profiles are still discoverable through user search.
 
 ---
 
-## 2. Critical Findings (Require Immediate Fix)
+## 2. Findings C1–C11
 
 ### [C1] Message Edit Bypasses Moderation
 **File**: `modules/messages/edit.ts`
@@ -78,7 +87,7 @@ Two additional findings are **medium severity** (reliability/quality) and **2 ar
 
 ### [C7] Poll Cross-Thread Message Attachment
 **File**: `modules/polls/actions.ts`
-**Severity**: MEDIUM (upgraded from medium due to direct exploit risk)
+**Severity**: MEDIUM
 **Impact**: `createPollAction` accepts `messageId` without verifying it belongs to `threadId`. A poll created for thread A can render in thread B via `getPollByThreadId` which resolves by `message.threadId`.
 
 **Evidence**: `polls/actions.ts` line 141: `const poll = await createPollRepo(threadId, question, options, expiresAt ?? undefined, messageId);` — no cross-check.
@@ -97,14 +106,23 @@ Two additional findings are **medium severity** (reliability/quality) and **2 ar
 - Updated `resolveThreadId` in the reaction store to check `message.deletedAt` and return `null` if the message is deleted
 - Changed access check from `requireReadOrThrow` to `requireWriteOrThrow` to block banned/suspended users from reacting
 
+### [C9] Duplicate Follow Notifications
+**File**: `modules/follows/actions.ts`
+**Severity**: MEDIUM
+**Impact**: A repeated follow action (double-submit, retry, or re-following an already-followed user) could dispatch another "New Follower" notification even though no new follow row was created.
+
+**Evidence**: `followUser` called `dispatchFollowNotification` regardless of whether the repository insert created a row.
+
+**Fix**: Dispatch now happens only when `followUserRepo` reports that it created a new follow (`if (!created) return` before `dispatch`). Re-follows revalidate the profile path and return success without notifying again.
+
 ### [C10] Profile Privacy Leaks via User Search
 **File**: `modules/search/repository.ts`
 **Severity**: HIGH
-**Impact**: `searchUsers` selects/returns `bio` and matches on bio for `ProfilePrivacy.PRIVATE`/`FOLLOWERS_ONLY` users. A non-following user can search by terms that match a private user's bio, and the bio is returned in results even though the profile should be hidden.
+**Impact**: `searchUsers` can surface users whose `profilePrivacy` is `PRIVATE` or `FOLLOWERS_ONLY` to viewers who are not the user and do not follow them. Bio is no longer matched or returned, but profile visibility itself is still not enforced in user search.
 
-**Evidence**: `search/repository.ts` lines 222-278: `scoreUser` weights `tokenScore(tok, user.bio) * 2` and the select includes `bio: true`; `searchUsers` returns `bio: true` in the select.
+**Evidence**: `searchUsers` filters only `status: ACTIVE, deletedAt: null` and matches `name`; it has no `profilePrivacy` predicate and no follow relationship check. `scoreUser` uses only `name` and `followerCount`. Bio is selected but stripped for non-self rows before returning.
 
-**Fix**: Modified `searchUsers` to exclude `bio` from the select for non-own-profile reads. Added `viewerId` and `viewerRole` parameters, and bio is only included in the select when viewing one's own profile. Privacy filtering is applied via `visibilityFilter`.
+**Fix (partial)**: Removed bio from scoring and stripped `bio` from non-self results; viewer id is derived from the session rather than the client. **Still open**: exclude `PRIVATE` profiles and non-followed `FOLLOWERS_ONLY` profiles from matching and results. Until that predicate lands, C10 is partial, not closed.
 
 ### [C11] Popular Tag Counts Leak Private Activity
 **File**: `modules/tags/repository.ts`
@@ -144,14 +162,14 @@ Two additional findings are **medium severity** (reliability/quality) and **2 ar
 ### [L2] `SUSPENDED` vs `BANNED` in `app/banned/page.tsx`
 The banned page already handles both statuses correctly (lines 18-20). No code change needed.
 
-### [L3] No RLS on Neon
-Per `lib/thread-access.ts`: "RLS note: row-level security is not enabled on Neon; access is enforced at the application layer." This is a deployment-time concern, not a code bug.
+### [L3] Row-Level Security Not Enabled
+This project does not enable Postgres row-level security in its schema or migrations; thread access is enforced at the application layer (`canAccessThread` / `visibilityFilter`). Neon supports RLS, so this is a deliberate deployment choice, not a Neon limitation. Enabling it later requires policies on `threads` and `thread_invitations` plus an application role that cannot bypass RLS.
 
 ---
 
 ## 5. Fix Implementation Status
 
-### Phase 1: Critical / High Severity Fixes (Implemented)
+### Phase 1: C-Series Fixes
 
 | Fix | File | Status |
 |-----|------|--------|
@@ -163,7 +181,7 @@ Per `lib/thread-access.ts`: "RLS note: row-level security is not enabled on Neon
 | **C7** | `modules/polls/actions.ts` | ✅ Implemented — `messageId` cross-check added |
 | **C8** | `modules/reactions/actions.ts` + `reaction-store.ts` | ✅ Implemented — emoji max length, `deletedAt` check, `requireWriteOrThrow` |
 | **C9** | `modules/follows/actions.ts` | ✅ Implemented — conditional notification dispatch |
-| **C10** | `modules/search/repository.ts` + `modules/search/actions.ts` | ✅ Implemented — bio exclusion, privacy filtering |
+| **C10** | `modules/search/repository.ts` + `modules/search/actions.ts` | ⚠️ Partial — bio no longer matched/returned; `PRIVATE`/`FOLLOWERS_ONLY` profiles still searchable |
 | **C4** | `modules/collections/repository.ts` | ✅ Implemented — visibility filter applied before pagination |
 | **C11** | `modules/tags/repository.ts` | ✅ Implemented — exact visibility-filtered `groupBy`, no N+1 |
 
@@ -189,7 +207,7 @@ Dub-like flat domain modules — no subdirectories under `modules/`:
 - Bookmarks: `getBookmarkedThreads` passes session viewer so the visibility filter applies
 - `.gitignore`: `docs/AUDIT-REPORT.md` now tracked
 
-**Verification after restructure**: `bun run typecheck` clean, `bun run lint` 0 problems, `bun run test` 810 passing (2 dead-schema test assertions removed with the dead code), structure: `find modules -mindepth 2 -type d` → empty.
+**Verification after restructure**: `bun run typecheck` clean, `bun run lint` 0 problems, `bun run test` passing (2 dead-schema test assertions removed with the dead code), structure: `find modules -mindepth 2 -type d` → empty.
 
 ### Phase 4: Redis / Paid-Service Minimization (Implemented 2026-11-06)
 
@@ -236,7 +254,7 @@ Dub-like flat domain modules — no subdirectories under `modules/`:
 After fixes, run:
 - `bun run typecheck` — ensures no TypeScript errors ✅ (passes cleanly)
 - `bun run lint` — ensures no lint violations
-- `bun run test` — ensures existing tests pass ✅ (810 passing; 2 dead-schema assertions removed with the dead code they tested; the previously failing reaction DB-free test passes once the fake seam is used consistently)
+- `bun run test` — ensures existing tests pass ✅ (2 dead-schema assertions were removed with the dead code they tested; the previously failing reaction DB-free test passes once the fake seam is used consistently)
 - Manual review: verify suspended users cannot create threads/react/etc., verify private threads are properly filtered in bookmarks/newsletter, verify poll messageId is cross-checked, etc.
 
 ---
@@ -246,8 +264,8 @@ After fixes, run:
 - **Bounties**: the claim path is implemented (`POST /api/bounties/claim`, thread-creator only, atomic settlement). Refunds remain out of scope because there is no points ledger to debit/credit.
 - **Deployment**: run `bun run db:deploy` so both invitation migrations (`inviteeId` column + backfill) reach Neon. The current `.env` password is rejected by Neon (`password authentication failed for user "neondb_owner"`); refresh the connection string from the Neon console before deploying.
 - **Query warming**: intentionally off by default; set `QUERY_WARMING_ENABLED=true` only when the speculative search spend is budgeted.
-- **RLS (L3)**: Neon has no row-level security; access remains enforced at the application layer by design.
+- **RLS (L3)**: RLS is not enabled in this project's schema/migrations; access remains enforced at the application layer by design. Neon supports Postgres RLS if the team chooses to add policies later.
 
 ---
 
-**Total fixes implemented**: all 11 critical/high findings and all 4 medium findings are implemented; L1 is closed with `inviteeId` binding plus a backfill migration. The audit report is at `docs/AUDIT-REPORT.md`.
+**Total fixes implemented**: all critical and high findings are implemented except **C10**, which is partial (bio handling fixed; profile-visibility filtering still open). All medium findings (C7, C8, C9, C11, M1–M4) are implemented. L1 is closed with `inviteeId` binding plus a backfill migration; L2 needed no code change; L3 is a deployment note, not a code defect. The audit report is at `docs/AUDIT-REPORT.md`.

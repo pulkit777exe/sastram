@@ -7,8 +7,8 @@ import {
   supportsViewTransitions,
 } from '@/lib/utils/view-transitions';
 
-// React 19 ViewTransition is canary and may be undefined in the current build;
-// access it through a typed narrowing so we don't need to disable the lint.
+// React 19.3 exports ViewTransition as an internal element symbol. Access it
+// through a typed narrowing because the stable TypeScript types do not expose it.
 type ViewTransitionComponent = React.ComponentType<{ name?: string; children?: ReactNode } & Record<string, unknown>>;
 function getViewTransition(): ViewTransitionComponent | undefined {
   return (React as unknown as { ViewTransition?: ViewTransitionComponent }).ViewTransition;

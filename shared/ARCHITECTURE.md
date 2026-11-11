@@ -1,6 +1,8 @@
 # Sastram Architecture
 
-Sastram is an AI-powered community forum where questions get **resolved**, not just answered. It combines traditional forum features with a live knowledge resolution engine — AI searches across the web, synthesizes results, detects conflicts, and assigns confidence scores. Human community validates and challenges AI output. Knowledge compounds over time through verified resolutions, workspace collections, deep research, and community jury appeals.
+Sastram is an AI-powered community forum where questions get **resolved**, not just answered. It combines traditional forum features with a live knowledge resolution engine — AI searches across the web, synthesizes results, detects conflicts, and assigns resolution scores. The community validates and challenges AI output; confidence in a score's freshness decays separately. Knowledge compounds over time through verified resolutions, workspace collections, deep research, and community jury appeals.
+
+This is the single canonical architecture reference. Counts are intentionally not hard-coded here; inspect `prisma/schema.prisma`, `modules/`, `app/api/`, and `test/` for the current inventory.
 
 The current moat features (all configurable from `Settings → Preferences`, all client + server gated) are:
 - **Verified Resolution** (`Thread.verifiedAt/By`) — OP/admin `markThreadVerified` server action confirms AI score; cron skips high-confidence verified threads
@@ -8,11 +10,11 @@ The current moat features (all configurable from `Settings → Preferences`, all
 - **Collections** (`Collection` + `CollectionItem`) — save threads + searches to workspaces, export as Markdown with `[n]` footnotes
 - **Graph Explorer** (`/dashboard/graph`) — `ThreadRelation` similarity ≥ 0.7 visualized via `force-graph` canvas (dynamic import, 360–560px, drag/zoom)
 - **Canvas** (`/dashboard/canvas?left=&right=`) — side-by-side compare via `crossReference` tier sort + conflict detection
-- **Deep Research** (`GENERATE_DEEP_RESEARCH` job) — async 12-source advanced research (Tavily `research` + Exa 12, Hobby 12 cap; QStash inline dev, async prod)
+- **Deep Research** (`GENERATE_DEEP_RESEARCH` job) — async multi-source advanced research (Tavily `research` + Exa; QStash inline in dev, async in prod)
 - **Memory** (`User.preferences.expertiseLevel`) — weekly inference from `threadDna` + `AiSearchSession`, injected in `synthesis` prompt
-- **KnowledgePage** — threads `resolutionScore > 85` + `verifiedAt` auto-promoted
+- **KnowledgePage** — threads `resolutionScore > 85` + `verifiedAt` auto-promoted (current query does not yet filter to PUBLIC threads; see `docs/PROMOTION_SYSTEM.md`)
 - **Community Jury** (`AppealVote` + 3 random `MODERATOR` 2/3 majority) — replaces single-admin appeal
-- **Code Runner** (`code-runner.tsx`) — fenced code blocks run client-side (JS in a Worker sandbox, 3s timeout; Python via Pyodide WASM)
+- **Code Runner** (`code-runner.tsx`) — fenced code blocks run client-side (JS in a Worker sandbox with a neutered main-thread fallback, 3s timeout; Python via Pyodide WASM)
 - **Fact-Check Badge** (`Message.factCheckStatus`) — visible on every message
 
 ---
@@ -35,7 +37,7 @@ The current moat features (all configurable from `Settings → Preferences`, all
 | Validation | Zod |
 | State Management | React hooks + `@tanstack/react-virtual` for long lists (no global store) |
 | Monitoring | Sentry, Vercel Analytics |
-| Testing | Mocha + Chai + Sinon (90 files), Playwright (E2E, run in CI's e2e job) |
+| Testing | Mocha + Chai + Sinon, Playwright (E2E, run in CI's e2e job) |
 
 ---
 
@@ -45,20 +47,20 @@ The current moat features (all configurable from `Settings → Preferences`, all
 Browser Client
 │
 ├── HTTP / Server Actions → Next.js App Router (Vercel Serverless)
-│   ├── modules/ (24 domain modules)
-│   │   ├── Prisma → PostgreSQL (Neon, 35 models)
+│   ├── modules/ (domain modules)
+│   │   ├── Prisma → PostgreSQL (Neon)
 │   │   ├── Upstash Redis (quotas, rate limits, spend cap, idempotency)
-│   │   ├── QStash → background jobs (/api/jobs webhook, 10 job types)
-│   │   ├── Vercel Cron → scheduled tasks (/api/cron/*, 4 crons)
+│   │   ├── QStash → background jobs (/api/jobs webhook)
+│   │   ├── Vercel Cron → scheduled tasks (/api/cron/*; schedules in vercel.json)
 │   │   ├── Vercel Blob (file storage)
-│   │   ├── Gemini / Exa / Tavily (AI, 12-source deep research)
+│   │   ├── Gemini / Exa / Tavily (AI, multi-source deep research)
 │   │   └── Resend (email)
-│   └── API Routes (49 REST endpoints)
+│   └── API Routes (inventory below)
 │
 └── SSE → AI reply streaming (/api/threads/[threadId]/ai-reply/stream)
 ```
 
-No custom server, no WebSocket layer. Real-time is SSE-only for AI streaming; all other updates use client polling.
+Vercel runs the App Router serverless. `server.ts` is only for self-hosted/Docker standalone (`bun dev:server` / `bun start:server`). There is no WebSocket layer; real-time is SSE-only for AI streaming, and all other updates use client polling.
 
 ---
 
@@ -110,7 +112,7 @@ sastram/
 │       │   ├── thread-dna/               # Thread DNA analysis
 │       │   ├── resolution-score/         # Resolution score calculation
 │       │   ├── search-history/           # Search history retrieval
-│       │   ├── deep-research/            # Async 12-source research (QStash)
+│       │   ├── deep-research/            # Async multi-source research (QStash)
 │       │   └── spend/                    # AI spend usage (admin)
 │       ├── threads/
 │       │   ├── route.ts                  # Thread CRUD
@@ -142,7 +144,7 @@ sastram/
 │       │   └── reset-otp/               # Reset OTP
 │       ├── forget-password/email-otp/    # Password reset flow
 │       ├── invitations/accept/           # Accept thread invitation
-│       ├── bounties/                     # Bounty CRUD
+│       ├── bounties/                     # Bounty create/list + claim
 │       ├── jobs/                         # QStash webhook (background jobs)
 │       ├── csp-report/                   # CSP violation collector
 │       └── cron/
@@ -151,7 +153,7 @@ sastram/
 │           └── cleanup-blobs/            # Blob cleanup
 │           └── promote-knowledge/        # KnowledgePage auto-promote
 │
- ├── modules/                              # Domain logic (24 modules)
+ ├── modules/                              # Domain logic (flat modules)
 │   ├── auth/                             # Session management, OAuth
 │   ├── users/                            # User CRUD, profiles, avatar/banner upload
 │   ├── threads/                          # Thread CRUD, slug routing, relations, confidence decay
@@ -185,7 +187,7 @@ sastram/
 │   │   ├── routes.ts                     # Route constants
 │   │   └── resend.ts                     # Resend email client
 │   ├── infrastructure/
-│   │   ├── prisma.ts                     # Prisma Client (Neon adapter, global singleton)
+│   │   ├── prisma.ts                     # Prisma Client (Neon adapter on Neon hosts, PrismaPg otherwise; global singleton)
 │   │   ├── logger.ts                     # Structured logging with scrub()
 │   │   └── redis-upstash.ts              # Upstash REST Redis (quotas, rate limits, spend cap)
 │   ├── ai/
@@ -199,11 +201,11 @@ sastram/
 │   │   ├── helpers.ts                    # AI helpers
 │   │   └── text.ts                       # Raw-text seam (Gemini→OpenAI failover)
 │   ├── queue/
-│   │   ├── config.ts                     # AIJobType enum (9 AI job types)
+│   │   ├── config.ts                     # AIJobType enum
 │   │   ├── types.ts                      # Job data interfaces (incl. EmailJobData)
-│   │   ├── registry.ts                   # jobHandlers map (10 handlers: 9 AI + email)
+│   │   ├── registry.ts                   # jobHandlers map (AI jobs + email)
 │   │   └── workers/
-│   │       ├── ai-jobs.ts                # Coalesced AI job handlers (8)
+│   │       ├── ai-jobs.ts                # Coalesced AI job handlers
 │   │       ├── ai-inline.worker.ts       # Streaming @sai handler
 │   │       ├── email.worker.ts           # Email job handler
 │   │       ├── _shared.ts                # Spend-cap + validation helpers
@@ -239,8 +241,6 @@ sastram/
 │   │   ├── moderation.ts                 # requireModerator(), requireAdmin()
 │   │   ├── cron-auth.ts                  # Cron Bearer token verification
 │   │   └── ai-guard-route.ts            # guardAiRoute (session→rate→guards→thread)
-│   ├── actions/
-│   │   └── result.ts                     # Removed — deprecated shim deleted; canonical: lib/utils/server-action.ts
 │   ├── types/
 │   │   └── index.ts                      # Shared client-side types
 │   ├── utils/
@@ -266,10 +266,10 @@ sastram/
 │   └── ai/guard.ts                       # checkAiGuards/runGuardedAi/checkCronSpendCaps
 │
 ├── prisma/
-│   ├── schema.prisma                     # 35 models (FactCheckStatus enum, Bounty, forkedFromId, isMarket)
+│   ├── schema.prisma                     # Prisma schema (FactCheckStatus enum, Bounty, forkedFromId, isMarket)
 │   └── seed.ts                           # Database seed script
 │
-├── test/                                 # 90 Mocha test files + Playwright e2e (e2e in CI)
+├── test/                                 # Mocha tests + Playwright e2e (e2e in CI)
 │   └── e2e/                              # Playwright end-to-end tests
 │
 ├── components/                           # React components
@@ -301,7 +301,7 @@ sastram/
 
 ## Data Model
 
-35 Prisma models in `prisma/schema.prisma`.
+Prisma models are defined in `prisma/schema.prisma`.
 
 ### Core Content
 
@@ -361,7 +361,7 @@ sastram/
 
 ## Module Architecture
 
-24 domain modules under `modules/`. Each follows a consistent pattern:
+Domain modules live under `modules/` (flat, one directory per feature). Each follows a consistent pattern:
 
 ```
 modules/{feature}/
@@ -416,9 +416,9 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 
 ---
 
-## API Routes (49 endpoints)
+## API Routes
 
-### Authentication (6)
+### Authentication
 - `/api/auth/[...all]` — Better Auth catch-all
 - `/api/sign-in/email-otp` — Email OTP sign-in
 - `/api/email-otp/send-verification-otp` — Send OTP
@@ -426,16 +426,16 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 - `/api/email-otp/reset-otp` — Reset OTP
 - `/api/forget-password/email-otp` — Password reset flow
 
-### AI Features (7)
-- `/api/ai/forum-search` — Full AI search pipeline (Exa + Tavily + Gemini, 12-source advanced)
+### AI Features
+- `/api/ai/forum-search` — Full AI search pipeline (Exa + Tavily + Gemini, multi-source advanced)
 - `/api/ai/thread-summary` — Generate AI thread summary (POST); poll current summary (GET)
 - `/api/ai/thread-dna` — Generate thread DNA analysis
 - `/api/ai/resolution-score` — Calculate resolution score (POST); poll current score (GET)
 - `/api/ai/search-history` — Get search history
 - `/api/ai/spend` — Get AI spend usage (admin)
-- `/api/ai/deep-research` — Async 12-source research (QStash)
+- `/api/ai/deep-research` — Async multi-source research (QStash)
 
-### Core Resources (12)
+### Core Resources
 - `/api/threads` — Thread CRUD
 - `/api/threads/similar` — Similar thread lookup
 - `/api/threads/fork-external` — External URL fork (isSafePublicUrl + sanitized title)
@@ -445,15 +445,16 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 - `/api/threads/[threadId]/fork` — Thread fork
 - `/api/messages` — Message CRUD
 - `/api/search` — Local full-text search (tokenized, typo-tolerant, ranked)
-- `/api/bounties` — Bounty CRUD
+- `/api/bounties` — Bounty create/list
+- `/api/bounties/claim` — Claim unclaimed bounties (thread creator only)
 - `/api/polls/[pollId]/resolve` — Market poll resolve
 - `/api/link-preview` — Link preview (OG + Exa fallback, SSRF-safe manual redirect)
 
-### File & Invitations (2)
+### File & Invitations
 - `/api/upload` — File upload (Vercel Blob, MIME sniff + moderation)
 - `/api/invitations/accept` — Accept thread invitation
 
-### Collections (6)
+### Collections
 - `/api/collections` — List/create (FEATURE_DISABLED if collectionsEnabled=false, `?light=1` for dropdown, `private max-age 10`)
 - `/api/collections/[id]` — Get/delete (ownership, `rateLimit:api`)
 - `/api/collections/[id]/items` — Add/remove items (policy + cuid, `rateLimit:api`)
@@ -461,16 +462,16 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 - `/api/collections/[id]/export` — Markdown export with [n] footnotes (`rateLimit:api`)
 - `/api/collections/saved` — Check saved collections for item (threadId|sessionId|messageId|metadata, `rateLimit:api`)
 
-### User (1)
+### User
 - `/api/user/preferences` — Read/update preferences (all moat toggles)
 
-### Cron / Scheduled (4)
+### Cron / Scheduled
 - `/api/cron/update-threads` — Batch AI metadata refresh + relations + expertise refresh
 - `/api/cron/daily-digest` — Email digest trigger
 - `/api/cron/cleanup-blobs` — Blob cleanup (paginated 50×20 batches)
 - `/api/cron/promote-knowledge` — KnowledgePage auto-promote
 
-### Admin / Moderation (7)
+### Admin / Moderation
 - `/api/admin/health` — Admin health check
 - `/api/admin/sla` — Moderation SLA stats
 - `/api/v1/moderation/queue` — Moderation queue
@@ -479,8 +480,9 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 - `/api/v1/moderation/appeals/submit` — Submit appeal
 - `/api/v1/moderation/appeals/review/[id]` — Review appeal
 
-### Other (4)
-- `/api/health` — Public health check
+### Other
+- `/api/health/live` — Liveness probe (no DB/Redis calls)
+- `/api/health` — Public readiness check (Postgres + Redis + AI config)
 - `/api/bootstrap` — App init (user + notifications + activity)
 - `/api/jobs` — QStash webhook (background jobs)
 - `/api/csp-report` — CSP violation collector
@@ -498,7 +500,7 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 | `generateSummary()` | Quick content summary | Gemini Flash |
 | `generateThreadSummary()` | Thread-level summary (LangChain map-reduce) | Gemini Flash |
 | `generateThreadDNA()` | Metadata analysis (questionType, expertiseLevel, topics) | Gemini Flash |
-| `calculateResolutionScore()` | 0–100 confidence score | Gemini Flash |
+| `calculateResolutionScore()` | 0–100 resolution score (freshness/confidence decays separately) | Gemini Flash |
 | `detectConflicts()` | Contradiction detection | Gemini Flash |
 | `generateDailyDigest()` | HTML email digest | Gemini Pro |
 | `generateStreamingResponse()` | Real-time token streaming | Gemini Flash / OpenAI |
@@ -597,9 +599,9 @@ Handlers are registered in the `jobHandlers` map (`lib/queue/registry.ts`); `run
 | Endpoint | Schedule | Purpose |
 |----------|----------|---------|
 | `/api/cron/update-threads` | Daily 03:00 UTC | Batch AI metadata refresh (DNA, score, conflicts, digest), update thread relations, prewarm follow-up queries, purge soft-deleted rows, reconcile counters, auto-promote verified KnowledgePages |
-| `/api/cron/daily-digest` | Daily 09:00 UTC | Process subscriptions by frequency, generate AI summaries, send via Resend |
+| `/api/cron/daily-digest` | 09:00, 09:15, 09:30, 09:45 UTC | Process subscriptions by frequency, generate AI summaries, send via Resend. Checkpointed (`lastAttemptedAt`) and paged (100 subscriptions, 45s budget); later runs drain later pages. The four-runs-per-day schedule requires Vercel Pro — Hobby allows only one run per cron path per day, so a Hobby deployment must consolidate to a single run (it will process what fits in the 45s budget and resume the next day). |
 | `/api/cron/cleanup-blobs` | Daily 04:00 UTC | Find attachments from soft-deleted messages, delete Vercel Blob, delete DB records |
-| `/api/cron/promote-knowledge` | Daily 05:00 UTC | Auto-promote `Thread.resolutionScore > 85 && verifiedAt != null` into `KnowledgePage` (best-effort, never throws) |
+| `/api/cron/promote-knowledge` | Daily 05:00 UTC | Auto-promote `Thread.resolutionScore > 85 && verifiedAt != null` into `KnowledgePage` (best-effort, never throws; currently no PUBLIC visibility gate) |
 
 **Security:** All cron endpoints use `verifyCronAuth()` with timing-safe Bearer token comparison (`crypto.timingSafeEqual`).
 
@@ -669,7 +671,7 @@ One Redis client (Upstash REST over HTTP, serverless-safe):
 
 ## Testing
 
-### Unit Tests (86 files)
+### Unit Tests
 
 | Area | Files |
 |------|-------|
@@ -689,16 +691,17 @@ One Redis client (Upstash REST over HTTP, serverless-safe):
 - `smoke.spec.ts` — Auth + thread creation + reply + AI search smoke
 - `collections.spec.ts` — Workspace collections flow
 - `thread-edit.spec.ts` — Thread/message edit, tags, reactions, AI status polling
+- `ux-fixes.spec.ts` — Regression coverage for UX fixes
 - `global-setup.ts` — Deterministic fixtures (pins `DATABASE_URL` to test DB, seeds the fixture thread + test user, signs in, warms the first routes)
 
 ### CI (GitHub Actions)
-Four jobs: `secrets` (gitleaks), `audit` (`bun run audit:gate`), `check` (PostgreSQL 16 service): `bun install` → `bun run db:deploy` → `bun run db:extensions` → `typecheck` → `lint` → `build` → `bun run test` (Mocha), and `e2e` (PostgreSQL 16 service): `db:deploy` → `db:extensions` → Chromium → `bun run test:e2e` against a Playwright-managed `bun run dev:next` (`E2E_MANAGE_SERVER`, `E2E_SERVER_COMMAND`). `format:check` is not run in CI.
+Five jobs: `secrets` (gitleaks), `audit` (`bun run audit:gate`), `check` (PostgreSQL 16 service): `bun install` → `bun run db:deploy` → `bun run db:extensions` → `typecheck` → `lint` → `build` → `bun run test` (Mocha), `docker` (image build), and `e2e` (PostgreSQL 16 service): `db:deploy` → `db:extensions` → Chromium → `bun run test:e2e` against a Playwright-managed `bun run dev:next` (`E2E_MANAGE_SERVER`, `E2E_SERVER_COMMAND`). `format:check` is not run in CI.
 
 ---
 
 ## Deployment
 
-- **Host:** Vercel (serverless)
+- **Host:** Vercel (serverless) by default; Docker standalone via `server.ts` for self-hosting
 - **Database:** Neon PostgreSQL (serverless, connection pooling via `pgbouncer=true`)
 - **Redis:** Upstash (serverless)
 - **Storage:** Vercel Blob
@@ -708,7 +711,7 @@ Four jobs: `secrets` (gitleaks), `audit` (`bun run audit:gate`), `check` (Postgr
 
 ```bash
 bun dev            # Next.js dev server
-bun build          # Prisma generate + Next build
+bun run build      # Prisma generate + Next build (bare `bun build` is Bun's bundler)
 bun start          # Production server
 bun run test       # Mocha suite
 bun test:e2e       # Playwright e2e (runs in CI's e2e job)

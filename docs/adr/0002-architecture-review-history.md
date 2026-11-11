@@ -1,3 +1,13 @@
+# ADR-0002: Architecture Review History
+
+- **Status**: Historical record (superseded as a current reference)
+- **Date**: 2026-08-31 (log extended through 2026-10-19)
+- **Decision**: Preserve the architecture-review log as an ADR instead of maintaining a second architecture document.
+- **Context**: `docs/ARCHITECTURE-REVIEW.md` accumulated review candidates, implementation logs, and verification snapshots. It drifted from the code and duplicated `shared/ARCHITECTURE.md`. The history is useful; the parallel reference was not.
+- **Consequences**: `shared/ARCHITECTURE.md` is the only current architecture reference. Counts and test totals below are historical snapshots and are intentionally not maintained. See `docs/adr/0001-grilling-decisions.md` for the earlier decision record.
+
+---
+
 # Architecture Review — Sastram
 
 Date: 2026-08-31 · Scope: full codebase · Approach: `improve-codebase-architecture` skill (deepening pass)

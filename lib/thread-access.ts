@@ -10,9 +10,10 @@
  * them — including the thread creator. Only global MODERATOR/ADMIN bypass.
  * Reads are unaffected: bans restrict participation, not visibility.
  *
- * RLS note: row-level security is not enabled on Neon; access is enforced
- * at the application layer via canAccessThread/visibilityFilter. If RLS is
- * added, mirror this logic in a policy on threads + thread_invitations.
+ * RLS note: this project does not enable row-level security in its migrations;
+ * access is enforced at the application layer via canAccessThread/visibilityFilter.
+ * Neon supports Postgres RLS. If it is enabled, mirror this logic in policies on
+ * threads + thread_invitations and use an application role that cannot bypass RLS.
  */
 
 import { Prisma, Role, ThreadVisibility } from '@prisma/client';

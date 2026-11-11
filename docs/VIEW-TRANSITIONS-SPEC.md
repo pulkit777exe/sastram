@@ -24,16 +24,16 @@ Honesty note: I do not have the full text of these skills in front of me. The im
 - Composer lives in `components/chat/post-message-form.tsx`.
 
 ### SaiSearch (`components/ai-search/`)
-- `SearchPage.tsx:37-65` — already uses `framer-motion` for the idle→active flip (one-off). No shared-element morph.
+- `SearchPage.tsx` — renders the idle/active `SearchComposer` variants. The idle→active flip uses the View Transition wrapper when available; there is no `framer-motion` wrapper.
 - `SearchInputBar.tsx` — sticks to bottom of active chat.
 - `ChatMessageList.tsx:107-153` — message bubbles + streaming reveal.
 - `search-provider.tsx`, `use-search-conversation.ts`, `use-search-stream.ts` — state lift; state-decoupled from UI per composition patterns.
 
 ### Stack
-- React `^19.2.8` (stable — the canary detour was reverted), Next `^16.3.8`, `framer-motion ^12.43.0` installed.
-- `<ViewTransition>` ships via the `components/ui/view-transition.tsx` (`SaiViewTransition`) wrapper; no `react@canary` in `package.json`.
+- React `^19.3.1`, Next `^16.4.5`; the animation package is `motion ^14.10.1` (imported as `motion/react`), not `framer-motion` directly.
+- React 19.3.1 exports `ViewTransition` (runtime type is a symbol, not a component). `<ViewTransition>` is still rendered through the `components/ui/view-transition.tsx` (`SaiViewTransition`) wrapper because stable TypeScript types do not expose it and the wrapper owns the flag/browser/SSR gating. There is no `react@canary` in `package.json`.
 - Zod-validated env in `lib/config/env.ts`; feature flags go through `serverEnvSchema` / `fullyClientSafeSchema` and use `NEXT_PUBLIC_` for client access.
-- `experimental.optimizePackageImports` in `next.config.ts` already excludes `framer-motion` tree-shake concerns.
+- `experimental.optimizePackageImports` in `next.config.ts` includes `motion`.
 
 ## Feature flag
 
@@ -52,7 +52,7 @@ SSR safety: gate all `<ViewTransition>` rendering on a `useEffect`-set `enabled`
 ### SaiSearch
 - **#6 shared element — idle composer → active input bar** (`name="ai-search-composer-idle"` on the idle `SearchField`, `name="ai-search-composer-active"` on the active `InputBar`). Implemented. The first user bubble does NOT share a name (initial design did; that created a name-collision across three elements where Chromium's "last in wins" gave undefined morph targets — fixed by giving each pair a distinct name).
 - **#7 Suspense reveal — first synthesis card** (`name="ai-search-first-synthesis"` on the streaming `SynthesisCard` root, with `update="none"` to prevent the transition from re-firing on every SSE chunk). Implemented.
-- Removed the `framer-motion` single-fade wrapper in `SearchPage.tsx`; the View Transition wrapper handles idle→active now.
+- Removed the former single-fade wrapper in `SearchPage.tsx`; the View Transition wrapper handles idle→active now.
 
 ### Thread page
 - **#1 shared element — empty-state card** (`name="thread-empty-state"` on the visible styled card root, not the outer `py-10` wrapper). Shipped as a single-element exit fade (no bubble morph; deferred because the first message lives inside `CommentTree`). The 220ms fade-out is a deliberate "the empty state yields" beat before the message bubble's normal mount.
@@ -75,18 +75,18 @@ SSR safety: gate all `<ViewTransition>` rendering on a `useEffect`-set `enabled`
 
 After the initial implementation, an architecture review found the shipped code looked right but didn't actually fire. The blockers were:
 
-1. **React canary `<ViewTransition>` only fires on async updates** (`startTransition`, `useDeferredValue`, Actions, `<Suspense>`). All state mutations in `use-search-conversation.ts` were synchronous bare setters. **Fixed by wrapping the idle→active flip, the first user bubble mount, and the first synthesis card reveal in `startTransition`.**
+1. **`<ViewTransition>` only fires on async updates** (`startTransition`, `useDeferredValue`, Actions, `<Suspense>`). All state mutations in `use-search-conversation.ts` were synchronous bare setters. **Fixed by wrapping the idle→active flip, the first user bubble mount, and the first synthesis card reveal in `startTransition`.**
 2. **Drawer morph had no shared source element.** The trigger button had no `view-transition-name`; the browser couldn't pair old → new. **Fixed by dropping the drawer morph and the manual `startViewTransition` calls entirely.**
 3. **Three elements shared one name (`ai-search-composer`) across different lifecycles.** Chromium's "last in wins" gave undefined morph targets. **Fixed by giving each pair a distinct name (`-idle` and `-active`); the first user bubble loses the shared-name treatment and fades in plainly.**
 4. **Wrapper applied `view-transition-name` to the inner element, not the visible root.** The browser captured a smaller bounding box than the user expected. **Fixed by inverting the wrapper nesting in `SearchField` and moving the empty-state wrapper to the visible styled card.**
-5. **Streaming `SynthesisCard` would re-fire transition on every chunk** (canary `<ViewTransition>` fires on `onUpdate` for content changes). **Fixed by adding `update="none"` to the streaming wrapper.**
+5. **Streaming `SynthesisCard` would re-fire transition on every chunk** (`<ViewTransition>` fires on `onUpdate` for content changes). **Fixed by adding `update="none"` to the streaming wrapper.**
 6. **`::view-transition-new(thread-empty-state)` was dead CSS** (no NEW element with that name; the empty state is exit-only). **Fixed by removing the dead rule from `globals.css`.**
 7. **Unused `useViewTransitionsEnabled` export and unused `startViewTransition` helper** — latent footguns, no current consumers. **Fixed by removing both.**
 8. **`::view-transition-old/new(ai-search-composer)` rule** pointed at a name that no longer exists after the rename. **Fixed by rewriting CSS to target `-idle` and `-active` separately with a shared `vt-morph` keyframe.**
 
-## Canary note (historical — reverted)
+## React version note (canary detour reverted)
 
-The original spec assumed React 19 stable ships `<ViewTransition>`. It does not — you need `react@canary`. The canary bump (`react@19.3.0-canary-2dc7da79-20260828`) was reverted — `package.json` pins React `^19.2.8` stable. The canary types expose `React.ViewTransition` as an `ExoticComponent`. The `SaiViewTransition` wrapper gates the canary component on the flag + browser support via `useSyncExternalStore`, so the server render and first client render match (no hydration mismatch). Critical detail: `<ViewTransition>` only fires for async updates (startTransition, useDeferredValue, Actions, Suspense); all consumer state mutations must be wrapped in `startTransition` or the transition never triggers.
+The original spec assumed `<ViewTransition>` required `react@canary`; that was true for the React version at the time, but React 19.3.1 now exports `ViewTransition` (runtime type is a symbol). The canary bump (`react@19.3.0-canary-2dc7da79-20260828`) was reverted and `package.json` pins React `^19.3.1`. The `SaiViewTransition` wrapper still gates the element on the flag + browser support via `useSyncExternalStore`, so the server render and first client render match (no hydration mismatch), and it avoids depending on unstable TypeScript types. Critical detail: `<ViewTransition>` only fires for async updates (startTransition, useDeferredValue, Actions, Suspense); all consumer state mutations must be wrapped in `startTransition` or the transition never triggers.
 
 ## Files changed (final)
 
@@ -96,19 +96,19 @@ add  components/ui/view-transition.tsx
 mod  lib/config/env.ts                  # NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED (default true)
 mod  .env.example
 mod  app/globals.css                    # ::view-transition-* rules + reduced-motion guard
-mod  components/ai-search/SearchPage.tsx          # removed framer-motion wrapper
+mod  components/ai-search/SearchPage.tsx          # removed former motion wrapper
 mod  components/ai-search/search-composer.tsx     # wrapped SearchField + InputBar with distinct names
 mod  components/ai-search/ChatMessageList.tsx     # streaming SynthesisCard with update="none"
 mod  components/ai-search/use-search-conversation.ts  # startTransition wrapping on idle→active, first user bubble, first synthesis card
 mod  components/thread/thread-live-wrapper.tsx    # empty-state card wrapped at visible root
 mod  components/thread/thread-details-panel.tsx   # dropped dead view-transition-name + manual startViewTransition
 add  test/view-transition.test.tsx
-mod  package.json                       # react + react-dom pinned stable `^19.2.8` (canary reverted)
+mod  package.json                       # react + react-dom pinned `^19.3.1` (canary reverted)
 ```
 
 ## Graceful degradation contract
 
-- **No browser support:** `supportsViewTransitions()` is `false` → components render their plain JSX children. No `viewTransition` props attached, no `::view-transition-*` CSS, no behavior change. The framer-motion fade at `SearchPage.tsx:51-55` stays as the fallback.
+- **No browser support:** `supportsViewTransitions()` is `false` → components render their plain JSX children. No `viewTransition` props attached, no `::view-transition-*` CSS, no behavior change. The plain JSX render is the fallback.
 - **Flag off:** identical to no-support path. One branch.
 - **`prefers-reduced-motion: reduce`:** add a CSS guard at `app/globals.css`:
   ```css
@@ -145,12 +145,12 @@ Estimated diff: ~250 lines added, ~60 lines changed.
 1. `bun typecheck` — must pass; we add a generic `SaiViewTransitionProps` so TS catches misuse.
 2. `bun lint` — must pass.
 3. `bun run test` — mocha covers the three branches of the wrapper (flag on+supported, flag on+unsupported, flag off).
-4. `bun build` — must pass; flag is bundled into client env, no runtime branching surprise.
+4. `bun run build` — must pass; flag is bundled into client env, no runtime branching surprise.
 5. Manual smoke (not automatable in this session): empty thread → submit first message; open detail drawer; send message in SaiSearch idle → see composer morph into bubble.
 
 ## Out of scope (explicitly)
 
 - Route-change transitions (Next 16 surface is in flux; revisit after `next/view-transitions` stabilizes).
-- Animation framework swap (we keep `framer-motion` for the idle flip; no reason to churn).
+- Animation framework swap (we keep `motion` for `TaskSteps`; the idle flip uses View Transition when available and plain render otherwise).
 - Touch devices — the skill's notes flag Safari iOS gaps; we treat any `!supportsViewTransitions()` browser as unsupported.
 - Wider dashboard navigation — per your scope answer.

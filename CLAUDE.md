@@ -1,257 +1,74 @@
 # Sastram — Discussion and Research Platform
 
-Personal project, open sourced. Built with Next.js, Prisma, and AI.
+Personal project, open sourced. Next.js 16 App Router, TypeScript, Prisma 7, PostgreSQL (Neon), Better Auth, and AI search.
 
-## Overview
+## Canonical references
 
-Next.js 16+ Discussion and Research Platform with TypeScript, Prisma ORM, PostgreSQL (Neon), serverless architecture, Better Auth authentication, and AI integration.
+- [shared/ARCHITECTURE.md](shared/ARCHITECTURE.md) — the only current architecture reference (system design, routes, data model, jobs, env vars).
+- [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) — domain vocabulary.
+- [docs/adr/](docs/adr/) — decision records and historical architecture-review logs.
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — release order, probes, crons, backups, rollback.
 
-For the verified system reference, see [shared/ARCHITECTURE.md](shared/ARCHITECTURE.md) (canonical) and [docs/ARCHITECTURE-REVIEW.md](docs/ARCHITECTURE-REVIEW.md).
-
-## Tech Stack
-
-- **Framework**: Next.js 16 (App Router)
-- **Language**: TypeScript
-- **Database**: PostgreSQL via Neon serverless
-- **ORM**: Prisma 7+
-- **Auth**: Better Auth
-- **AI**: Google Gemini / OpenAI GPT
-- **Styling**: Tailwind CSS + shadcn/ui components
+Do not create a second architecture doc or hard-code inventory counts; inspect `prisma/schema.prisma`, `modules/`, `app/api/`, and `test/` instead.
 
 ## Commands
 
 ```bash
 # Development
 bun dev              # Next.js + QStash dev server (concurrently)
-bun dev:next         # Next.js dev server only
-bun dev:qstash       # QStash dev server only
+bun dev:next         # Next.js only
+bun dev:qstash       # QStash only
 
-# Build & Deploy
-bun build           # Prisma generate + Next build
-bun start           # Production server
-bun check:prod      # Production readiness checks
+# Build & deploy
+bun run build        # Prisma generate + Next build (bare `bun build` is Bun's bundler)
+bun start            # Production server (next start)
+bun check:prod       # Production readiness checks
 
-# Testing & Linting
-bun run test       # Mocha suite
-bun test:e2e       # Playwright e2e tests (smoke + collections + thread-edit; run in CI's e2e job)
-bun typecheck      # TypeScript check
-bun lint          # ESLint
-bun lint:fix      # ESLint fix
-bun format        # Prettier (requires prettier in devDeps)
+# Verification
+bun typecheck
+bun lint
+bun run test         # Mocha suite
+bun test:e2e         # Playwright e2e (CI e2e job)
+bun run audit:gate   # dependency audit policy gate
+bun format           # Prettier
 
 # Database
-bun db:generate   # Prisma generate
-bun db:push      # Prisma db push
-bun db:migrate   # Prisma migrate dev
-bun db:deploy    # Prisma migrate deploy (prod)
-bun db:deploy:data-api  # migrate deploy over Neon's HTTPS Data API (5432-blocked networks)
-bun db:studio   # Prisma studio
+bun db:generate
+bun db:push
+bun db:migrate
+bun db:deploy        # prod migrations (forward-only)
+bun db:deploy:data-api  # migrations over Neon HTTPS Data API (5432-blocked networks)
+bun run db:extensions   # idempotent pg_trgm GIN indexes
+bun db:studio
 ```
 
-## Architecture
+## Layout
 
-### Directory Structure
+- `app/` — App Router pages and API routes.
+- `modules/` — domain modules, flat files only (no `actions/`, `repository/`, `ports/`, or `adapters/` subdirectories).
+- `lib/` — infrastructure, services, AI, queue, shared utilities.
+- `components/` — UI components.
+- `hooks/` — React hooks.
+- `prisma/` — schema and forward-only migrations.
+- `test/` — Mocha unit/route tests and Playwright e2e.
 
-- `app/` - Next.js App Router pages and API routes
-- `lib/` - Core utilities, services, infrastructure
-- `modules/` - Domain modules
-- `components/` - UI components
-- `prisma/` - Database schema (35 models)
-- `test/` - Mocha unit tests + Playwright e2e
-- `hooks/` - React hooks (chat, thread, AI streaming, preferences)
+## Conventions
 
-### Database Models
+- Server actions use `createServerAction` / `withValidation` from `lib/utils/server-action.ts` and return `{ data, error, ok, errorCode }`. They never throw.
+- API routes use `withErrorHandling` from `lib/utils/api-response.ts`; errors are `AppError` with a status code.
+- Environment variables go through the Zod schema in `lib/config/env.ts`. Do not read `process.env` directly in app code (the documented exception is `CSP_REPORT_ONLY` in `proxy.ts`).
+- **Thread access is the primary authorization primitive.** Use `requireReadOrThrow` / `requireWriteOrThrow` / `requireManageOrThrow` from `lib/thread-access.ts` before touching thread data. There is no membership table: access derives from `visibility`, `createdBy`, accepted `ThreadInvitation`, and active bans.
+- Real-time is SSE only (AI reply streaming); other updates poll. There is no WebSocket layer.
+- Background jobs go through QStash (`app/api/jobs`), with handlers registered in `lib/queue/registry.ts`. Without QStash (or with `QSTASH_DEV=true`) they run inline.
+- Vercel cron schedules live in `vercel.json`; every cron route uses `verifyCronAuth()`.
+- UI uses the SAI tokens in `app/globals.css`: cards are `border border-line rounded-card shadow-card`; inputs/buttons use `rounded-control`; chips use `rounded-chip`. Do not use `rounded-xl`/`rounded-2xl` on card-level containers.
+- AI calls go through `lib/ai/guard.ts` + `lib/middleware/ai-guard-route.ts` (session → quota → spend cap → cost gate → thread access). Do not call providers directly from routes.
 
-35 models in `prisma/schema.prisma`:
-- User (deletedAt), Account, Session, Verification
-- Thread (deletedAt, visibility, forkedFromId, verifiedAt/By)
-- Message (deletedAt, nullable senderId, factCheckStatus enum), MessageEdit, MessageMention, Attachment
-- Reaction, ReadReceipt
-- UserFollow, UserBookmark
-- Notification
-- ThreadSubscription
-- ModerationRule (CHECK constraints), Appeal (own table + AppealVote jury), Report (escalatedAt, firstResponseAt), UserBan
-- ThreadTag, ThreadTagRelation
-- Poll (isMarket, resolvedOptionIndex), PollVote
-- UserActivity (CHECK constraint)
-- ThreadInvitation
-- AiSearchSession, AiSearchResult
-- AiUsageLog (costUsd)
-- ThreadRelation
-- Feedback
-- Collection, CollectionItem, KnowledgePage, Bounty
+## Testing
 
-### Key Services
-
-- **AI** (`lib/ai/gemini.ts`, `lib/ai/openai.ts`, `lib/ai/noop.ts`; provider selection via `createAiService()` in `lib/ai/index.ts`): summaries, thread DNA, resolution scores, image NSFW moderation (Gemini; OpenAI reports `UNKNOWN`)
-- **Auth** (`lib/services/auth.ts`): Better Auth with email OTP
-- **Rate Limit** (`lib/services/rate-limit.ts`): Upstash Redis-based rate limiting with in-memory fallback
-- **Moderation** (`lib/services/moderation.ts`): Regex-based content filtering + AI inline + moderator notifications
-- **AI Spend Cap** (`lib/services/ai-spend-cap.ts`): Dollar-based daily limit ($5.00) via Redis INCRBYFLOAT
-- **AI Usage Logger** (`lib/services/ai-usage-logger.ts`): Per-request token counts and cost estimates
-- **Daily Quota** (`lib/services/daily-quota.ts`): Per-user/day Redis quotas for AI inline, AI analysis, AI search, image moderation
-- **Moderation SLA** (`lib/services/moderation-sla.ts`): SLA metrics — pending report counts (24h/72h buckets) + average first-response time
-- **Soft-Delete Purge** (`lib/services/soft-delete-purge.ts`): Purges soft-deleted users after 30 days
-
-### Design System
-
-All UI follows SAI design tokens defined in `app/globals.css`:
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--rounded-card: 14px` | Cards, panels, modals | `rounded-card` |
-| `--rounded-control: 6px` | Buttons, inputs, small interactive | `rounded-control` |
-| `--rounded-chip: 6px` | Badges, tags, pills | `rounded-chip` |
-| `--shadow-card` | Card elevation | `shadow-card` |
-| `--ink`, `--ink-2`, `--ink-3` | Primary/secondary/tertiary text | `text-ink`, `text-ink-2`, `text-ink-3` |
-| `--canvas` | Page background | `bg-canvas` |
-| `--surface` | Card/panel background | `bg-surface` |
-| `--line` | Borders | `border-line` |
-| `--hover` | Hover states | `bg-hover` |
-
-**Enforcement rules:**
-- Every card/panel: `border border-line rounded-card shadow-card`
-- No `rounded-xl`, `rounded-2xl`, `rounded-lg` on card-level containers
-- Fonts: Geist sans (`font-sans`), Instrument Serif headings (`font-serif-heading`), Geist Mono (`font-mono`)
-- No inline `style={{ fontFamily: '...' }}` — use Tailwind font classes
-
-### Shared Components
-
-- `components/ui/detail-card.tsx` — `<DetailCard>`: standard card wrapper (`rounded-card border border-line bg-surface shadow-card p-5`). Used by ThreadResolutionCard, ThreadSummaryCard, RelatedThreadsCard, ParticipantsCard.
-- `components/ui/overflow-menu.tsx` — `<OverflowMenu>`: kebab "..." menu for rare actions (retry/feedback in StreamingText, formatting in PostMessageForm).
-
-### SaiSearch Architecture
-
-The search page (`/dashboard/sai-search`) is a **chat-style interface** with conversation continuity:
-
-**State** (`components/ai-search/use-search-conversation.ts` + `search-provider.tsx`, wrapper `SearchPage.tsx`):
-- `messages: ChatMessage[]` — conversation history (user + assistant turns)
-- `streamingMessage: ChatMessage | null` — in-progress response during SSE stream
-- `currentSessionId` — UUID persisted across the conversation, sent to API
-- `sessionIdRef` — ref mirror of `currentSessionId` to avoid stale closures in SSE handlers
-- `streamingDataRef` — accumulates SSE data outside React state, finalized on `done` event
-
-**ChatMessage type:**
-```typescript
-interface ChatMessage {
-  id: string;           // crypto.randomUUID()
-  role: 'user' | 'assistant';
-  query: string;
-  text?: string;        // synthesis text (assistant only)
-  sources?: Source[];
-  citations?: Citation[];
-  followUps?: string[];
-  conflictData?: ConflictInfo;
-  queryType?: QueryType;
-  sourceCount?: number;
-  timestamp: number;
-}
-```
-
-**Flow:**
-1. User types query → `runSearch()` adds user message to `messages`, creates empty assistant message in `streamingMessage`
-2. SSE events update `streamingDataRef` and `streamingMessage` (sources, phase)
-3. On `done`: finalize `streamingDataRef` into a `ChatMessage`, append to `messages`, clear `streamingMessage`
-4. Follow-up queries send `conversationHistory` (last 10 messages) to API for context
-
-**API** (`app/api/ai/forum-search/route.ts`):
-- Accepts `sessionId` (UUID) and `conversationHistory` (last N messages)
-- Passes history to `executeAISearch()` → `synthesize()` which includes it in the LLM prompt
-- First query in a session creates a new `AiSearchSession` row; subsequent queries reuse the `sessionId`
-
-**Sources:** No separate sources section. Sources appear only as inline citation chips in `StreamingText` and in the expandable sources drawer within `SynthesisCard`.
-
-### Thread Page Architecture
-
-The thread page (`/dashboard/threads/[slug]`) uses a **drawer-based layout**:
-
-- **Header** (`thread-page-header.tsx`): `h-14`, icon-only bookmark/subscribe/invite buttons, green dot for live indicator, no Hash icon box; OP/moderators get an Edit pencil (`edit-thread-dialog.tsx` → `updateThreadAction`) that updates title/description in place
-- **AI card polling**: summary and resolution cards poll lightweight GET endpoints (`/api/ai/thread-summary`, `/api/ai/resolution-score`) — never `router.refresh()`
-- **Sidebar** (`thread-details-panel.tsx`): Slide-over drawer triggered by `PanelRightOpen` icon at `fixed top-[4.5rem] right-4`. Contains DetailCard-wrapped panels (resolution, summary, DNA, related, participants)
-- **Composer** (`post-message-form.tsx`): 4 visible toolbar icons (Paperclip, Emoji, @sai, format overflow with Bold/Italic/Code/Link/Poll), icon-only Send button
-- **Messages** (`thread-live-wrapper.tsx`): No mobile summary bar, InlinePoll kept as poll creation drawer
-- **Message rows** (`message-list.tsx`): inline edit/pin/delete reconcile via `onMessageUpdate` (no refresh); the "edited" label opens `EditHistory` popover with prior versions on demand
-- **Thread tags** (`thread-live-wrapper.tsx` + `thread-tags-manager.tsx` + `tag-chip.tsx`): user tags render as clickable chips under the source preview; OP/moderators attach existing tags or remove them in place (no refresh, rollback on failure)
-- **Collections** (`CollectionItemsList.tsx`, `use-collections-dropdown.ts`): item deletes and save-dropdowns are client-state owned — no `router.refresh()`; dead `CreateTopicButton`/`modules/topics` duplicate creation path removed
-
-### Background Jobs
-
-- QStash webhook callback at `app/api/jobs/route.ts`
-- Handlers live in `lib/queue/workers/` — `ai-jobs.ts` (coalesced: summary, DNA, resolution score, conflict detection, daily digest, staleness check, insight notifications, deep research), `ai-inline.worker.ts`, `email.worker.ts`, helpers in `_shared.ts` — and are registered in the `jobHandlers` map in `lib/queue/registry.ts`. `runJobInline` (`lib/services/queue.ts`) executes handlers inline when QStash is unconfigured or `QSTASH_DEV=true`
-- Vercel Cron for scheduled tasks (update-threads, cleanup-blobs, daily-digest, promote-knowledge)
-- Jobs: thread summary, thread DNA, resolution score, conflict detection, daily digest, AI inline, email, staleness check, AI insight notifications, deep research (12-source, advanced)
-- Jobs retry 1x via QStash (3x for `email`/`CRITICAL_JOBS`); the free-tier daily publish cap (450) drops non-critical jobs but never `email`; non-retryable `AppError` returns 200 to prevent retry amplification
-
-### API Routes
-
-- `/api/auth/*` - Authentication endpoints
-- `/api/threads/*` - Thread operations (incl. `fork`, `fork-external`, `similar`, `challenge`, `ai-reply` + SSE stream)
-- `/api/messages/*` - Message operations
-- `/api/ai/*` - AI-powered features (forum-search SSE, thread-summary, thread-dna, resolution-score, search-history, spend, deep-research)
-- `/api/cron/*` - Scheduled jobs (cron auth via `CRON_SECRET` Bearer token) — `update-threads`, `daily-digest`, `cleanup-blobs`, `promote-knowledge`
-- `/api/jobs` - QStash webhook callback for background jobs
-- `/api/v1/moderation/*` - Moderation tools (admin-only)
-- `/api/collections/*` - Workspace collections (CRUD + export with [n] footnotes)
-- `/api/bounties`, `/api/polls/[pollId]/resolve` - Bounties & prediction markets
-- `/api/bootstrap`, `/api/health`, `/api/search`, `/api/upload`, `/api/invitations/accept`, `/api/csp-report`, `/api/email-otp/*` etc. — see `shared/ARCHITECTURE.md` for the full route inventory
-
-## Authorization Patterns
-
-**All API routes and server actions must enforce thread access checks.**
-
-- **Thread access model** is the primary authorization primitive — see `lib/thread-access.ts` (`requireReadOrThrow`, `requireWriteOrThrow`, `requireManageOrThrow`, `requireReadOrRedirect`, `ThreadAccessPolicy`, plus boolean `canAccessThread`/`canManageThread` views). There is no membership table; access is derived from thread `visibility`, `createdBy`, and accepted `ThreadInvitation` rows.
-- **Visibility rule (private/restricted threads):** creator OR accepted `ThreadInvitation` OR global MODERATOR/ADMIN. Public threads are readable by anyone; writes still require a session.
-- Routes/actions that read/write thread data must call `requireReadOrThrow(threadId, userId, role)` / `requireWriteOrThrow(...)`.
-- `requireSession()` / `auth.api.getSession()` for authentication only — does NOT check access.
-- Admin-only: `assertAdmin(session.user)` in thread actions, `requireAdmin()` / `requireModerator()` for API routes.
-- Messages: posting and reading require thread access (`modules/messages/post.ts`).
-- AI routes (`thread-dna`, `resolution-score`, `ai-reply`) require thread access.
-
-## Test Coverage
-
-- **Current**: Mocha test suite (see `shared/ARCHITECTURE.md` for the file inventory) covering utilities, services, API routes (incl. AI guard, search deadline, idempotency, collections), and components (incl. `chat-message-list`, `thread-components`, `overflow-menu`, `view-transition`)
-- **E2E**: Playwright specs in `test/e2e/` (`smoke`, `collections`, `thread-edit` + `global-setup` fixtures) — run in CI's `e2e` job (PostgreSQL 16 service, Playwright-managed `bun run dev:next`; `global-setup` seeds the user + fixture thread and warms the first routes)
-- **Missing**: integration tests with real DB, component storybook
-
-## Architecture Notes
-
-- Server actions use `createServerAction` from `lib/utils/server-action.ts`
-- Auth handled manually inside action handlers via `requireSession()`
-- `Result<T, E>` type and `safeAction` wrapper removed — use `{ data, error, errorCode, ok }` return objects
-
-## Environment Variables
-
-Validated by `lib/config/env.ts` (single seam) except `CSP_REPORT_ONLY`, which is read directly in `proxy.ts`; `.env.example` is the annotated list.
-
-Required in `.env`:
-- `DATABASE_URL` - PostgreSQL connection (Neon; keep the pooled `-pooler`/`pgbouncer=true` endpoint for app traffic)
-- `DATABASE_URL_UNPOOLED` - Neon **direct** endpoint (no `-pooler`, no `pgbouncer=true`). Used by Prisma CLI for schema migrations — NEVER run `prisma migrate`/`db push` over the pooled URL (fails with "prepared statement s0 already exists", non-persistent `SET search_path`, or SQLSTATE 25006). Optional in the schema: if unset, `prisma.config.ts` derives the direct URL by stripping `-pooler`/`pgbouncer=true` from `DATABASE_URL`.
-- `BETTER_AUTH_SECRET` - Auth secret (32+ chars)
-- `BETTER_AUTH_URL` - Auth base URL
-- `NEXT_PUBLIC_APP_URL` - Public URL
-- `RESEND_API_KEY` + `RESEND_FROM` (defaults to `Sastram <noreply@example.com>`) + template IDs (`RESEND_TEMPLATE_OTP`, `RESEND_TEMPLATE_INVITATION`, `RESEND_TEMPLATE_THREAD_SUMMARY`, `RESEND_TEMPLATE_PASSWORD_RESET`, `RESEND_TEMPLATE_WELCOME`) - Email
-- `CRON_SECRET` - Bearer token for cron endpoints (32+ chars, required in production)
-
-Optional/feature flags:
-- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` - Redis for caching/queues (degrades gracefully to in-memory; no TCP `REDIS_URL` client exists)
-- `QSTASH_URL` / `QSTASH_TOKEN` / `QSTASH_CURRENT_SIGNING_KEY` / `QSTASH_NEXT_SIGNING_KEY` - Upstash QStash; without them jobs run inline
-- `QSTASH_DEV` - `true` runs jobs inline locally (set by `bun dev`)
-- `GEMINI_API_KEY` or `OPENAI_API_KEY` - AI provider (AI features are disabled without one)
-- `BETTER_AUTH_API_KEY` - enables the `@better-auth/infra` `dash()` + `sentinel()` server plugins
-- `BETTER_AUTH_API_URL` / `BETTER_AUTH_KV_URL` / `BETTER_AUTH_IDENTIFY_URL` - override Better Auth Infra API and identify bases
-- `NEXT_PUBLIC_BETTER_AUTH_IDENTIFY_URL` - browser copy of the project identify URL for Sentinel fingerprinting
-- `BLOB_READ_WRITE_TOKEN` + `BLOB_URL` - Vercel Blob (uploads + image-validation origin)
-- `RATE_LIMIT_ENABLED` - Set to `false` to disable rate limiting
-- `CONTENT_MODERATION_ENABLED` - Enable AI image/content moderation
-- `CSP_REPORT_ONLY` - `true` sends the CSP as Report-Only in production (dev is report-only unless set to `false`)
-- `NEXT_PUBLIC_VIEW_TRANSITIONS_ENABLED` - View transitions (default true)
-- `GITHUB_CLIENT_ID/SECRET`, `GOOGLE_CLIENT_ID/SECRET` - GitHub/Google OAuth
-- `SASTRAM_EXA_KEY` / `SASTRAM_TAVILY_KEY` / `SASTRAM_GEMINI_KEY` - AI search providers
-- `SENTRY_DSN` - Error tracking
-
-## CI
-
-GitHub Actions workflow in `.github/workflows/ci.yml` — four jobs: gitleaks secret scanning, `bun run audit:gate`, a check job on a PostgreSQL 16 service (`bun run db:deploy` → `bun run db:extensions` → `typecheck` → `lint` → `build` → `bun run test`), and an `e2e` job on the same PostgreSQL 16 service (`db:deploy` → `db:extensions` → Chromium → `bun run test:e2e` against a Playwright-managed `bun run dev:next`). `format:check` is not run in CI.
+- Mocha tests live in `test/`; Playwright specs in `test/e2e/` (`smoke`, `collections`, `thread-edit`, `ux-fixes`, plus `global-setup`).
+- Use Sinon stubs for Prisma/Redis/AI or the injected fakes in `test/support/`; reset rate limiters between tests.
+- CI has five jobs: `secrets` (gitleaks), `audit` (`audit:gate`), `check` (typecheck, lint, build, Mocha on PostgreSQL 16), `docker` (image build), and `e2e` (Playwright on PostgreSQL 16). `format:check` is not run in CI.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
