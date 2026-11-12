@@ -50,6 +50,7 @@ function ChatMessageBubble({
         conflictData={message.conflictData}
         sourceCount={message.sourceCount ?? 0}
         queryType={message.queryType ?? 'technical'}
+        query={message.query}
         isStreaming={false}
         fromHistory={true}
         onRetry={isLatest ? onRetry : undefined}
@@ -214,6 +215,7 @@ export function ChatMessageList({
                   conflictData={streamingMessage.conflictData}
                   sourceCount={streamingMessage.sourceCount ?? 0}
                   queryType={streamingMessage.queryType ?? 'technical'}
+                  query={streamingMessage.query}
                   isStreaming={true}
                   fromHistory={false}
                 />

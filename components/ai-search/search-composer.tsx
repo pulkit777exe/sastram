@@ -1,4 +1,6 @@
 'use client';
+import { useState } from 'react';
+import type { SearchMode } from '@/modules/ai-search/types';
 
 import { useSearch } from './search-provider';
 import { SearchBox } from './SearchBox';
@@ -76,13 +78,19 @@ function InputBar() {
     state: { query, isStreaming, isChatActive, lastConfig },
     actions: { setQuery, run, newSearch },
   } = useSearch();
+  const initialMode = (lastConfig.searchMode === 'standard' || lastConfig.searchMode === 'table') ? 'pro' : (lastConfig.searchMode === 'advanced' ? 'deep' : (lastConfig.searchMode as SearchMode));
+  const [mode, setMode] = useState<SearchMode>(initialMode === 'quick' || initialMode === 'pro' || initialMode === 'deep' ? initialMode : 'pro');
   return (
     <SaiViewTransition name={COMPOSER_VT_NAME_ACTIVE}>
       <SearchInputBar
         query={query}
         onQueryChange={setQuery}
-        onSubmit={() => {
-          if (query.trim().length >= 3 && !isStreaming) run(query, lastConfig);
+        mode={mode}
+        onModeChange={setMode}
+        onSubmit={(m) => {
+          if (query.trim().length >= 3 && !isStreaming) {
+            run(query, { ...lastConfig, searchMode: m || mode || 'pro' });
+          }
         }}
         isStreaming={isStreaming}
         isChatActive={isChatActive}

@@ -95,21 +95,31 @@ export function stubAuth(session: { user: Record<string, unknown> } | null = cre
 
   // ── Session module ──
   const sessionModulePath = require.resolve('@/modules/auth/session');
+  const authBarrelPath = require.resolve('@/modules/auth');
 
   require(sessionModulePath);
+  require(authBarrelPath);
   const sessionModule = require.cache[sessionModulePath];
+  const authBarrelModule = require.cache[authBarrelPath];
 
   if (sessionModule) {
     const originalSessionExports = sessionModule.exports;
-    sessionModule.exports = {
+    const originalBarrelExports = authBarrelModule ? authBarrelModule.exports : undefined;
+    const patchedSessionExports = {
       ...originalSessionExports,
       getSession: mockGetSession,
       requireSession: mockRequireSession,
       requireSessionOrThrow: mockRequireSessionOrThrow,
     } as typeof originalSessionExports;
-
-    // ── Barrel module ── (force re-load so route handlers pick up mocked session)
-    void require.resolve('@/modules/auth');
+    sessionModule.exports = patchedSessionExports;
+    if (authBarrelModule) {
+      authBarrelModule.exports = {
+        ...authBarrelModule.exports,
+        getSession: mockGetSession,
+        requireSession: mockRequireSession,
+        requireSessionOrThrow: mockRequireSessionOrThrow,
+      } as typeof authBarrelModule.exports;
+    }
 
     // Delete ALL non-node_modules modules EXCEPT:
     // - session module (which we just replaced)
@@ -149,6 +159,9 @@ export function stubAuth(session: { user: Record<string, unknown> } | null = cre
     stubs.push({
       restore: () => {
         sessionModule.exports = originalSessionExports;
+        if (authBarrelModule && originalBarrelExports) {
+          authBarrelModule.exports = originalBarrelExports;
+        }
         // Re-clear non-preserved modules so next test starts clean
         for (const key of Object.keys(require.cache)) {
           if (preserve.has(key)) continue;

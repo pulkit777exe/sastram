@@ -28,7 +28,7 @@ export const DEFAULT_CONFIG: SearchConfig = {
   exaMode: 'agentic',
   tavilyMode: 'search',
   sourceFilter: 'all',
-  searchMode: 'standard',
+  searchMode: 'pro',
 };
 
 export const SEARCH_PHASES: { id: string; label: string }[] = [
