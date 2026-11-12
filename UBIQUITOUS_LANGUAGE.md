@@ -22,8 +22,8 @@
 | Term | Definition | Aliases to avoid |
 | ---- | ---------- | ---------------- |
 | **Thread DNA** | An AI-generated classification of a *Thread*: question type, expertise level, topics, and estimated read time. | ThreadDna |
-| **Resolution Score** | A stored numeric value (0–100) on `Thread.resolutionScore` indicating how resolved the discussion appeared when the AI last scored it. It is a snapshot, not a live value: time does not rewrite the stored score. Trust in the score is expressed separately as *Confidence Decay*. | Score, resolution, resolutionScore |
-| **Confidence Decay** | A derived, time-based confidence in a *Resolution Score* — it is not a mutation of the stored score. It is computed from `verifiedAt` (human verification) when present, otherwise `lastVerifiedAt` (the last AI scoring run). The daily cron and staleness sweep use the decayed confidence to decide when a *Thread* needs re-scoring; the UI shows it as effective confidence. | Aging, decay, effective score |
+| **Resolution Score** | A stored numeric value (0–100) on `Thread.resolutionScore` indicating how resolved the discussion appeared when the AI last scored it (AI-estimated signal). It is a snapshot, not a live value: time does not rewrite the stored score. Trust in the score is expressed separately as *Confidence Decay* and optional human *Verification*. | Score, resolution, resolutionScore |
+| **Confidence Decay** | A derived, time-based confidence in a *Resolution Score* — it is not a mutation of the stored score (AI-estimated effective confidence). It is computed from `verifiedAt` (human verification) when present, otherwise `lastVerifiedAt` (the last AI scoring run). The daily cron and staleness sweep use the decayed confidence to decide when a *Thread* needs re-scoring; the UI shows it as effective confidence. | Aging, decay, effective score |
 | **Thread Summary** | An AI-generated plain-text summary of a *Thread*'s discussion. | AiSummary |
 | **Stale Content** | A flagged state (`isOutdated`) indicating a *Thread* may contain outdated information. | Outdated |
 
@@ -65,7 +65,7 @@
 | **Bounty** | A reward attached to a *Thread* (`amount`, `isClaimed`). | Reward, prize |
 | **Save Payload** | The validated shape for adding an item to a *Collection* (`threadId`/`sessionId`/`messageId`/`metadata`, one Zod schema). | Add schema, save body |
 | **Metadata Kind** | The typed discriminant for collection item snapshots (`graph`/`canvas`/`summary`/`ai_synthesis`). | Metadata type |
-| **Fact-Check Status** | A per-*Message* badge (`UNCHECKED` / `VERIFIED` / `DISPUTED`). | Fact check |
+| **Fact-Check Status** | A per-*Message* badge (`UNCHECKED` / `VERIFIED` / `DISPUTED`) shown as an AI-estimated signal, not an authoritative truth determination. | Fact check |
 | **Poll Market** | A *Poll* with `isMarket` + `resolvedOptionIndex` — a resolvable prediction market. | Betting, market |
 
 ## Real-time & infrastructure

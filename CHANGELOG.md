@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased] — Architecture Refactor (Rounds 1–4)
 
+### Added/Changed (Phase 7: cleanup, a11y, labeling)
+
+- **Moat toggle/gating cleanup:** removed redundant always-on preference plumbing/gating for `collectionsEnabled`, `graphEnabled`, `sourceProvenanceEnabled`, `verifiedResolutionEnabled`, `confidenceDecayEnabled` while preserving backward-compatible parsing of legacy stored preference keys (ignored safely). Collections and graph routes/UI are always available; verified resolution/trust decay UI is always shown. `deepResearchEnabled` and `challengeModeEnabled` remain meaningful user gates.
+- **Compare surfaces:** retained Canvas and fork lineage/compare flows; no low-risk consolidation identified that would not risk behavior changes (Canvas compares thread summaries/AI diff, fork lineage is parent-child compare/supersede).
+- **AI-estimated labeling:** resolution scores, effective confidence/decay, provenance/source confidence, deep-research evidence confidence, and fact-check status badges now explicitly indicate AI-estimated/signal status unless human-verified.
+- **Docs:** updated `shared/ARCHITECTURE.md` and `UBIQUITOUS_LANGUAGE.md` to reflect always-on core capabilities and AI-estimated labeling; canonical docs aligned with implementation.
+
 ### Added (Phase 5: Forking differentiator)
 
 - **Unified forking model**: `forkKind` (ASSUMPTION/CONTINUE/REMIX_AI/EXTERNAL) on `Thread` with lineage reuse of `Thread.forkedFromId` (no parallel lineage table). Forward-only/idempotent migration adds fork metadata and backfills legacy forked rows to `CONTINUE`.

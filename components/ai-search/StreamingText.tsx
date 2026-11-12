@@ -558,7 +558,7 @@ export function StreamingText({
         >
           <div className="overflow-hidden">
             <div className="mt-2">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-ink-3 mb-1.5 px-1">Sources &amp; provenance · tier · confidence · freshness</p>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-ink-3 mb-1.5 px-1">Sources &amp; provenance · tier · AI-estimated confidence · freshness</p>
               <div className="flex flex-col rounded-card border border-line bg-inset p-1 shadow-hairline max-h-[min(50vh,360px)] overflow-y-auto overscroll-contain gap-0.5">
               {displayedSources.map((source) => (
                 <a

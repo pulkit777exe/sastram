@@ -1,21 +1,21 @@
 # Sastram Architecture
 
-Sastram is an AI-powered community forum where questions get **resolved**, not just answered. It combines traditional forum features with a live knowledge resolution engine — AI searches across the web, synthesizes results, detects conflicts, and assigns resolution scores. The community validates and challenges AI output; confidence in a score's freshness decays separately. Knowledge compounds over time through verified resolutions, workspace collections, deep research, and community jury appeals.
+Sastram is an AI-powered community forum where questions get **resolved**, not just answered. It combines traditional forum features with a live knowledge resolution engine — AI searches across the web, synthesizes results, detects conflicts, and assigns AI-estimated resolution scores (human-verified where marked). The community validates and challenges AI output; confidence in a score's freshness decays separately. Knowledge compounds over time through verified resolutions, workspace collections, deep research, and community jury appeals.
 
 This is the single canonical architecture reference. Counts are intentionally not hard-coded here; inspect `prisma/schema.prisma`, `modules/`, `app/api/`, and `test/` for the current inventory.
 
-The current moat features (all configurable from `Settings → Preferences`, all client + server gated) are:
+Core moat capabilities (deep research and challenge mode remain user-gated where applicable; collections, graph, source provenance, and verified resolution/trust decay are always available):
 - **Verified Resolution** (`Thread.verifiedAt/By`) — OP/admin `markThreadVerified` server action confirms AI score; cron skips high-confidence verified threads
 - **Source Provenance 2.0** (`StreamingText` drawer) — tier, confidence, freshness, provider, contentFetched all visible
-- **Collections** (`Collection` + `CollectionItem`) — save threads + searches to workspaces, export as Markdown with `[n]` footnotes
+- **Collections** (`Collection` + `CollectionItem`) — save threads + searches to workspaces, export as Markdown with `[n]` footnotes (always available)
 - **Graph Explorer** (`/dashboard/graph`) — `ThreadRelation` similarity ≥ 0.7 visualized via `force-graph` canvas (dynamic import, 360–560px, drag/zoom)
-- **Canvas** (`/dashboard/canvas?left=&right=`) — side-by-side compare via `crossReference` tier sort + conflict detection
-- **Deep Research** (`GENERATE_DEEP_RESEARCH` job) — async multi-source advanced research (Tavily `research` + Exa; QStash inline in dev, async in prod)
-- **Memory** (`User.preferences.expertiseLevel`) — weekly inference from `threadDna` + `AiSearchSession`, injected in `synthesis` prompt
+- **Canvas** (`/dashboard/canvas?left=&right=`) — side-by-side compare via `crossReference` tier sort + conflict detection (AI-estimated diff signals)
+- **Deep Research** (`GENERATE_DEEP_RESEARCH` job) — async multi-source advanced research (Tavily `research` + Exa; QStash inline in dev, async in prod), user-gated via `deepResearchEnabled`
+- **Memory** (`User.preferences.expertiseLevel`) — weekly inference from `threadDna` + `AiSearchSession`, injected in `synthesis` prompt (AI-estimated/inferred personalization)
 - **KnowledgePage** — PUBLIC, non-deleted, non-outdated, human-verified threads with `resolutionScore > 85` and a real `aiSummary` are auto-promoted; pages whose thread stops meeting those rules are demoted on the next run (see `docs/PROMOTION_SYSTEM.md`)
 - **Community Jury** (`AppealVote` + 3 random `MODERATOR` 2/3 majority) — replaces single-admin appeal
 - **Code Runner** (`code-runner.tsx`) — fenced JS/TS blocks run client-side in a same-origin iframe sandboxed with `allow-scripts` (opaque origin, `connect-src 'none'`, 3s timeout). Python is placeholder-only because Pyodide's network-loaded runtime cannot meet the sandbox CSP.
-- **Fact-Check Badge** (`Message.factCheckStatus`) — visible on every message
+- **Fact-Check Badge** (`Message.factCheckStatus`) — visible on every message as an AI-estimated signal (not authoritative)
 
 ---
 
@@ -457,7 +457,7 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 - `/api/invitations/accept` — Accept thread invitation
 
 ### Collections
-- `/api/collections` — List/create (FEATURE_DISABLED if collectionsEnabled=false, `?light=1` for dropdown, `private max-age 10`)
+- `/api/collections` — List/create (always enabled; legacy `collectionsEnabled` preference is ignored, `?light=1` for dropdown, `private max-age 10`)
 - `/api/collections/[id]` — Get/delete (ownership, `rateLimit:api`)
 - `/api/collections/[id]/items` — Add/remove items (policy + cuid, `rateLimit:api`)
 - `/api/collections/[id]/bulk` — All-or-nothing bulk add (max 50, duplicates skip)
@@ -465,7 +465,7 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 - `/api/collections/saved` — Check saved collections for item (threadId|sessionId|messageId|metadata, `rateLimit:api`)
 
 ### User
-- `/api/user/preferences` — Read/update preferences (all moat toggles)
+- `/api/user/preferences` — Read/update preferences (deep research & challenge toggles; legacy always-on moat toggles accepted for backward-compatible parsing)
 
 ### Cron / Scheduled
 - `/api/cron/update-threads` — Batch AI metadata refresh + relations + expertise refresh
