@@ -4,7 +4,15 @@ import { z } from 'zod';
 import { requireSessionOrThrow, assertAdminOrThrow } from '@/modules/auth';
 import { buildThreadSlug } from '@/modules/threads/slug';
 import { createThread, deleteThread, updateThreadVerified } from './write';
-import { forkThreadDomain, threadVisibilitySchema, updateThreadDomain } from './mutations';
+import {
+  carryOverModeSchema,
+  decideSupersedeDomain,
+  forkKindSchema,
+  forkThreadDomain,
+  proposeSupersedeDomain,
+  threadVisibilitySchema,
+  updateThreadDomain,
+} from './mutations';
 import { validatePollExpiry } from '@/modules/polls/validate';
 import { infraThreadSideEffects } from './infra-effects';
 import { buildThreadDTO } from './service';
@@ -207,10 +215,14 @@ export const forkThreadAction = createServerAction(
       threadId: z.string().cuid(),
       title: z.string().min(3).max(120).optional(),
       visibility: threadVisibilitySchema.optional(),
+      forkKind: forkKindSchema.optional(),
+      premise: z.string().max(500).optional().or(z.literal('')),
+      carryOverMode: carryOverModeSchema.optional(),
+      selectedMessageIds: z.array(z.string().cuid()).max(10).optional(),
     }),
     actionName: 'forkThreadAction',
   },
-  async ({ threadId, title, visibility }) => {
+  async ({ threadId, title, visibility, forkKind, premise, carryOverMode, selectedMessageIds }) => {
     const session = await requireSessionOrThrow();
     const rl = await rateLimit({ key: `fork:${session.user.id}`, type: 'message' });
     if (!rl.success) throw new AppError('Too many forks, slow down', 'RATE_LIMITED', 429);
@@ -220,17 +232,63 @@ export const forkThreadAction = createServerAction(
     const newTitle = rawTitle
       ? sanitizeUserContent(rawTitle).sanitized.trim().slice(0, 120) || rawTitle.slice(0, 120)
       : undefined;
+    const safePremise = premise ? sanitizeUserContent(premise).sanitized.trim().slice(0, 500) : undefined;
 
     const forked = await forkThreadDomain({
       sourceThreadId: threadId,
       title: newTitle,
       visibility,
       userId: session.user.id,
+      forkKind: forkKind ?? 'CONTINUE',
+      forkPremise: safePremise,
+      carryOverMode: carryOverMode ?? 'SUMMARY',
+      selectedMessageIds,
       sideEffects: infraThreadSideEffects,
     });
 
     infraThreadSideEffects.revalidateDashboard();
     return actionSuccess({ slug: forked.slug, id: forked.id });
+  }
+);
+
+export const proposeSupersedeAction = createServerAction(
+  {
+    schema: z.object({
+      forkThreadId: z.string().cuid(),
+      reason: z.string().max(500).optional().or(z.literal('')),
+    }),
+    actionName: 'proposeSupersedeAction',
+  },
+  async ({ forkThreadId, reason }) => {
+    const session = await requireSessionOrThrow();
+    await proposeSupersedeDomain({
+      forkThreadId,
+      userId: session.user.id,
+      reason: reason ? sanitizeUserContent(reason).sanitized : reason,
+    });
+    return actionSuccess({ ok: true });
+  }
+);
+
+export const decideSupersedeAction = createServerAction(
+  {
+    schema: z.object({
+      forkThreadId: z.string().cuid(),
+      decision: z.enum(['ACCEPTED', 'DECLINED']),
+      reason: z.string().max(500).optional().or(z.literal('')),
+    }),
+    actionName: 'decideSupersedeAction',
+  },
+  async ({ forkThreadId, decision, reason }) => {
+    const session = await requireSessionOrThrow();
+    await decideSupersedeDomain({
+      forkThreadId,
+      userId: session.user.id,
+      userRole: session.user.role,
+      decision,
+      reason: reason ? sanitizeUserContent(reason).sanitized : reason,
+    });
+    return actionSuccess({ ok: true });
   }
 );
 

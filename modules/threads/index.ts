@@ -1,4 +1,4 @@
-export { createThreadAction, deleteThreadAction, loadThreadMessages } from './actions';
+export { createThreadAction, deleteThreadAction, loadThreadMessages, forkThreadAction, proposeSupersedeAction, decideSupersedeAction } from './actions';
 
 export {
   listThreads,

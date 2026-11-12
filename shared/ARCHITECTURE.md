@@ -123,7 +123,8 @@ sastram/
 │       │       │   ├── route.ts          # AI reply trigger
 │       │       │   └── stream/           # SSE streaming endpoint
 │       │       ├── challenge/             # Counter-source + re-score (enqueue CALCULATE_RESOLUTION_SCORE + DETECT_CONFLICTS)
-│       │       └── fork/                 # Thread fork
+│       │       └── fork/                 # Thread fork + lineage
+│       │           └── tree/            # Fork lineage tree (forkedFromId edges, access-filtered)
 │       ├── messages/                     # Message CRUD
 │       ├── collections/                  # Workspace collections API
 │       │   ├── route.ts                  # List/create collection
@@ -266,7 +267,7 @@ sastram/
 │   └── ai/guard.ts                       # checkAiGuards/runGuardedAi/checkCronSpendCaps
 │
 ├── prisma/
-│   ├── schema.prisma                     # Prisma schema (FactCheckStatus enum, Bounty, forkedFromId, isMarket)
+│   ├── schema.prisma                     # Prisma schema (FactCheckStatus enum, Bounty, fork lineage/forkKind/carry-over/supersede, isMarket)
 │   └── seed.ts                           # Database seed script
 │
 ├── test/                                 # Mocha tests + Playwright e2e (e2e in CI)
@@ -308,7 +309,7 @@ Prisma models are defined in `prisma/schema.prisma`.
 | Model | Purpose | Key Fields |
 |-------|---------|------------|
 | User | User accounts | `role` (USER/MODERATOR/ADMIN), `status` (ACTIVE/SUSPENDED/BANNED), `profilePrivacy`, `preferences` (JSON), `deletedAt` |
-| Thread | Discussion threads | `visibility` (PUBLIC/PRIVATE/RESTRICTED), `resolutionScore`, `threadDna` (JSON), `aiSummary`, `isOutdated`, `forkedFromId` (self-FK), `verifiedAt/By`, `deletedAt` |
+| Thread | Discussion threads | `visibility` (PUBLIC/PRIVATE/RESTRICTED), `resolutionScore`, `threadDna` (JSON), `aiSummary`, `isOutdated`, lineage via `forkedFromId` (self-FK) + `forkKind` (ASSUMPTION/CONTINUE/REMIX_AI/EXTERNAL), carry-over snapshot/metadata, external source payload, supersede state (`supersedeStatus` proposed/accepted/declined), `verifiedAt/By`, `deletedAt` |
 | Message | Thread messages | `parentId` (tree), `depth` (0-4), `isAiResponse`, `isEdited`, `isPinned`, `likeCount`, `replyCount`, nullable `senderId`, `factCheckStatus` (`FactCheckStatus` enum), `deletedAt` |
 | MessageEdit | Edit history | Content snapshot per edit |
 | MessageMention | @mentions | `messageId`, `userId` |
@@ -438,11 +439,12 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 ### Core Resources
 - `/api/threads` — Thread CRUD
 - `/api/threads/similar` — Similar thread lookup
-- `/api/threads/fork-external` — External URL fork (isSafePublicUrl + sanitized title)
+- `/api/threads/fork-external` — External URL fork (SSRF-safe, user-provided title/excerpt/attribution/link only; no full mirroring)
 - `/api/threads/[threadId]/ai-reply` — AI reply trigger
 - `/api/threads/[threadId]/ai-reply/stream` — SSE streaming endpoint
 - `/api/threads/[threadId]/challenge` — Counter-source challenge
-- `/api/threads/[threadId]/fork` — Thread fork
+- `/api/threads/[threadId]/fork` — Unified thread fork (kind, carry-over snapshot, visibility constraints, lineage) + fork list
+- `/api/threads/[threadId]/fork/tree` — Access-filtered fork lineage tree for graph view
 - `/api/messages` — Message CRUD
 - `/api/search` — Local full-text search (tokenized, typo-tolerant, ranked); user results are limited to self, PUBLIC profiles, and followed FOLLOWERS_ONLY profiles
 - `/api/bounties` — Bounty create/list

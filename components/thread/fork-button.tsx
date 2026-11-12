@@ -4,6 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toasts } from '@/lib/utils/toast';
 import { GitFork, Loader2, ExternalLink, Link2 } from 'lucide-react';
@@ -13,7 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ROUTES } from '@/lib/config/routes';
 import { forkThreadAction } from '@/modules/threads/actions';
 
-type Visibility = 'PUBLIC' | 'PRIVATE';
+type Visibility = 'PUBLIC' | 'PRIVATE' | 'RESTRICTED';
+type ForkKind = 'ASSUMPTION' | 'CONTINUE' | 'REMIX_AI';
+type CarryOverMode = 'SUMMARY' | 'NONE';
 
 function VisibilityField({ visibility, onChange }: { visibility: Visibility; onChange: (v: Visibility) => void }) {
   return (
@@ -23,17 +26,15 @@ function VisibilityField({ visibility, onChange }: { visibility: Visibility; onC
         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="PUBLIC">Public — anyone can see</SelectItem>
+          <SelectItem value="RESTRICTED">Restricted — invited access</SelectItem>
           <SelectItem value="PRIVATE">Private — only you</SelectItem>
         </SelectContent>
       </Select>
+      <p className="text-xs text-ink-3">Visibility never widens beyond the source thread.</p>
     </div>
   );
 }
 
-/**
- * Shared fork submit flow: POST to the endpoint, toast, navigate to the new
- * thread. Used by both the in-thread fork and the external-URL fork.
- */
 function useForkSubmit(endpoint: string) {
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
@@ -50,9 +51,6 @@ function useForkSubmit(endpoint: string) {
       if (!res.ok) throw new Error(json?.error?.message || 'Fork failed');
       const slug = json?.data?.slug;
       toasts.success(successMessage);
-      // Always navigate — the fork exists server-side even if the response
-      // shape surprises us, and a router.refresh() fallback just left the
-      // user staring at the old page.
       router.push(slug ? ROUTES.THREAD(slug) : ROUTES.DASHBOARD_THREADS);
       return true;
     } catch (e) {
@@ -66,7 +64,6 @@ function useForkSubmit(endpoint: string) {
   return { loading, submit };
 }
 
-/** Fork an existing thread — shows the fork count in the trigger. */
 export function ForkButton({
   threadId,
   threadName,
@@ -79,6 +76,9 @@ export function ForkButton({
   const [open, setOpen] = React.useState(false);
   const [title, setTitle] = React.useState(`${threadName} (fork)`);
   const [visibility, setVisibility] = React.useState<Visibility>('PUBLIC');
+  const [forkKind, setForkKind] = React.useState<ForkKind>('CONTINUE');
+  const [premise, setPremise] = React.useState('');
+  const [carryOverMode, setCarryOverMode] = React.useState<CarryOverMode>('SUMMARY');
   const [count, setCount] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(false);
   const router = useRouter();
@@ -109,12 +109,19 @@ export function ForkButton({
     }
     setLoading(true);
     try {
-      const result = await forkThreadAction({ threadId, title: title.trim(), visibility });
+      const result = await forkThreadAction({
+        threadId,
+        title: title.trim(),
+        visibility,
+        forkKind,
+        premise: premise.trim() || undefined,
+        carryOverMode,
+      });
       if (!result.ok || !result.data) {
         throw new Error(result.error || 'Fork failed');
       }
       const slug = (result.data as { slug?: string }).slug;
-      toasts.success(`Forked as ${visibility === 'PRIVATE' ? 'private' : 'public'} thread`);
+      toasts.success('Fork created');
       setOpen(false);
       router.push(slug ? ROUTES.THREAD(slug) : ROUTES.DASHBOARD_THREADS);
     } catch (e) {
@@ -148,18 +155,43 @@ export function ForkButton({
           {count != null && count > 0 ? `Fork thread · ${count} forks` : 'Fork thread'}
         </TooltipContent>
       </Tooltip>
-      <DialogContent className="sm:max-w-md rounded-card">
+      <DialogContent className="sm:max-w-lg rounded-card max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><GitFork size={16}/> Fork thread</DialogTitle>
-          <DialogDescription className="text-xs">Create a copy of “{threadName}” — like Reddit crosspost or GitHub fork. Edit title and visibility.</DialogDescription>
+          <DialogDescription className="text-xs">Create a new discussion linked to “{threadName}”. Choose intent, carry-over, and visibility.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Fork intent</Label>
+            <Select value={forkKind} onValueChange={(v) => setForkKind(v as ForkKind)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CONTINUE">Continue — extend or revive discussion</SelectItem>
+                <SelectItem value="ASSUMPTION">Change assumption — test a different premise</SelectItem>
+                <SelectItem value="REMIX_AI">Remix AI — edit claims/sources and re-run later</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="fork-title" className="text-xs">Title</Label>
             <Input id="fork-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New thread title" className="h-8 text-sm" />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="fork-premise" className="text-xs">Why / premise (optional, recommended)</Label>
+            <Textarea id="fork-premise" value={premise} onChange={(e) => setPremise(e.target.value)} placeholder="What assumption are you changing or why continue/remix?" className="text-sm min-h-[72px]" maxLength={500} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Carry-over</Label>
+            <Select value={carryOverMode} onValueChange={(v) => setCarryOverMode(v as CarryOverMode)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SUMMARY">AI summary snapshot (default)</SelectItem>
+                <SelectItem value="NONE">Nothing — start fresh</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-ink-3">Carry-over is a snapshot at fork time; only accessible content is copied.</p>
+          </div>
           <VisibilityField visibility={visibility} onChange={setVisibility} />
-          <p className="text-xs text-ink-3">Public forks appear in threads list; private are hidden like drafts.</p>
           <Button onClick={handleFork} disabled={loading || title.trim().length < 3} className="w-full h-8 gap-1.5">
             {loading ? <Loader2 size={14} className="animate-spin" /> : <GitFork size={14} />} Create fork
           </Button>
@@ -169,18 +201,20 @@ export function ForkButton({
   );
 }
 
-/** Fork an external URL (Reddit, HN, …) into a new thread. */
 export function ForkFromUrlButton() {
   const [open, setOpen] = React.useState(false);
   const [url, setUrl] = React.useState('');
   const [title, setTitle] = React.useState('');
+  const [excerpt, setExcerpt] = React.useState('');
+  const [attribution, setAttribution] = React.useState('');
+  const [premise, setPremise] = React.useState('');
   const [visibility, setVisibility] = React.useState<Visibility>('PUBLIC');
   const { loading, submit } = useForkSubmit('/api/threads/fork-external');
 
   const handleFork = async () => {
     const trimmedUrl = url.trim();
     if (!trimmedUrl) {
-      toasts.error('Paste a URL from Reddit, HN, StackOverflow, etc.');
+      toasts.error('Paste a public URL');
       return;
     }
     try {
@@ -194,13 +228,23 @@ export function ForkFromUrlButton() {
       return;
     }
     const ok = await submit(
-      { url: trimmedUrl, title: title.trim() || undefined, visibility },
-      'Forked from external URL — @sai is summarizing'
+      {
+        url: trimmedUrl,
+        title: title.trim() || undefined,
+        excerpt: excerpt.trim() || undefined,
+        attribution: attribution.trim() || undefined,
+        premise: premise.trim() || undefined,
+        visibility,
+      },
+      'External fork created'
     );
     if (ok) {
       setOpen(false);
       setUrl('');
       setTitle('');
+      setExcerpt('');
+      setAttribution('');
+      setPremise('');
     }
   };
 
@@ -212,26 +256,37 @@ export function ForkFromUrlButton() {
           Fork from URL
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md rounded-card">
+      <DialogContent className="sm:max-w-lg rounded-card max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Link2 size={16}/> Fork from external</DialogTitle>
-          <DialogDescription className="text-xs">Paste a Reddit, HN, StackOverflow or any public URL. We’ll create a thread and @sai will summarize it — like crossposting.</DialogDescription>
+          <DialogDescription className="text-xs">Import a user-provided public link as a new discussion seed. Title, short excerpt, source link, and attribution only — no full mirroring.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-2">
           <div className="space-y-1.5">
             <Label htmlFor="fork-url" className="text-xs">Source URL *</Label>
-            <Input id="fork-url" placeholder="https://www.reddit.com/r/nextjs/comments/... or https://news.ycombinator.com/item?id=..." value={url} onChange={(e) => setUrl(e.target.value)} className="h-9 text-sm" />
-            <p className="text-xs text-ink-3">Must be public http/https — private IPs are blocked.</p>
+            <Input id="fork-url" placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} className="h-9 text-sm" />
+            <p className="text-xs text-ink-3">Must be a safe public http/https URL (SSRF-protected).</p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="fork-external-title" className="text-xs">Title (optional — auto from URL)</Label>
             <Input id="fork-external-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Leave blank to auto-generate" className="h-8 text-sm" />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="fork-excerpt" className="text-xs">Short excerpt (optional, user-provided)</Label>
+            <Textarea id="fork-excerpt" value={excerpt} onChange={(e) => setExcerpt(e.target.value)} placeholder="Paste a short excerpt (max 500 chars). Do not paste full third-party content." className="text-sm min-h-[72px]" maxLength={500} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="fork-attribution" className="text-xs">Attribution (optional)</Label>
+            <Input id="fork-attribution" value={attribution} onChange={(e) => setAttribution(e.target.value)} placeholder="e.g. Author or source label" className="h-8 text-sm" maxLength={200} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="fork-ext-premise" className="text-xs">Why / premise (optional)</Label>
+            <Textarea id="fork-ext-premise" value={premise} onChange={(e) => setPremise(e.target.value)} placeholder="Why import this source?" className="text-sm min-h-[60px]" maxLength={500} />
+          </div>
           <VisibilityField visibility={visibility} onChange={setVisibility} />
           <Button onClick={handleFork} disabled={loading || !url.trim()} className="w-full h-9 gap-1.5">
             {loading ? <Loader2 size={14} className="animate-spin" /> : <GitFork size={14} />} Fork from URL
           </Button>
-          <p className="text-xs text-center text-ink-3">Creates a thread with “Forked from {`{url}` }” + @sai summary. Tags are kept from the fork flow.</p>
         </div>
       </DialogContent>
     </Dialog>

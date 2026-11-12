@@ -103,6 +103,26 @@ enum FactCheckStatus {
   DISPUTED
 }
 
+enum ForkKind {
+  ASSUMPTION
+  CONTINUE
+  REMIX_AI
+  EXTERNAL
+}
+
+enum CarryOverMode {
+  SUMMARY
+  SELECTED_MESSAGES
+  NONE
+}
+
+enum SupersedeStatus {
+  NONE
+  PROPOSED
+  ACCEPTED
+  DECLINED
+}
+
 model User {
   id            String  @id @default(cuid())
   email         String  @unique
@@ -243,6 +263,19 @@ model Thread {
   embeddingModel  String?
   deletedAt       DateTime?
   forkedFromId    String?
+  forkKind        ForkKind?
+  forkPremise     String?          @db.Text
+  carryOverMode   CarryOverMode?
+  carryOverSnapshot String?        @db.Text
+  externalSourceUrl String?
+  externalExcerpt   String?        @db.Text
+  externalAttribution String?
+  supersedeStatus   SupersedeStatus @default(NONE)
+  supersedeReason   String?        @db.Text
+  supersedeProposedBy String?
+  supersedeProposedAt DateTime?
+  supersedeDecidedBy  String?
+  supersedeDecidedAt  DateTime?
 
   creator         User?                @relation("ThreadCreator", fields: [createdBy], references: [id], onDelete: SetNull)
   verifier        User?                @relation("ThreadVerifier", fields: [verifiedBy], references: [id], onDelete: SetNull)
@@ -272,6 +305,8 @@ model Thread {
   @@index([deletedAt, messageCount])
   @@index([verifiedAt])
   @@index([forkedFromId])
+  @@index([forkedFromId, forkKind])
+  @@index([supersedeStatus])
   @@map("threads")
 }
 

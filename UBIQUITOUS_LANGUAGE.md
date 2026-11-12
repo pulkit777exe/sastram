@@ -33,8 +33,12 @@
 | ---- | ---------- | ---------------- |
 | **Verification** | A human (thread creator or MODERATOR/ADMIN) confirming that the AI-produced *Resolution Score* and synthesis are trustworthy. Stamps `Thread.verifiedAt`/`verifiedBy`, clears `isOutdated`, and raises the decay basis to the verification time. This is distinct from the Better Auth `Verification` table (OTP codes). | Verified Resolution, approval, sign-off |
 | **Knowledge Page** | An auto-promoted, synthesized article for a verified high-confidence *Thread* (`Thread.resolutionScore > 85 && verifiedAt != null`). One-to-one with the *Thread* (`KnowledgePage.threadId` is unique) and versioned (`KnowledgePage.version`). Promotion is intended for PUBLIC threads only. | KnowledgePage, wiki, article |
-| **Fork** | A new *Thread* created from an existing *Thread*, linked by `Thread.forkedFromId` (self-referencing FK). Forking copies seed content from the source; AI summary/message copying is limited to PUBLIC sources. | Branch, copy, clone |
-| **Lineage** | The ancestry chain formed by following `Thread.forkedFromId` from a fork back through its source threads. Only one parent link is stored per thread; the full chain is reconstructed by traversal. | Fork tree, ancestry, provenance |
+| **Fork** | A new *Thread* created from an existing *Thread* or external seed, linked by `Thread.forkedFromId` (self-FK) when parented in-app. Unified by `forkKind`: ASSUMPTION, CONTINUE, REMIX_AI, EXTERNAL. Only readable sources may be forked; visibility never widens implicitly. | Branch, copy, clone |
+| **Fork Kind** | Intent of a fork: ASSUMPTION (changed premise), CONTINUE (revive/extend), REMIX_AI (edit sources/claims, explicit re-run later), EXTERNAL (user-provided URL seed). | Fork type, mode |
+| **Carry-over** | Snapshot context copied at fork time: SUMMARY (AI summary), SELECTED_MESSAGES (bounded, access-checked), or NONE. Never live-synced and never copied into a wider visibility. | Fork context, seed snapshot |
+| **External Fork Payload** | For EXTERNAL forks: user-provided title, short excerpt, source link, and attribution only (SSRF-safe). Full third-party content is never mirrored. | Imported seed, external source |
+| **Supersede** | Fork-level proposal state (NONE/PROPOSED/ACCEPTED/DECLINED) where a fork may propose to supersede its parent. Parent OP or moderator/admin can decide; acceptance marks preferred continuation without merge/delete. | Preferred continuation proposal |
+| **Lineage** | The ancestry/descendant chain formed via `Thread.forkedFromId` and fork metadata. One parent link per thread; trees are reconstructed by traversal (respecting viewer access). | Fork tree, ancestry, provenance |
 
 ## Thread relationships
 

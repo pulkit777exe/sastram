@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased] — Architecture Refactor (Rounds 1–4)
 
+### Added (Phase 5: Forking differentiator)
+
+- **Unified forking model**: `forkKind` (ASSUMPTION/CONTINUE/REMIX_AI/EXTERNAL) on `Thread` with lineage reuse of `Thread.forkedFromId` (no parallel lineage table). Forward-only/idempotent migration adds fork metadata and backfills legacy forked rows to `CONTINUE`.
+- **Carry-over snapshots**: fork-time `SUMMARY` (default), bounded `SELECTED_MESSAGES` (access-checked), or `NONE` stored as snapshot metadata; visibility never widens and carry-over is never live-synced.
+- **External forks (SSRF-safe)**: user-provided URL + title/short excerpt/attribution/premise only (no full third-party mirroring), validated via `isSafePublicUrl` and sanitized as untrusted input; rate-limited.
+- **Supersede flow**: fork-level propose/accept/decline state (parent OP or moderator/admin decides), surfaced in lineage/fork list with compare links; acceptance marks preferred continuation without merge/delete.
+- **Fork UX**: lineage breadcrumb and enhanced fork relation card (kind/status, compare links, supersede actions), unified fork dialog with kind/premise/carry-over/visibility, external fork payload fields, and fork tree view reusing graph via `/api/threads/[threadId]/fork/tree`.
+- **Safety/access**: read-access required to fork, server-side non-widening visibility enforcement, rate limits for fork creation/imports, single parent-OP notification per fork, moderation-consistent sanitization.
+
 ### Added
 
 - **Thread editing**: OP/moderators can rename a thread and edit its description via a pencil dialog in the thread header (`updateThreadAction` — slug is kept stable so existing links don't break); title/description update in place with no page refresh

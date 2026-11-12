@@ -103,7 +103,22 @@ export type ThreadWithFullContext = {
   createdAt: Date;
   updatedAt: Date;
   lastVerifiedAt: Date | null;
+  verifiedAt: Date | null;
+  verifiedBy: string | null;
   forkedFromId: string | null;
+  forkKind: 'ASSUMPTION' | 'CONTINUE' | 'REMIX_AI' | 'EXTERNAL' | null;
+  forkPremise: string | null;
+  carryOverMode: 'SUMMARY' | 'SELECTED_MESSAGES' | 'NONE' | null;
+  carryOverSnapshot: string | null;
+  externalSourceUrl: string | null;
+  externalExcerpt: string | null;
+  externalAttribution: string | null;
+  supersedeStatus: 'NONE' | 'PROPOSED' | 'ACCEPTED' | 'DECLINED';
+  supersedeReason: string | null;
+  supersedeProposedBy: string | null;
+  supersedeProposedAt: Date | null;
+  supersedeDecidedBy: string | null;
+  supersedeDecidedAt: Date | null;
   author: {
     id: string;
     name: string | null;
@@ -431,6 +446,19 @@ async function fetchThreadRow(slug: string, uid: string): Promise<ThreadRow | nu
         s."verifiedAt" as "verifiedAt",
         s."verifiedBy" as "verifiedBy",
         s."forkedFromId" as "forkedFromId",
+        s."forkKind" as "forkKind",
+        s."forkPremise" as "forkPremise",
+        s."carryOverMode" as "carryOverMode",
+        s."carryOverSnapshot" as "carryOverSnapshot",
+        s."externalSourceUrl" as "externalSourceUrl",
+        s."externalExcerpt" as "externalExcerpt",
+        s."externalAttribution" as "externalAttribution",
+        s."supersedeStatus" as "supersedeStatus",
+        s."supersedeReason" as "supersedeReason",
+        s."supersedeProposedBy" as "supersedeProposedBy",
+        s."supersedeProposedAt" as "supersedeProposedAt",
+        s."supersedeDecidedBy" as "supersedeDecidedBy",
+        s."supersedeDecidedAt" as "supersedeDecidedAt",
         CASE WHEN u.id IS NULL THEN NULL ELSE json_build_object(
           'id', u.id,
           'name', u.name,
