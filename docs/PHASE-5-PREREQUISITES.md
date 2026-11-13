@@ -1,6 +1,10 @@
 # Phase 5 prerequisites — Forking
 
-Phase 5 is the forking differentiator. It is **design-first**: write and get
+> **Status: historical checklist.** Forking has shipped. The unchecked boxes
+> record the original design-first gate, not the current implementation state.
+> See `docs/FORKING.md` and `CHANGELOG.md` for what exists now.
+
+Phase 5 is the forking differentiator. It was **design-first**: write and get
 approval for `docs/FORKING.md` before any schema, API, or UI code. This file is
 the visible TODO list from the Phase 1 plan; it intentionally contains no code.
 

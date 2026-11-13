@@ -1,15 +1,20 @@
-# Sastram — Discussion and Research Platform
+# Sastram — community-verified AI answers
 
-Personal project, open sourced. Next.js 16 App Router, TypeScript, Prisma 7, PostgreSQL (Neon), Better Auth, and AI search.
+Open-source Next.js 16 app: ask a question, stream a cited multi-source answer,
+then let the community verify, challenge, or fork it. TypeScript, Prisma 7,
+PostgreSQL (Neon), Better Auth, Upstash, Gemini/OpenAI, Exa/Tavily.
 
 ## Canonical references
 
 - [shared/ARCHITECTURE.md](shared/ARCHITECTURE.md) — the only current architecture reference (system design, routes, data model, jobs, env vars).
-- [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) — domain vocabulary.
-- [docs/adr/](docs/adr/) — decision records and historical architecture-review logs.
+- [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) — domain vocabulary, including planned terms.
+- [docs/DOC-MISMATCHES.md](docs/DOC-MISMATCHES.md) — docs verified against code; code wins.
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — release order, probes, crons, backups, rollback.
+- [ROADMAP.md](ROADMAP.md) / [CONTRIBUTING.md](CONTRIBUTING.md) — current focus and contribution rules.
+- [docs/adr/](docs/adr/) — decisions and historical architecture-review logs.
 
-Do not create a second architecture doc or hard-code inventory counts; inspect `prisma/schema.prisma`, `modules/`, `app/api/`, and `test/` instead.
+Do not create a second architecture doc or hard-code inventory counts. Inspect
+`prisma/schema.prisma`, `modules/`, `app/api/`, and `test/` for the current state.
 
 ## Commands
 
@@ -21,14 +26,14 @@ bun dev:qstash       # QStash only
 
 # Build & deploy
 bun run build        # Prisma generate + Next build (bare `bun build` is Bun's bundler)
-bun start            # Production server (next start)
+bun start            # Production server
 bun check:prod       # Production readiness checks
 
 # Verification
 bun typecheck
 bun lint
-bun run test         # Mocha suite
-bun test:e2e         # Playwright e2e (CI e2e job)
+bun run test         # Mocha suite (not `bun test`)
+bun test:e2e         # Playwright e2e
 bun run audit:gate   # dependency audit policy gate
 bun format           # Prettier
 
@@ -44,13 +49,9 @@ bun db:studio
 
 ## Layout
 
-- `app/` — App Router pages and API routes.
-- `modules/` — domain modules, flat files only (no `actions/`, `repository/`, `ports/`, or `adapters/` subdirectories).
-- `lib/` — infrastructure, services, AI, queue, shared utilities.
-- `components/` — UI components.
-- `hooks/` — React hooks.
-- `prisma/` — schema and forward-only migrations.
-- `test/` — Mocha unit/route tests and Playwright e2e.
+`app/` routes, `modules/` flat domain modules, `lib/` infrastructure/services,
+`components/` UI, `hooks/` React hooks, `prisma/` schema + forward-only
+migrations, `test/` Mocha + Playwright. See `shared/ARCHITECTURE.md` for details.
 
 ## Conventions
 
@@ -58,17 +59,18 @@ bun db:studio
 - API routes use `withErrorHandling` from `lib/utils/api-response.ts`; errors are `AppError` with a status code.
 - Environment variables go through the Zod schema in `lib/config/env.ts`. Do not read `process.env` directly in app code (the documented exception is `CSP_REPORT_ONLY` in `proxy.ts`).
 - **Thread access is the primary authorization primitive.** Use `requireReadOrThrow` / `requireWriteOrThrow` / `requireManageOrThrow` from `lib/thread-access.ts` before touching thread data. There is no membership table: access derives from `visibility`, `createdBy`, accepted `ThreadInvitation`, and active bans.
-- Real-time is SSE only (AI reply streaming); other updates poll. There is no WebSocket layer.
+- Real-time is SSE only (AI reply streaming); other updates poll.
 - Background jobs go through QStash (`app/api/jobs`), with handlers registered in `lib/queue/registry.ts`. Without QStash (or with `QSTASH_DEV=true`) they run inline.
-- Vercel cron schedules live in `vercel.json`; every cron route uses `verifyCronAuth()`.
-- UI uses the SAI tokens in `app/globals.css`: cards are `border border-line rounded-card shadow-card`; inputs/buttons use `rounded-control`; chips use `rounded-chip`. Do not use `rounded-xl`/`rounded-2xl` on card-level containers.
+- Vercel cron schedules live in `vercel.json`; every cron route uses `verifyCronAuth()` and exports `GET`.
+- UI uses the SAI tokens in `app/globals.css`: cards are `border border-line rounded-card shadow-card`; inputs/buttons use `rounded-control`; chips use `rounded-chip`.
 - AI calls go through `lib/ai/guard.ts` + `lib/middleware/ai-guard-route.ts` (session → quota → spend cap → cost gate → thread access). Do not call providers directly from routes.
 
-## Testing
+## Verification
 
-- Mocha tests live in `test/`; Playwright specs in `test/e2e/` (`smoke`, `collections`, `thread-edit`, `ux-fixes`, plus `global-setup`).
-- Use Sinon stubs for Prisma/Redis/AI or the injected fakes in `test/support/`; reset rate limiters between tests.
-- CI has five jobs: `secrets` (gitleaks), `audit` (`audit:gate`), `check` (typecheck, lint, build, Mocha on PostgreSQL 16), `docker` (image build), and `e2e` (Playwright on PostgreSQL 16). `format:check` is not run in CI.
+Mocha tests live in `test/`; Playwright specs in `test/e2e/`. CI runs secrets,
+audit, typecheck/lint/build/Mocha, Docker image build, and Playwright e2e — see
+`.github/workflows/ci.yml` for the current job list. Use `bun run test`, not
+`bun test`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

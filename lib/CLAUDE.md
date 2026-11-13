@@ -83,7 +83,7 @@ Genuinely shared utility functions.
 Zod validation schemas.
 - `api.ts` - API request/response schemas
 - `thread-dna.ts` - Thread DNA output schema
-- `user-preferences.ts` - User preference schema (expertiseLevel + moat toggles)
+- `user-preferences.ts` - User preference schema (expertise level + legacy moat keys accepted for compatibility)
 
 ### `lib/queue/`
 Background job definitions and handlers (AI job types in `config.ts` plus the `email` job).

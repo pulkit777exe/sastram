@@ -1,5 +1,8 @@
 # Ubiquitous Language
 
+Terms marked **planned** describe agreed product language that is not in the
+schema or code yet. Do not treat a planned term as shipped behavior.
+
 ## Core entities
 
 | Term | Definition | Aliases to avoid |
@@ -15,7 +18,7 @@
 | ---- | ---------- | ---------------- |
 | **Member** | A *User*'s participation in a *Thread*. There is no membership table — access is derived from thread `visibility`, `createdBy`, and accepted `ThreadInvitation` rows. | Membership, SectionMember |
 | **Invitation** | An invitation for a *User* to join a private/restricted *Thread*. Stored as `ThreadInvitation` in DB. | ThreadInvitation |
-| **Ban** | A restriction preventing a *User* from participating in a specific *Thread*. Stored as `UserBan` in DB. | UserBan |
+| **Ban** | A restriction preventing a *User* from participating in a specific *Thread*, or site-wide when `threadId` is null. Stored as `UserBan` in DB, with optional expiry. | UserBan |
 
 ## Content analysis
 
@@ -32,7 +35,8 @@
 | Term | Definition | Aliases to avoid |
 | ---- | ---------- | ---------------- |
 | **Verification** | A human (thread creator or MODERATOR/ADMIN) confirming that the AI-produced *Resolution Score* and synthesis are trustworthy. Stamps `Thread.verifiedAt`/`verifiedBy`, clears `isOutdated`, and raises the decay basis to the verification time. This is distinct from the Better Auth `Verification` table (OTP codes). | Verified Resolution, approval, sign-off |
-| **Knowledge Page** | An auto-promoted, synthesized article for a verified high-confidence *Thread* (`Thread.resolutionScore > 85 && verifiedAt != null`). One-to-one with the *Thread* (`KnowledgePage.threadId` is unique) and versioned (`KnowledgePage.version`). Promotion is intended for PUBLIC threads only. | KnowledgePage, wiki, article |
+| **Knowledge Page** | An auto-promoted, synthesized article for a **PUBLIC**, non-deleted, non-outdated, human-verified *Thread* above the resolution threshold (`Thread.resolutionScore > 85` and `verifiedAt != null`) with a real `aiSummary`. One-to-one with the *Thread* (`KnowledgePage.threadId` is unique) and versioned (`KnowledgePage.version`). Pages are demoted when their thread stops qualifying. | KnowledgePage, wiki, article |
+| **Claim** | **Planned (not in schema yet).** A single verifiable assertion extracted from an AI answer, linked to its answer/message and ordered so people can confirm or dispute it without voting on the whole answer. Claim-level votes and corrections are the planned trust-loop primitive. | Assertion, statement |
 | **Fork** | A new *Thread* created from an existing *Thread* or external seed, linked by `Thread.forkedFromId` (self-FK) when parented in-app. Unified by `forkKind`: ASSUMPTION, CONTINUE, REMIX_AI, EXTERNAL. Only readable sources may be forked; visibility never widens implicitly. | Branch, copy, clone |
 | **Fork Kind** | Intent of a fork: ASSUMPTION (changed premise), CONTINUE (revive/extend), REMIX_AI (edit sources/claims, explicit re-run later), EXTERNAL (user-provided URL seed). | Fork type, mode |
 | **Carry-over** | Snapshot context copied at fork time: SUMMARY (AI summary), SELECTED_MESSAGES (bounded, access-checked), or NONE. Never live-synced and never copied into a wider visibility. | Fork context, seed snapshot |
@@ -101,7 +105,7 @@
 > **Domain expert:** "Confidence ages from the resolution's provenance — `verifiedAt` when a human verified it, otherwise `lastVerifiedAt` when the **AI Pipeline** last scored it. The stored score itself never decays; the daily cron and the staleness sweep use the decayed confidence to decide when a thread needs re-scoring."
 
 > **Dev:** "When does a **Thread** become a **Knowledge Page**?"
-> **Domain expert:** "After **Verification** (`verifiedAt` set) and a **Resolution Score** above 85, the promotion cron creates the one-to-one **Knowledge Page**. It should only promote PUBLIC threads; the current promotion service does not yet enforce that visibility gate."
+> **Domain expert:** "After **Verification** (`verifiedAt` set) and a **Resolution Score** above 85, the promotion cron creates the one-to-one **Knowledge Page** only if the thread is PUBLIC, not deleted, not outdated, and has a real AI summary. If any of those stop being true, the next promotion run demotes (deletes) the page."
 
 > **Dev:** "What is the difference between a **Fork** and a **Thread Relation**?"
 > **Domain expert:** "A **Fork** is a new thread with a parent link (`forkedFromId`), so it has **Lineage**. A **Thread Relation** is only a stored similarity score between two existing threads — it does not imply copying, parentage, or a typed relationship."
@@ -112,4 +116,5 @@
 - **"Member" vs "Membership"** — There is no membership table. Access is derived from thread visibility, creator, and invitations. The term **Member** is used loosely to describe a user's relationship to a thread, but it is not a database entity.
 - **"Verification" overload** — Domain **Verification** means human confirmation of a resolution (`Thread.verifiedAt`/`verifiedBy`). The Better Auth `Verification` model stores OTP codes and is unrelated. Qualify the auth one as "OTP verification" in prose.
 - **"Thread Relation" type** — Earlier docs claimed relation types (supersedes/references/duplicates), but `ThreadRelation` stores only `similarity`. Do not promise typed relations until the schema has a kind field.
-- **"Knowledge Page" visibility** — Promotion currently filters only on score + `verifiedAt`, not `Thread.visibility`. Treat PUBLIC-only promotion as the intended rule and a known implementation gap, not as current behavior.
+- **"Knowledge Page" visibility** — Promotion and the knowledge route both require a PUBLIC, non-deleted, non-outdated, verified thread with a real AI summary. This is enforced in `lib/services/knowledge-promotion.ts` and `lib/public-content/thread.ts`.
+- **"Claim"** — A planned trust-loop term, not a current model. Do not build claim-level UI or votes until the Phase 4 schema lands; the existing AI-search `evidence` array is source-to-claim mapping inside one synthesis, not a persistent `Claim` row.

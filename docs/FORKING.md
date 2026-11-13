@@ -1,8 +1,9 @@
 # Forking design (Phase 5, design-first)
 
-**Status:** Draft for explicit approval. **No schema, API, or UI code in this phase.**  
-**Branch:** `phase-5-forking-design` (design doc only)  
-**Gate:** Implementation starts only after this document is explicitly approved. Payments/plan upgrades remain separately gated (Phase 6, not part of this design).
+**Status:** Implemented. This document is the approved design record; the
+schema, API, and UI shipped in the Phase 5 implementation (see `CHANGELOG.md`).
+**Design branch:** `phase-5-forking-design`.
+**Gate:** Payments/plan upgrades remain separately gated (not part of this design).
 
 ## 1. Goals and non-goals
 

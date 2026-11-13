@@ -54,6 +54,7 @@ docs
 !docs/
 docs/*
 !docs/AUDIT-REPORT.md
+!docs/DOC-MISMATCHES.md
 !docs/VIEW-TRANSITIONS-SPEC.md
 !docs/PROMOTION_SYSTEM.md
 !docs/DEPLOYMENT.md

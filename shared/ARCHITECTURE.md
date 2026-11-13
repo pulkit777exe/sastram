@@ -14,8 +14,8 @@ Core moat capabilities (deep research and challenge mode remain user-gated where
 - **Memory** (`User.preferences.expertiseLevel`) — weekly inference from `threadDna` + `AiSearchSession`, injected in `synthesis` prompt (AI-estimated/inferred personalization)
 - **KnowledgePage** — PUBLIC, non-deleted, non-outdated, human-verified threads with `resolutionScore > 85` and a real `aiSummary` are auto-promoted; pages whose thread stops meeting those rules are demoted on the next run (see `docs/PROMOTION_SYSTEM.md`)
 - **Community Jury** (`AppealVote` + 3 random `MODERATOR` 2/3 majority) — replaces single-admin appeal
-- **Code Runner** (`code-runner.tsx`) — fenced JS/TS blocks run client-side in a same-origin iframe sandboxed with `allow-scripts` (opaque origin, `connect-src 'none'`, 3s timeout). Python is placeholder-only because Pyodide's network-loaded runtime cannot meet the sandbox CSP.
-- **Fact-Check Badge** (`Message.factCheckStatus`) — visible on every message as an AI-estimated signal (not authoritative)
+- **Code Runner** (`code-runner.tsx`) — fenced JS/TS blocks run client-side in an iframe served from `/code-sandbox` and sandboxed with `sandbox="allow-scripts"` only, so execution has an opaque origin with no app DOM/cookies/storage (`connect-src 'none'`, 3s timeout). Python is placeholder-only because Pyodide's network-loaded runtime cannot meet the sandbox CSP.
+- **Fact-Check Badge** (`Message.factCheckStatus`) — shown on messages whose status is `VERIFIED` or `DISPUTED` as an AI-estimated signal (not authoritative)
 
 ---
 
@@ -31,7 +31,7 @@ Core moat capabilities (deep research and challenge mode remain user-gated where
 | Queue | Upstash QStash (webhook to `/api/jobs`) |
 | Cache / Rate Limit | Upstash Redis (REST) |
 | AI | Google Gemini (Flash + Pro), OpenAI GPT |
-| AI Search | Exa API (neural), Tavily API (web) |
+| AI Search | Sastram + Exa + Tavily + free public APIs (Hacker News, Stack Exchange, GitHub, arXiv, Wikipedia, Wikidata), behind `modules/ai-search/adapters.ts` |
 | File Storage | Vercel Blob |
 | Email | Resend |
 | Validation | Zod |
@@ -79,6 +79,7 @@ sastram/
 │   │   ├── login/                        # Login page
 │   │   ├── forgot-password/              # Forgot password (email → verify → reset)
 │   │   ├── pricing/                      # Pricing page
+│   │   ├── privacy/                      # Privacy policy (draft pending legal review)
 │   │   └── terms/                        # Terms of service
 │   ├── (protected)/
 │   │   ├── dashboard/
@@ -98,7 +99,12 @@ sastram/
 │   │   │   └── admin/                    # Admin (tags, moderation, reports, appeals, health, spend)
 │   │   └── user/[userId]/                # Public user profile
 │   ├── banned/                           # Banned user page
+│   ├── code-sandbox/                     # Opaque-origin iframe document for the Code Runner
 │   ├── invitations/                      # Invitation accept page
+│   ├── q/[slug]/                         # Public thread (ISR, canonical, noindex rules)
+│   ├── k/[slug]/                         # Public KnowledgePage (ISR)
+│   ├── sitemap.ts                        # Paginated sitemap
+│   ├── robots.ts                         # Crawl policy
 │   └── api/
 │       ├── auth/[...all]/                # Better Auth catch-all
 │       ├── health/                       # Public health check
@@ -135,7 +141,7 @@ sastram/
 │       │       ├── bulk/                 # All-or-nothing bulk add (max 50)
 │       │       └── export/              # Markdown export with [n] footnotes
 │       ├── user/
-│       │   └── preferences/              # Read user preferences (expertiseLevel + moat toggles)
+│       │   └── preferences/              # Read user preferences (expertiseLevel + legacy moat keys; deep research/challenge toggles)
 │       ├── search/                       # Full-text search (threads, messages, users)
 │       ├── upload/                       # File upload (Vercel Blob)
 │       ├── sign-in/email-otp/            # Email OTP sign-in
@@ -293,7 +299,7 @@ sastram/
 │
 ├── hooks/                                # React hooks (no stores/ directory)
 │   ├── useAIReplyStream.ts               # SSE consumer for @sai streaming
-│   ├── use-user-preferences.ts           # Preferences gating (moat toggles)
+│   ├── use-user-preferences.ts           # Preferences loader (deep research/challenge; legacy keys ignored)
 │   ├── chat/                             # use-message-composer, use-message-draft, use-mentions, use-toolbar
 │   └── thread/                           # use-thread-messages, use-thread-polling, use-thread-read-receipts
 ```
@@ -355,8 +361,13 @@ Prisma models are defined in `prisma/schema.prisma`.
 | AiSearchSession | AI search history with query classification, timing metadata, threading (parent/child) |
 | AiSearchResult | Cached synthesis per query hash (TTL-based expiry) |
 | AiUsageLog | Per-request token counts and cost estimates |
-| ThreadRelation | Semantic similarity between threads (0.0–1.0 cosine) |
+| ThreadRelation | Semantic similarity between threads (0.0–1.0 cosine), derived from embedding kNN where available |
+| KnowledgePage | One-to-one synthesized public page for an eligible verified thread (versioned content) |
 | Feedback | User feedback (BUG/SUGGESTION/OTHER) |
+
+`Thread` and `KnowledgePage` also carry nullable 768-dimension pgvector columns
+(`embedding`) plus the model identifier (`embeddingModel`) for hybrid search and
+kNN relations.
 
 ---
 
@@ -465,7 +476,7 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 - `/api/collections/saved` — Check saved collections for item (threadId|sessionId|messageId|metadata, `rateLimit:api`)
 
 ### User
-- `/api/user/preferences` — Read/update preferences (deep research & challenge toggles; legacy always-on moat toggles accepted for backward-compatible parsing)
+- `/api/user/preferences` — Read preferences (GET); updates go through the `updateUserPreferencesAction` server action. Deep research/challenge toggles remain meaningful; legacy moat keys are accepted for parsing only.
 
 ### Cron / Scheduled
 - `/api/cron/update-threads` — Batch AI metadata refresh + relations + expertise refresh
@@ -527,31 +538,36 @@ Guard failures preserve `AppError` statuses (404 stays 404, 403 stays 403, 400 s
 
 ### AI Search Pipeline (`modules/ai-search/service.ts`)
 
-5-phase pipeline:
+Pipeline stages (parallel where noted):
 
 ```
 User query → POST /api/ai/forum-search
 │
-├─ Phase 1: Classify (Gemini Flash)
+├─ Classify (Gemini Flash)
 │  → type: factual | opinion | technical | comparison
-│  → suggestedSources, searchTerms[3], isControversial
+│  → suggested sources, search terms, controversy signal
 │
-├─ Phase 2: Parallel Search (Promise.allSettled)
-│  → Exa: neural search for forum/technical content
-│  → Tavily: general web + news
+├─ Source fan-out (Promise.allSettled, per-source timeout)
+│  → Sastram threads + messages (visibility-filtered for the viewer)
+│  → Exa and Tavily web search when keys are configured
+│  → Hacker News, Stack Exchange, GitHub, arXiv, Wikipedia, Wikidata
+│    (enabled per mode/query type)
+│  → canonical-URL dedupe + reciprocal-rank fusion (k=60)
 │
-├─ Phase 3: Cross-reference + Conflict Detection (Gemini Flash)
-│  → Tier assignment (T1=official docs, T2=SO/HN, T3=Reddit, T4=blogs)
-│  → Freshness check (isOutdated if >2 years)
-│  → Conflict detection prompt
+├─ Cross-reference + conflict detection (Gemini Flash)
+│  → tier/confidence/freshness, isOutdated flag, contradiction prompt
 │
-├─ Phase 4: Synthesis (Gemini Pro)
-│  → Max 400 words, cite tier inline [official] [community]
-│  → Confidence score (0-100)
+├─ Synthesis (Gemini Pro)
+│  → numbered inline citations; confidence score; honest evidence gap
+│  → follow-up questions in Pro/Deep modes
 │
-└─ Phase 5: Cache (Redis with TTL)
-   → technical=6h, opinion=1h, news=15min
+└─ Cache (Redis, TTL by query type: technical/factual 6h, otherwise 1h)
 ```
+
+The source list is illustrative; `modules/ai-search/adapters.ts` is the current
+registry. Quick/Pro/Deep modes control which sources run and the synthesis
+budget. All fetched content is treated as hostile and kept behind
+prompt-boundary delimiters.
 
 ### @sai Inline Response Flow
 

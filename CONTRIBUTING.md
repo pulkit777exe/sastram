@@ -2,6 +2,22 @@
 
 Thanks for your interest in contributing to Sastram.
 
+## Good first issues
+
+Look for issues labelled **`good first issue`** in the repository. Good candidates
+are small docs corrections, focused tests, accessibility fixes, and obvious
+copy/UX bugs. Avoid schema, auth, payments, or moderation-policy changes until
+you have discussed them with a maintainer.
+
+1. Comment on the issue to claim it and ask any clarifying questions.
+2. Keep the PR to one concern; link the issue in the description.
+3. Run the checks below and paste the real output in the PR.
+4. If the task changes behavior, add or update a test.
+
+See [ROADMAP.md](./ROADMAP.md) for the current focus. If you are unsure where to
+start, open a discussion or ask on an issue — please do not send a cold PR that
+changes architecture without agreement first.
+
 ## Getting Started
 
 ### Option A — Docker (recommended)

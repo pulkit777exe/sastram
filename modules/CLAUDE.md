@@ -13,8 +13,8 @@ Domain modules implementing business logic, organized by feature (one directory 
 - `modules/users/` - User CRUD, profiles, account actions (`actions.ts`, `account-actions.ts`)
 - `modules/threads/` - Thread CRUD, slug routing, relations, confidence decay (flat: `list.ts` queries, `read.ts` SQL read models, `write.ts` mutations, `relations.ts` relation graph, `mutations.ts` domain ops, `service.ts` DTOs)
 - `modules/messages/` - Messages with tree threading (post, edit, delete, mentions, AI inline, moderation processor; `side-effects.ts` / `infra-effects.ts` seams)
-- `modules/search/` - Full-text thread/message search
-- `modules/ai-search/` - AI forum search: service, cache, citations, query warming, LLM, synthesis, search providers
+- `modules/search/` - Full-text thread/message/user search (visibility- and privacy-filtered)
+- `modules/ai-search/` - AI search: source registry (`source-registry.ts`, `adapters.ts`), reciprocal-rank fusion, cache, citations, query warming, LLM, synthesis, legacy search providers
 - `modules/ai-reply/` - @sai inline reply service
 
 ### Social Features
@@ -30,7 +30,7 @@ Domain modules implementing business logic, organized by feature (one directory 
 - `modules/tags/` - Thread tags
 - `modules/activity/` - Activity tracking (sole `UserActivity` writer; `audit/` folded in)
 - `modules/feedback/` - User feedback submissions
-- `modules/collections/` - Workspace collections (+ `enabled.ts` feature gate)
+- `modules/collections/` - Workspace collections (always enabled; `enabled.ts` only keeps a compatibility check)
 - `modules/bounties/` - Thread bounties
 
 ### Communication

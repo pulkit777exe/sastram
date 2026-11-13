@@ -1,5 +1,10 @@
 # Phase 7 proposal — moat cuts/merges, cleanup, a11y, and performance
 
+> **Status: implemented (2026-11-12).** This document is retained as the decision
+> record for the cleanup that shipped in the Phase 7 implementation commit. The
+> “proposal / no deletions in this step” language below describes the pre-approval
+> state, not current behavior. See `CHANGELOG.md` for the shipped changes.
+
 **Status:** Proposal for approval. **No deletions, no schema drops, and no behavior-removal code in this step.**  
 **Branch:** `phase-7-cuts-proposal`  
 **Scope:** Propose cuts/merges across the **11 moat capabilities** (and their preference toggles/gates), then—after approval—remove dead code/unused deps/duplicate docs, label AI scores as “AI-estimated”, and deliver WCAG AA + Core Web Vitals pass.

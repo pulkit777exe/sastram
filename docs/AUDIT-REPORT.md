@@ -1,7 +1,7 @@
 # Sastram Modules Security & Simplification Audit Report
 
 **Date**: 2026-11-04
-**Updated**: 2026-11-11
+**Updated**: 2026-11-12
 **Scope**: all domain code under `modules/` (flat, one directory per feature)
 **Objective**: Identify security vulnerabilities, simplify duplication, and close exposure gaps.
 **Deliverable**: Written report + implementation of critical/high severity fixes.
@@ -11,6 +11,9 @@
 ## 1. Executive Summary
 
 The audit recorded **18 findings**: 1 critical, 6 high, 8 medium, and 3 low-risk/design questions.
+
+The tally is 1 + 6 + 8 + 3 = 18. C9 is included in the medium group; the
+findings below are the authoritative list.
 
 | Severity | Count | Findings |
 |----------|-------|----------|
@@ -47,7 +50,7 @@ No active remote code execution or database compromise was found, but several is
 **Severity**: HIGH
 **Impact**: `requireSession` / `requireSessionOrThrow` only blocks `status === 'BANNED'`, not `SUSPENDED`. Suspended users can create threads, edit profile, follow, vote, react, etc.
 
-**Evidence**: `session.ts` lines 113-115: `if (checkBanStatus && session.user.status === 'BANNED') { redirect('/banned') }` — `SUSPENDED` is not checked.
+**Evidence**: The pre-fix `session.ts` check only blocked `status === 'BANNED'`; `SUSPENDED` was not checked.
 
 **Fix**: Added `SUSPENDED` status check alongside `BANNED` in both `requireSession` and `requireSessionOrThrow`. Suspended users are now redirected to `/banned` (same as banned users) when `checkBanStatus` is true, and throw a `FORBIDDEN` error in `requireSessionOrThrow`.
 
@@ -90,7 +93,7 @@ No active remote code execution or database compromise was found, but several is
 **Severity**: MEDIUM
 **Impact**: `createPollAction` accepts `messageId` without verifying it belongs to `threadId`. A poll created for thread A can render in thread B via `getPollByThreadId` which resolves by `message.threadId`.
 
-**Evidence**: `polls/actions.ts` line 141: `const poll = await createPollRepo(threadId, question, options, expiresAt ?? undefined, messageId);` — no cross-check.
+**Evidence**: The pre-fix `createPollAction` accepted `messageId` without verifying it belonged to `threadId`.
 
 **Fix**: Added verification that `messageId`'s `threadId` matches the specified `threadId` before creating the poll. If the message doesn't belong to the thread, the poll creation is rejected.
 
@@ -99,7 +102,7 @@ No active remote code execution or database compromise was found, but several is
 **Severity**: MEDIUM
 **Impact**: `toggleReactionSchema` validates `emoji` only as `z.string().min(1)` with no max length. The reaction store does not check `message.deletedAt` before persisting. `requireReadOrThrow` in the access check does not filter by user status (banned/suspended users can react).
 
-**Evidence**: `actions.ts` line 15: `emoji: z.string().min(1);` — no max length. `reaction-store.ts` `resolveThreadId` fetches message without checking `deletedAt`.
+**Evidence**: The reaction schema validated `emoji` only as `z.string().min(1)` with no max length, and `resolveThreadId` fetched the message without checking `deletedAt`.
 
 **Fix**: 
 - Added max length validation (`max(50)`) for emoji in the schema
@@ -129,7 +132,7 @@ No active remote code execution or database compromise was found, but several is
 **Severity**: MEDIUM
 **Impact**: `getPopularTags` counts all `threadTagRelation` rows including private threads. The count reflects activity in threads that are not publicly visible, leaking metadata about private thread activity.
 
-**Evidence**: `tags/repository.ts` lines 41-53: `getPopularTags` does `prisma.threadTag.findMany({ include: withThreadCount, ... })` — no visibility filter.
+**Evidence**: The pre-fix `getPopularTags` counted all `threadTagRelation` rows without a visibility filter.
 
 **Fix**: `getPopularTags` now runs a single `groupBy` over `thread_tag_relations` filtered by `visibilityFilter`, ranks the visible-only counts, and then fetches metadata for the top N tags. Counts are exact (no raw-count over-fetch) and the previous N+1 per-candidate count queries are gone.
 
@@ -160,7 +163,7 @@ No active remote code execution or database compromise was found, but several is
 **Issue**: `ThreadInvitation.senderId` is the inviter, but `lib/thread-access.ts` treats it as an invitee id. Invitees are matched only by email, so changing email after acceptance loses access. Not an escalation because inviters are already managers, but it is incorrect/confusing.
 
 ### [L2] `SUSPENDED` vs `BANNED` in `app/banned/page.tsx`
-The banned page already handles both statuses correctly (lines 18-20). No code change needed.
+The banned page already handles both statuses correctly. No code change needed.
 
 ### [L3] Row-Level Security Not Enabled
 This project does not enable Postgres row-level security in its schema or migrations; thread access is enforced at the application layer (`canAccessThread` / `visibilityFilter`). Neon supports RLS, so this is a deliberate deployment choice, not a Neon limitation. Enabling it later requires policies on `threads` and `thread_invitations` plus an application role that cannot bypass RLS.

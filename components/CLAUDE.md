@@ -2,7 +2,7 @@
 
 ## Overview
 
-UI components organized by feature. Uses Tailwind CSS + shadcn/ui. SAI tokens: every card `border border-line rounded-card shadow-card`, `rounded-control` for inputs, `useUserPreferences` gates moat features.
+UI components organized by feature. Uses Tailwind CSS + shadcn/ui. SAI tokens: every card `border border-line rounded-card shadow-card`, `rounded-control` for inputs. `useUserPreferences` gates the two remaining user-controlled AI features (deep research and challenge mode); legacy always-on moat keys are accepted for backward-compatible parsing but ignored.
 
 ## Subdirectories
 
@@ -54,7 +54,7 @@ Message composition components:
 
 ### `components/panels/`
 Thread info panel components:
-- ThreadResolutionCard (verified+decay+effectiveScore, pref-gated), RelatedThreadsCard, ParticipantsCard
+- ThreadResolutionCard (verified + decay + effectiveScore; always shown), RelatedThreadsCard, ParticipantsCard
 - (ThreadSummaryCard lives in `components/thread/`)
 
 ### `components/admin/`
