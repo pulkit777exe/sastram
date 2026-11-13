@@ -12,7 +12,7 @@ more public surfaces or adding new product mechanics.
 | Area | Status | Notes |
 |---|---|---|
 | Truth repair and canonical docs | **Done** | `shared/ARCHITECTURE.md` is canonical; `docs/DOC-MISMATCHES.md` records verified drift. |
-| Security and correctness hardening | **In progress** | Audit C1–C11 are closed. Remaining Phase 2 items: single-query digest access check, duplicate knowledge-promotion trigger, password-reset path decision, Neon-adapter Docker verification. |
+| Security and correctness hardening | **Done (one environment check blocked)** | Audit C1–C11 are closed; digest access is one bounded snapshot per page; knowledge promotion has one trigger; password reset is documented and noindexed; Prisma adapter selection is explicit. Live Docker + Neon still needs a user with `docker` group access — see `docs/DEPLOYMENT.md`. |
 | Public, indexable knowledge | **Shipped** | Server-rendered `/q/[slug]` and `/k/[slug]`, canonical URLs, sitemap, robots, OG images, QAPage JSON-LD, noindex rules. |
 | Retrieval foundation | **Shipped** | pgvector embeddings, hybrid lexical/vector search, reciprocal-rank fusion, cached search, kNN-derived thread relations. |
 | Multi-source search | **Shipped** | Source registry with Sastram, web, community, code, and academic sources; per-source timeouts; canonical dedupe; Quick/Pro/Deep modes. |

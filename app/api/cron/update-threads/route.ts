@@ -12,7 +12,6 @@ import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { purgeSoftDeleted } from '@/lib/services/soft-delete-purge';
 import { purgeExpiredData } from '@/lib/services/data-retention';
 import { reconcileCounters } from '@/lib/services/counter-reconciliation';
-import { promoteThreadsToKnowledgePages } from '@/lib/services/knowledge-promotion';
 import { checkCronSpendCaps } from '@/lib/ai/guard';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { hasTrustedProvenance } from '@/modules/threads/confidence-decay';
@@ -349,14 +348,6 @@ export async function GET(req: NextRequest) {
       logger.warn('[cron/update-threads] checkAndLogUsage failed', error);
     }
 
-    // KnowledgePage auto-promotion — best-effort, never throws (per-thread isolation inside service)
-    let knowledgeResult: Awaited<ReturnType<typeof promoteThreadsToKnowledgePages>> | null = null;
-    try {
-      knowledgeResult = await promoteThreadsToKnowledgePages();
-    } catch (error) {
-      logger.error('[cron/update-threads] knowledge promotion failed', error);
-    }
-
     let expertiseRefreshed = 0;
     try {
       const activeUserIds = await prisma.user.findMany({
@@ -404,7 +395,6 @@ export async function GET(req: NextRequest) {
           scanned: reconciliationResult.scanned,
           driftsFound: reconciliationResult.drifts.length,
         },
-        knowledgePages: knowledgeResult,
         expertiseRefreshed,
       })
     );

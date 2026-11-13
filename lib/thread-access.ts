@@ -28,6 +28,22 @@ export interface ThreadAccessContext {
   visibility: ThreadVisibility;
 }
 
+/** Viewer facts needed to decide read access without another round-trip. */
+export interface ThreadViewerSnapshot {
+  id: string;
+  email: string | null;
+  role: Role;
+}
+
+/**
+ * Thread row plus the accepted invitations relevant to a batch of viewers.
+ * Produced by the batched prefilter query; `canReadFromSnapshot` is the exact
+ * gate (the query itself is deliberately coarse).
+ */
+export interface ThreadReadSnapshot extends ThreadAccessContext {
+  acceptedInvitations: { inviteeId: string | null; email: string }[];
+}
+
 export function buildInvitationMatch(
   memberUserId: string,
   email?: string | null
@@ -337,6 +353,76 @@ export async function filterReadableUserIds(
   }
 
   return uniqueIds.filter((id) => allowed.has(id));
+}
+
+/**
+ * Exact read decision from pre-loaded rows — the snapshot counterpart of
+ * `evaluateRead`/`canAccessThread`. Mirrors it clause for clause: public
+ * threads are open; anonymous viewers see only public; moderators/admins and
+ * the creator pass; otherwise an accepted invitation by invitee id or exact
+ * email address is required. Missing/deleted threads deny.
+ */
+export function canReadFromSnapshot(
+  thread: ThreadReadSnapshot | null,
+  viewer: ThreadViewerSnapshot | null
+): boolean {
+  if (thread === null) return false;
+  if (thread.visibility === 'PUBLIC') return true;
+  if (viewer === null || viewer.id.length === 0) return false;
+  if (canModerate(viewer.role)) return true;
+  if (thread.createdBy === viewer.id) return true;
+  return thread.acceptedInvitations.some(
+    (invitation) =>
+      invitation.inviteeId === viewer.id ||
+      (viewer.email !== null && viewer.email.length > 0 && invitation.email === viewer.email)
+  );
+}
+
+/**
+ * Coarse query-level prefilter for a page of digest subscriptions: fetch only
+ * threads at least one viewer might read. The result is NOT the access
+ * decision — `canReadFromSnapshot` must make the final call. Moderators read
+ * everything, so any moderator in the page drops all visibility conditions;
+ * with no signed-in viewers only public threads are candidates.
+ */
+export function buildBatchVisibilityFilter(
+  viewers: ThreadViewerSnapshot[],
+  threadIds: string[]
+): Prisma.ThreadWhereInput {
+  const base: Prisma.ThreadWhereInput = { id: { in: threadIds }, deletedAt: null };
+  if (viewers.some((viewer) => canModerate(viewer.role))) return base;
+
+  const viewerIds = [
+    ...new Set(viewers.map((viewer) => viewer.id).filter((id) => id.length > 0)),
+  ];
+  if (viewerIds.length === 0) return { ...base, visibility: 'PUBLIC' };
+
+  const emails = [
+    ...new Set(
+      viewers
+        .map((viewer) => viewer.email)
+        .filter((email): email is string => email !== null && email.length > 0)
+    ),
+  ];
+
+  return {
+    ...base,
+    OR: [
+      { visibility: 'PUBLIC' },
+      { createdBy: { in: viewerIds } },
+      {
+        invitations: {
+          some: {
+            status: 'ACCEPTED',
+            OR: [
+              { inviteeId: { in: viewerIds } },
+              ...(emails.length > 0 ? [{ email: { in: emails } }] : []),
+            ],
+          },
+        },
+      },
+    ],
+  };
 }
 
 export function canManageThread(

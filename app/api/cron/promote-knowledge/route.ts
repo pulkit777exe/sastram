@@ -4,6 +4,8 @@ import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { promoteThreadsToKnowledgePages } from '@/lib/services/knowledge-promotion';
 import { logger } from '@/lib/infrastructure/logger';
 
+export const maxDuration = 60;
+
 export async function GET(req: NextRequest) {
   // Cron auth — best-effort with logging (KISS: log and return, never throw unhandled)
   try {

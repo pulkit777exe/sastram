@@ -265,7 +265,7 @@ After fixes, run:
 ## 8. Known Remaining Gaps
 
 - **Bounties**: the claim path is implemented (`POST /api/bounties/claim`, thread-creator only, atomic settlement). Refunds remain out of scope because there is no points ledger to debit/credit.
-- **Deployment**: run `bun run db:deploy` so both invitation migrations (`inviteeId` column + backfill) reach Neon. The current `.env` password is rejected by Neon (`password authentication failed for user "neondb_owner"`); refresh the connection string from the Neon console before deploying.
+- **Deployment**: run `bun run db:deploy` so pending migrations reach Neon. On 2026-11-13 the pooled and direct endpoints both accepted `SELECT 1`, and `prisma migrate status` connected (34 migrations found, 2 pending: Phase 3 retrieval + Phase 5 forking). The earlier password-authentication blocker is stale.
 - **Query warming**: intentionally off by default; set `QUERY_WARMING_ENABLED=true` only when the speculative search spend is budgeted.
 - **RLS (L3)**: RLS is not enabled in this project's schema/migrations; access remains enforced at the application layer by design. Neon supports Postgres RLS if the team chooses to add policies later.
 

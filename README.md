@@ -70,8 +70,9 @@ bun run audit:gate
 bun test:e2e             # Playwright; needed when UI changes
 ```
 
-CI additionally runs a Docker image build and Playwright e2e. `bun test` is
-Bun's test runner — use `bun run test` for the Mocha suite.
+CI additionally runs a Docker image build (against local PostgreSQL, not the
+Neon adapter) and Playwright e2e. `bun test` is Bun's test runner — use
+`bun run test` for the Mocha suite.
 
 ## Documentation
 

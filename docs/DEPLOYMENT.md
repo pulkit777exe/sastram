@@ -108,21 +108,73 @@ string:
 - Every other URL uses `PrismaPg` (`@prisma/adapter-pg`), including the local
   PostgreSQL service in `docker-compose.yml`.
 
-So the default Compose stack exercises the `PrismaPg` path, not the Neon
-adapter. To verify the Neon adapter in Docker, point the app container at a
-pooled Neon URL:
+The app logs the selected adapter at startup:
 
-```bash
-DATABASE_URL='postgresql://...-pooler...neon.tech/...' \
-  docker compose up --build
+```text
+[prisma] Using PrismaNeon adapter
+[prisma] Using PrismaPg adapter
 ```
 
-Run migrations against the direct (unpooled) endpoint first, either from the
-host with `bun run db:deploy` or by overriding the `migrate` service's
-`DATABASE_URL`. The Docker daemon is not available in every development/CI
-environment; when it is unavailable, adapter selection can still be checked by
-inspection against the rules above, but a live container run is required before
-claiming Docker+Neon is verified.
+For Neon/pooler URLs, production also appends `pgbouncer=true` when the
+parameter is missing. It never appends it to local or self-hosted Postgres URLs,
+and it does not duplicate an existing parameter. The adapter log contains no
+credentials or full URLs; it is the evidence for which path a container
+actually took.
+
+The default Compose stack exercises the `PrismaPg` path, not the Neon adapter.
+Compose `environment:` values are literals: the `app` and `migrate` services
+hard-code their local `DATABASE_URL`, so a shell assignment such as
+`DATABASE_URL=... docker compose up` does **not** override them. Plain
+`docker compose up` therefore migrates and runs against the local `db` service
+only.
+
+To exercise Docker + Neon, first make sure the Docker socket is usable by your
+user (membership in the `docker` group for a rootful daemon, or a working
+rootless setup). `docker info` must succeed; otherwise these commands fail with
+a permission error instead of testing the app.
+
+Export both Neon endpoints in the host shell, apply migrations to the direct
+endpoint, then start the app with the pooled endpoint. `-e NAME` forwards the
+host value into the container, overriding the literal Compose value:
+
+```bash
+export DATABASE_URL='postgresql://...-pooler...neon.tech/...'
+export DATABASE_URL_UNPOOLED='postgresql://...direct...neon.tech/...'
+
+# Migrations use the direct endpoint.
+docker compose run --rm --no-deps \
+  -e DATABASE_URL -e DATABASE_URL_UNPOOLED \
+  migrate
+
+# The app uses the pooled endpoint; --service-ports publishes port 3001.
+docker compose run --rm --service-ports --no-deps \
+  -e DATABASE_URL -e DATABASE_URL_UNPOOLED \
+  app
+```
+
+The first `/api/health` request may return `503` while Neon wakes up: the probe
+has a 750 ms timeout and a cold database can exceed it. Retry for a few seconds
+and require `"database":"ok"` in the response:
+
+```bash
+for i in $(seq 1 10); do
+  body="$(curl -sS http://localhost:3001/api/health || true)"
+  echo "$body"
+  echo "$body" | grep -q '"database":"ok"' && break
+  sleep 3
+done
+echo "$body" | grep -q '"database":"ok"'
+```
+
+Redis may still report an error in a local Compose run, so the overall `status`
+can stay `degraded` even when the database path works. For adapter verification,
+also confirm the startup log shows `[prisma] Using PrismaNeon adapter` (or
+`PrismaPg` for the local stack).
+
+The Docker daemon is not available in every development/CI environment; when it
+is unavailable, adapter selection can still be checked by inspection against
+the rules above and by the unit tests. A live container run against Neon is
+still required before claiming Docker+Neon is verified.
 
 ## 3. Probes
 

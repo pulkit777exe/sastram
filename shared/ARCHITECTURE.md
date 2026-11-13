@@ -27,7 +27,7 @@ Core moat capabilities (deep research and challenge mode remain user-gated where
 | Language | TypeScript (strict) |
 | UI | React 19, Tailwind CSS 4, shadcn/ui |
 | Database | PostgreSQL via Prisma ORM (Neon serverless) |
-| Auth | Better Auth (email OTP + Google + GitHub OAuth) |
+| Auth | Better Auth (email + password, email OTP, Google/GitHub OAuth) |
 | Queue | Upstash QStash (webhook to `/api/jobs`) |
 | Cache / Rate Limit | Upstash Redis (REST) |
 | AI | Google Gemini (Flash + Pro), OpenAI GPT |
@@ -148,8 +148,8 @@ sastram/
 │       ├── email-otp/
 │       │   ├── send-verification-otp/    # Send OTP
 │       │   ├── check-verification-otp/   # Check OTP
-│       │   └── reset-otp/               # Reset OTP
-│       ├── forget-password/email-otp/    # Password reset flow
+│       │   └── reset-otp/               # Reset password with OTP
+│       ├── forget-password/email-otp/    # Password reset request (compatibility wrapper for the login modal)
 │       ├── invitations/accept/           # Accept thread invitation
 │       ├── bounties/                     # Bounty create/list + claim
 │       ├── jobs/                         # QStash webhook (background jobs)
@@ -431,12 +431,12 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 ## API Routes
 
 ### Authentication
-- `/api/auth/[...all]` — Better Auth catch-all
+- `/api/auth/[...all]` — Better Auth catch-all (email + password, email OTP, Google/GitHub OAuth)
 - `/api/sign-in/email-otp` — Email OTP sign-in
 - `/api/email-otp/send-verification-otp` — Send OTP
 - `/api/email-otp/check-verification-otp` — Check OTP
-- `/api/email-otp/reset-otp` — Reset OTP
-- `/api/forget-password/email-otp` — Password reset flow
+- `/api/email-otp/reset-otp` — Reset password with OTP
+- `/api/forget-password/email-otp` — Password reset request (compatibility wrapper used by the login modal; delegates to Better Auth `requestPasswordResetEmailOTP`)
 
 ### AI Features
 - `/api/ai/forum-search` — Full AI search pipeline (Exa + Tavily + Gemini, multi-source advanced)
@@ -616,8 +616,8 @@ Handlers are registered in the `jobHandlers` map (`lib/queue/registry.ts`); `run
 
 | Endpoint | Schedule | Purpose |
 |----------|----------|---------|
-| `/api/cron/update-threads` | Daily 03:00 UTC | Batch AI metadata refresh (DNA, score, conflicts, digest), update thread relations, prewarm follow-up queries, purge soft-deleted rows, reconcile counters, auto-promote verified KnowledgePages |
-| `/api/cron/daily-digest` | Daily 09:00 UTC | Process subscriptions by frequency, re-check current thread access at send time, generate AI summaries, send via Resend. Checkpointed (`lastAttemptedAt`) and paged (100 subscriptions, 45s budget); remaining pages resume on the next day's run. Hobby-compatible single daily run. |
+| `/api/cron/update-threads` | Daily 03:00 UTC | Batch AI metadata refresh (DNA, score, conflicts, digest), update thread relations, prewarm follow-up queries, purge soft-deleted rows, reconcile counters |
+| `/api/cron/daily-digest` | Daily 09:00 UTC | Process subscriptions by frequency, resolve current access from one bounded thread snapshot per page (exact per-recipient check), generate AI summaries, send via Resend. Checkpointed (`lastAttemptedAt`) and paged (100 subscriptions, 45s budget); remaining pages resume on the next day's run. Hobby-compatible single daily run. |
 | `/api/cron/cleanup-blobs` | Daily 04:00 UTC | Find attachments from soft-deleted messages, delete Vercel Blob, delete DB records |
 | `/api/cron/promote-knowledge` | Daily 05:00 UTC | Promote PUBLIC, verified, non-outdated `Thread.resolutionScore > 85` rows with a real `aiSummary` into `KnowledgePage`; demote pages whose thread no longer qualifies (best-effort, never throws) |
 
@@ -638,7 +638,7 @@ This is a serverless, forum-style platform. There are no persistent WebSocket co
 ## Security
 
 ### Authentication
-- Better Auth with email OTP + OAuth (Google, GitHub)
+- Better Auth with email + password, email OTP, and OAuth (Google, GitHub)
 - Session cookie: `better-auth.session_token`
 - CRON_SECRET: Bearer token with min 32 characters
 

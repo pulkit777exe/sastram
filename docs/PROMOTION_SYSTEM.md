@@ -2,8 +2,7 @@
 
 Threads with `resolutionScore > 85`, `verifiedAt != null`, `visibility = PUBLIC`,
 `isOutdated = false`, and `deletedAt = null` are auto-promoted to `KnowledgePage`
-by `GET /api/cron/promote-knowledge` (daily 05:00 UTC) and by the
-`update-threads` cron as an auxiliary task.
+by `GET /api/cron/promote-knowledge` (daily 05:00 UTC). It is the only trigger.
 
 ## Eligibility
 
@@ -42,8 +41,7 @@ and `skipped`.
 
 - `vercel.json` schedules `/api/cron/promote-knowledge` at `0 5 * * *` (daily 05:00 UTC).
 - Vercel invokes cron paths with `GET`; the route exports `GET`.
-- Also called from the `update-threads` cron as an auxiliary task (the standalone
-  cron remains the canonical trigger).
+- The standalone cron is the only trigger; `update-threads` does not run promotion.
 - `verifyCronAuth` with `CRON_SECRET` Bearer `timingSafeEqual`.
 
 ## Thresholds

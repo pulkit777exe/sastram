@@ -22,7 +22,7 @@ changes architecture without agreement first.
 
 ### Option A — Docker (recommended)
 
-`docker compose up` starts PostgreSQL and the Next.js app in one command. Copy `.env.example` to `.env` first and fill in at least the required values. (A `redis` service exists under the `tools` profile for experimentation only — the app never connects to it; limits/quotas use Upstash or in-memory fallback.)
+`docker compose up` starts PostgreSQL, applies migrations, and starts the Next.js app in one command. Copy `.env.example` to `.env` first and fill in at least the required values. Your user must be able to reach the Docker daemon (`docker info` succeeds); on Linux that usually means membership in the `docker` group plus a re-login. (A `redis` service exists under the `tools` profile for experimentation only — the app never connects to it; limits/quotas use Upstash or in-memory fallback.)
 
 ### Option B — Local without Docker
 

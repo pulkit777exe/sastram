@@ -4,7 +4,7 @@
 with the code. The code is the source of truth; this file records what was checked
 and what changed.
 
-**Last verified against code:** 2026-11-12 (Phase 1 truth repair, docs-only).
+**Last verified against code:** 2026-11-13 (Phase 1 truth repair + Phase 2 hardening).
 
 ## Fixed in this pass
 
@@ -24,6 +24,11 @@ and what changed.
 | README has no positioning, screenshot section, roadmap link, or good-first-issue guidance. | `README.md`, `CONTRIBUTING.md` | A roadmap and contribution guidance are useful entry points; the README described a generic discussion platform. | Rewrote README around the three pillars; added `ROADMAP.md` and a “Good first issues” section. |
 | Moat UI is described as preference-gated. | `components/CLAUDE.md` | Collections/graph/verified-resolution/decay/source-provenance gates were removed in the Phase 7 cleanup; only deep research and challenge mode remain user-controlled. Legacy keys still parse. | Updated the component guide. |
 | `/api/user/preferences` is documented as read/update. | `shared/ARCHITECTURE.md` | The route exports `GET` only; updates are the `updateUserPreferencesAction` server action. | Corrected the route description. |
+| `update-threads` also runs knowledge promotion, so promotion can run twice a day. | `app/api/cron/update-threads/route.ts`, `docs/PROMOTION_SYSTEM.md` | The standalone `GET /api/cron/promote-knowledge` is scheduled daily at 05:00 and is idempotent. The second call was unreliable (late in a 60s function, skipped on QStash guard/early failure). | Removed the duplicate call; the standalone cron is the only trigger. Added route and source-guard tests. |
+| Daily digest re-checks read access with `filterReadableUserIds` per private thread (`1 + 2N` queries per page). | `app/api/cron/daily-digest/route.ts`, `lib/thread-access.ts` | The route now loads one bounded thread snapshot per subscription page and decides each recipient from it. Exact rules live in `canReadFromSnapshot`; `buildBatchVisibilityFilter` is only a coarse prefilter. | Replaced the N+1; `user.findMany` and `threadInvitation.findMany` are no longer called by the digest. |
+| Password reset is redundant because sign-in is “email OTP + OAuth”. | `docs/DOC-MISMATCHES.md`, `shared/ARCHITECTURE.md` | Email + password is enabled and exposed in the login UI; the reset modal is the canonical flow; the standalone pages are orphaned but functional. | Kept the capability. Corrected the auth docs, marked the standalone pages noindex, and migrated the wrapper to Better Auth `requestPasswordResetEmailOTP`. |
+| `pgbouncer=true` is appended to every production database URL, and there is no adapter-selection log. | `lib/infrastructure/prisma.ts`, `docs/DEPLOYMENT.md` | The flag is only valid for Neon/PgBouncer; local production Postgres was getting a misleading log. | Append only for Neon/pooler URLs, log `PrismaNeon` vs `PrismaPg`, and added unit tests. |
+| Compose Neon override can be done with `DATABASE_URL=... docker compose up`. | `docs/DEPLOYMENT.md` | Compose `environment:` values are literals; the shell variable is ignored and `up` migrates the local `db` service. | Replaced with a `docker compose run --no-deps -e ...` runbook and documented the Docker socket prerequisite. |
 
 ## Verified with no change needed
 
@@ -54,8 +59,5 @@ rediscover them. Do not treat the docs as promising the missing behavior.
 
 | Gap | Evidence | Phase |
 |---|---|---|
-| `update-threads` also invokes knowledge promotion, so promotion runs twice on days when both daily crons fire. | `app/api/cron/update-threads/route.ts` calls `promoteThreadsToKnowledgePages()`. | Phase 2 (remove duplicate if the standalone cron covers it). |
-| Daily digest re-checks read access per thread (`filterReadableUserIds` in a per-thread map), not with one `visibilityFilter` query for the whole batch. | `app/api/cron/daily-digest/route.ts`. | Phase 2. |
-| Password-reset routes and pages are live even though sign-in is email OTP + OAuth. | `app/(public)/forgot-password/*`, `/api/forget-password/email-otp`, `/api/email-otp/reset-otp`. | Phase 2 (remove or document why they stay). |
-| Docker + Neon adapter path has not been exercised in a live container in this environment. | `docs/DEPLOYMENT.md` already documents the limitation. | Phase 2 verification. |
+| Docker + Neon adapter path has not been exercised in a live container in this environment. The Neon adapter itself was exercised outside Docker (`SELECT 1` on the pooled URL, `prisma migrate status` on the direct URL), and adapter selection now logs explicitly. | Docker daemon is active, but the current user is not in the `docker` group and cannot access `/var/run/docker.sock`. See `docs/DEPLOYMENT.md` for the live runbook. | Blocked on local Docker permission; requires one `docker` group membership + re-login, then run the documented `docker compose run --no-deps` sequence against a scratch Neon branch. |
 | `docs/FORKING.md`, `docs/PHASE-5-PREREQUISITES.md`, and `docs/PHASE-7-CUTS-PROPOSAL.md` were written as pre-implementation gates; the linked behavior has since shipped. | Git history and `CHANGELOG.md`. | Marked as historical/implemented in this pass. |
