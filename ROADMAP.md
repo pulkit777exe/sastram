@@ -19,7 +19,7 @@ more public surfaces or adding new product mechanics.
 | Forking | **Shipped** | Unified `forkKind`, lineage, carry-over snapshots, external imports, supersede proposals, fork tree. |
 | Legal, abuse protection, moderation | **Planned** | Privacy/Terms/Cookies/AI-use/DMCA drafts, data export/delete, Turnstile, new-account limits, report auto-hide. **Draft legal text is not legal advice.** |
 | Claim-level trust loop (minimal) | **In progress** | Persisted AI-search `evidence`, `Claim`/`ClaimVote` schema, structured verification threads from owned search sessions, confirm/dispute voting with status thresholds, dashboard claim rendering, and read-only public `/q` claim summary. Still planned: correction/regeneration flow, score explanations, topic-scoped credibility, and claim-driven promotion. |
-| First-run experience and seeded content | **Planned** | Ask-first landing, curated seed threads, guided “ask the community to verify” flow. |
+| First-run experience and seeded content | **In progress** | Ask-first landing CTA/copy, Sai-search verify guidance and structured-verify prominence, idempotent base seed, and curated verification-starter seed script (`bun run db:seed:starters`). Still planned: richer onboarding, broader curated corpus, and deeper guided flows. |
 | Cost control and fairness | **Planned** | BYOK path, per-user slice of the global AI cap, graceful degradation, conditional polling, backups. |
 | UX polish | **Planned** | Command palette, mobile bottom sheet, composer slash commands, naming cleanup, notifications, WCAG AA, i18n-ready strings. |
 | Observability and quality | **Planned** | Privacy-friendly analytics, AI quality dashboard, Playwright coverage for the core loop. |

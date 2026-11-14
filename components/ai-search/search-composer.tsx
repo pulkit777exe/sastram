@@ -37,22 +37,27 @@ function Suggestions() {
     actions: { run },
   } = useSearch();
   return (
-    <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 max-w-3xl w-full px-2">
-      {[
-        'What are the best patterns for managing state in React?',
-        'Latest threads on Hacker News about AI in healthcare.',
-        'Compare Arch Linux vs Debian for a developer machine.',
-      ].map((q) => (
-        <Button
-          key={q}
-          variant="outline"
-          size="sm"
-          className="w-full sm:w-auto max-w-full justify-center sm:justify-start text-center sm:text-left !whitespace-normal break-words text-wrap h-auto min-h-9 px-3.5 py-2 text-xs leading-snug text-ink-2 bg-surface border-line hover:border-line-strong hover:text-ink hover:bg-hover"
-          onClick={() => run(q, DEFAULT_CONFIG)}
-        >
-          <span className="break-words whitespace-normal">{q}</span>
-        </Button>
-      ))}
+    <div className="flex flex-col items-center gap-3 max-w-3xl w-full px-2">
+      <p className="text-xs text-ink-3 text-center">
+        Try asking a question below. AI answers are AI-estimated — you can ask the community to verify claims claim by claim in a thread.
+      </p>
+      <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-2 w-full">
+        {[
+          'What are the best patterns for managing state in React?',
+          'Latest threads on Hacker News about AI in healthcare.',
+          'Compare Arch Linux vs Debian for a developer machine.',
+        ].map((q) => (
+          <Button
+            key={q}
+            variant="outline"
+            size="sm"
+            className="w-full sm:w-auto max-w-full justify-center sm:justify-start text-center sm:text-left !whitespace-normal break-words text-wrap h-auto min-h-9 px-3.5 py-2 text-xs leading-snug text-ink-2 bg-surface border-line hover:border-line-strong hover:text-ink hover:bg-hover"
+            onClick={() => run(q, DEFAULT_CONFIG)}
+          >
+            <span className="break-words whitespace-normal">{q}</span>
+          </Button>
+        ))}
+      </div>
     </div>
   );
 }

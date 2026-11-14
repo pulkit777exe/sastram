@@ -28,6 +28,7 @@
     "db:extensions": "tsx scripts/apply-extensions.ts",
     "db:extensions:data-api": "tsx scripts/apply-via-data-api.ts --extensions-only",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:starters": "tsx scripts/seed-verification-starters.ts",
     "db:setup": "prisma migrate dev && tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "format": "prettier --write .",

@@ -57,7 +57,7 @@ export function SynthesisCard({
   const typeConfig = QUERY_TYPE_LABELS[queryType] || QUERY_TYPE_LABELS.technical;
 
   const orderedSources = useMemo(() => orderSourcesByCitation(sources, citations), [sources, citations]);
-  const canCreateVerificationThread = !isStreaming && Boolean(sessionId) && evidence.length > 0;
+  const hasStructuredVerification = !isStreaming && Boolean(sessionId) && evidence.length > 0;
 
   const saveMetadata = useMemo(
     () => ({ type: 'ai_synthesis', text, queryType, sourceCount, sources: orderedSources.slice(0, 3), citations }),
@@ -70,7 +70,7 @@ export function SynthesisCard({
     setActionBusy(mode);
     try {
       const q = (query || 'AI search result').slice(0, 100);
-      if (mode === 'verify' && canCreateVerificationThread && sessionId) {
+      if (mode === 'verify' && hasStructuredVerification && sessionId) {
         const title = `Verify: ${q}`.slice(0, 120);
         const res = await createVerificationThreadAction({ sessionId, title });
         if (res?.ok && res.data?.slug) {
@@ -165,29 +165,47 @@ export function SynthesisCard({
 
       {/* Answer actions */}
       {!isStreaming && text && (
-        <div className="px-5 pb-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-ink-3 mr-1">Actions</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 rounded-full text-xs"
-            onClick={() => forkIntoThread('verify')}
-            disabled={actionBusy !== null}
-          >
-            <MessageSquarePlus size={12} /> {actionBusy === 'verify' ? 'Creating…' : 'Ask community to verify'}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 rounded-full text-xs"
-            onClick={() => forkIntoThread('fork')}
-            disabled={actionBusy !== null}
-          >
-            <GitFork size={12} /> {actionBusy === 'fork' ? 'Creating…' : 'Fork into thread'}
-          </Button>
-          <CollectionSaveButton metadata={saveMetadata} label="Save to collection" />
+        <div className="px-5 pb-4 border-t border-line pt-3 space-y-2.5">
+          <p className="text-[12px] leading-relaxed text-ink-2">
+            {hasStructuredVerification ? (
+              <>
+                Turn this AI-estimated answer into a claim-by-claim verification thread. The community can confirm or dispute each claim.
+              </>
+            ) : (
+              <>
+                AI synthesis is AI-estimated. Claim-by-claim verification isn&apos;t available for this answer, but you can start a thread for community review and evidence.
+              </>
+            )}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-ink-3 mr-1">Actions</span>
+            <Button
+              type="button"
+              variant={hasStructuredVerification ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 gap-1.5 rounded-full text-xs"
+              onClick={() => forkIntoThread('verify')}
+              disabled={actionBusy !== null}
+            >
+              <MessageSquarePlus size={12} />
+              {actionBusy === 'verify'
+                ? 'Creating…'
+                : hasStructuredVerification
+                  ? 'Ask community to verify'
+                  : 'Ask community to review'}
+            </Button>
+            <Button
+              type="button"
+              variant={hasStructuredVerification ? 'outline' : 'ghost'}
+              size="sm"
+              className="h-7 gap-1.5 rounded-full text-xs"
+              onClick={() => forkIntoThread('fork')}
+              disabled={actionBusy !== null}
+            >
+              <GitFork size={12} /> {actionBusy === 'fork' ? 'Creating…' : 'Fork into thread'}
+            </Button>
+            <CollectionSaveButton metadata={saveMetadata} label="Save to collection" />
+          </div>
         </div>
       )}
 
