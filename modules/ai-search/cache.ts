@@ -78,6 +78,16 @@ export async function getCachedResult(query: string, expertiseLevel?: string): P
       followUps = [];
     }
 
+    let evidence: unknown = [];
+    try {
+      const raw = (cached as unknown as { evidence?: unknown }).evidence;
+      if (typeof raw === 'string') evidence = JSON.parse((raw as string) || '[]');
+      else if (Array.isArray(raw)) evidence = raw;
+      else if (raw && typeof raw === 'object') evidence = raw;
+    } catch {
+      evidence = [];
+    }
+
     let conflictData: unknown = null;
     try {
       const raw = (cached as unknown as { conflictData: unknown }).conflictData;
@@ -94,6 +104,7 @@ export async function getCachedResult(query: string, expertiseLevel?: string): P
       synthesis: {
         text: synthesisText,
         citations,
+        evidence,
         confidence: (cached as unknown as { confidence: number }).confidence ?? 0,
         sourceCount: (cached as unknown as { sourceCount: number }).sourceCount ?? (Array.isArray(sources) ? sources.length : 0),
         queryType: 'factual' as const,
@@ -181,6 +192,7 @@ export async function cacheResult(
         synthesis: result.synthesis.text,
         citations: (result.synthesis.citations ?? []) as unknown as Prisma.InputJsonValue,
         followUps: (result.followUps ?? []) as unknown as Prisma.InputJsonValue,
+        evidence: (result.synthesis.evidence ?? []) as unknown as Prisma.InputJsonValue,
         expiresAt,
         sourceCount: result.sources?.length || 0,
         conflictFound: result.synthesis.conflictData?.detected ?? false,

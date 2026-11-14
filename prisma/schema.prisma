@@ -103,6 +103,38 @@ enum FactCheckStatus {
   DISPUTED
 }
 
+enum ClaimStatus {
+  OPEN
+  CONFIRMED
+  DISPUTED
+  CONTESTED
+}
+
+enum ClaimVoteType {
+  CONFIRM
+  DISPUTE
+}
+
+enum ForkKind {
+  ASSUMPTION
+  CONTINUE
+  REMIX_AI
+  EXTERNAL
+}
+
+enum CarryOverMode {
+  SUMMARY
+  SELECTED_MESSAGES
+  NONE
+}
+
+enum SupersedeStatus {
+  NONE
+  PROPOSED
+  ACCEPTED
+  DECLINED
+}
+
 model User {
   id            String  @id @default(cuid())
   email         String  @unique
@@ -160,6 +192,7 @@ model User {
   feedback         Feedback[]
   collections      Collection[]
   bounties         Bounty[]
+  claimVotes       ClaimVote[]
 
   // [email] single dropped 2026-10-19: leftmost prefix of the @unique above.
   @@index([status])
@@ -239,8 +272,23 @@ model Thread {
   isOutdated      Boolean   @default(false)
   aiSummary       String?   @db.Text
   threadDna       Json?
+  embedding       Unsupported("vector(768)")?
+  embeddingModel  String?
   deletedAt       DateTime?
   forkedFromId    String?
+  forkKind        ForkKind?
+  forkPremise     String?          @db.Text
+  carryOverMode   CarryOverMode?
+  carryOverSnapshot String?        @db.Text
+  externalSourceUrl String?
+  externalExcerpt   String?        @db.Text
+  externalAttribution String?
+  supersedeStatus   SupersedeStatus @default(NONE)
+  supersedeReason   String?        @db.Text
+  supersedeProposedBy String?
+  supersedeProposedAt DateTime?
+  supersedeDecidedBy  String?
+  supersedeDecidedAt  DateTime?
 
   creator         User?                @relation("ThreadCreator", fields: [createdBy], references: [id], onDelete: SetNull)
   verifier        User?                @relation("ThreadVerifier", fields: [verifiedBy], references: [id], onDelete: SetNull)
@@ -270,6 +318,8 @@ model Thread {
   @@index([deletedAt, messageCount])
   @@index([verifiedAt])
   @@index([forkedFromId])
+  @@index([forkedFromId, forkKind])
+  @@index([supersedeStatus])
   @@map("threads")
 }
 
@@ -303,6 +353,7 @@ model Message {
   appeals         Appeal[]         @relation("MessageAppeal")
   poll            Poll?
   collectionItems CollectionItem[]
+  claims          Claim[]
 
   @@index([threadId, createdAt])
   @@index([threadId, senderId, createdAt])
@@ -710,6 +761,7 @@ model AiSearchResult {
   synthesis     String   @db.Text // rendered answer prose with inline [n] markers
   citations     Json // Citation[] — marker -> sourceId, renumbered + deduped
   followUps     Json // string[] — scoped follow-up questions
+  evidence      Json? // ResearchEvidence[] — claim-source mapping from synthesis
   conflictData  Json?
   confidence    Int
   sourceCount   Int
@@ -740,6 +792,47 @@ model ThreadRelation {
   @@unique([sourceThreadId, targetThreadId])
   @@index([sourceThreadId, similarity])
   @@map("thread_relations")
+}
+
+model Claim {
+  id           String      @id @default(cuid())
+  messageId    String
+  position     Int
+  text         String      @db.Text
+  status       ClaimStatus @default(OPEN)
+  sourceId     String?
+  sourceLabel  String?
+  sourceUrl    String?
+  excerpt      String?     @db.Text
+  confidence   Int?
+  confirmCount Int         @default(0)
+  disputeCount Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  message Message     @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  votes   ClaimVote[]
+
+  @@index([messageId, position])
+  @@index([messageId])
+  @@map("claims")
+}
+
+model ClaimVote {
+  id        String        @id @default(cuid())
+  claimId   String
+  userId    String
+  type      ClaimVoteType
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([claimId, userId])
+  @@index([claimId])
+  @@index([userId])
+  @@map("claim_votes")
 }
 
 model AiUsageLog {
@@ -822,12 +915,14 @@ model CollectionItem {
 }
 
 model KnowledgePage {
-  id                 String   @id @default(cuid())
-  threadId           String   @unique
-  version            Int      @default(1)
-  synthesizedContent String   @db.Text
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                 String                    @id @default(cuid())
+  threadId           String                    @unique
+  version            Int                       @default(1)
+  synthesizedContent String                    @db.Text
+  embedding          Unsupported("vector(768)")?
+  embeddingModel     String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
 
   thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 

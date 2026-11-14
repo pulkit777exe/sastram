@@ -8,6 +8,7 @@ import {
   handleStalenessCheckJob,
   handleAIInsightNotificationsJob,
   handleDeepResearchJob,
+  handleEmbeddingsBackfillJob,
 } from './workers';
 import { handleAIInlineJob } from './workers/ai-inline.worker';
 import { handleEmailJob } from './workers/email.worker';
@@ -22,6 +23,7 @@ import type {
   AIInlineJobData,
   EmailJobData,
   DeepResearchJobData,
+  EmbeddingBackfillJobData,
 } from './types';
 
 export type JobHandlerMap = {
@@ -34,6 +36,7 @@ export type JobHandlerMap = {
   [AIJobType.GENERATE_AI_INLINE]: (data: AIInlineJobData) => Promise<unknown>;
   [AIJobType.STALENESS_CHECK]: (data: StalenessCheckJobData) => Promise<unknown>;
   [AIJobType.GENERATE_DEEP_RESEARCH]: (data: DeepResearchJobData) => Promise<unknown>;
+  [AIJobType.GENERATE_EMBEDDINGS_BACKFILL]: (data: EmbeddingBackfillJobData) => Promise<unknown>;
   email: (data: EmailJobData) => Promise<unknown>;
 };
 
@@ -47,5 +50,6 @@ export const jobHandlers: JobHandlerMap = {
   [AIJobType.GENERATE_AI_INLINE]: handleAIInlineJob,
   [AIJobType.STALENESS_CHECK]: handleStalenessCheckJob,
   [AIJobType.GENERATE_DEEP_RESEARCH]: handleDeepResearchJob,
+  [AIJobType.GENERATE_EMBEDDINGS_BACKFILL]: handleEmbeddingsBackfillJob,
   email: handleEmailJob,
 };

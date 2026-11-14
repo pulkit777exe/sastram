@@ -1,8 +1,11 @@
+export type SearchMode = 'quick' | 'pro' | 'deep' | 'standard' | 'instant' | 'table' | 'advanced';
+
 export interface SearchConfig {
   exaMode: 'agentic' | 'instant' | 'websets';
   tavilyMode: 'search' | 'extract' | 'crawl' | 'research';
   sourceFilter: 'all' | 'technical' | 'reddit-hn' | 'docs';
-  searchMode: 'standard' | 'instant' | 'table' | 'advanced';
+  /** User-facing mode. Legacy values (standard/instant/table/advanced) remain accepted for compat. */
+  searchMode: SearchMode;
 }
 
 export interface QueryClassification {
@@ -12,6 +15,18 @@ export interface QueryClassification {
   searchTerms: string[];
   isControversial: boolean;
 }
+
+export type SourceProvider =
+  | 'sastram'
+  | 'exa'
+  | 'tavily'
+  | 'hn'
+  | 'stackexchange'
+  | 'github'
+  | 'arxiv'
+  | 'wikipedia'
+  | 'wikidata'
+  | (string & {});
 
 export interface Source {
   id: string;
@@ -24,7 +39,11 @@ export interface Source {
   tier: 1 | 2 | 3 | 4;
   confidence: number;
   isOutdated: boolean;
-  provider: 'exa' | 'tavily';
+  provider: SourceProvider;
+  /** Human-readable source label for UI badges (e.g. Sastram, Hacker News). */
+  sourceLabel?: string;
+  /** Human-readable tier label for UI (e.g. Sastram, Web, Community, Academic, Reference). */
+  tierLabel?: string;
   /** Whether the source's full text was actually retrieved (vs. only a search-API snippet). Synthesis must only cite sources with contentFetched=true. */
   contentFetched: boolean;
 }

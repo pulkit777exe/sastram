@@ -32,5 +32,5 @@ export default defineConfig({
         timeout: 120_000,
       }
     : undefined,
-  globalSetup: require.resolve('./test/e2e/global-setup'),
+  globalSetup: './test/e2e/global-setup.mjs',
 });

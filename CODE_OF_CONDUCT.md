@@ -14,7 +14,9 @@ We pledge to make participation in this project a harassment-free experience for
 
 ## Enforcement
 
-Project maintainers are responsible for clarifying and enforcing standards. Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by opening an issue or contacting the maintainers. Maintainers will review complaints promptly and fairly, taking appropriate action up to and including temporary or permanent bans.
+Project maintainers are responsible for clarifying and enforcing standards. Instances of abusive, harassing, or otherwise unacceptable behavior should be reported **privately** to [conduct@sastram.wtfpulkit.dev](mailto:conduct@sastram.wtfpulkit.dev). Please do not open a public issue for a conduct report. If email is unavailable, contact a maintainer directly and ask for a private channel.
+
+Maintainers will review complaints promptly and fairly, keep reporter identity confidential where possible, and take appropriate action up to and including temporary or permanent bans.
 
 ## Scope
 

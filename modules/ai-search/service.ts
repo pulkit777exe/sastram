@@ -1,30 +1,25 @@
 import type {
   SearchConfig,
-  RawSearchResults,
   SynthesisResult,
   AISearchResponse,
   PhaseTimings,
-  QueryClassification,
+  Source,
 } from './types';
 import { classifyQuery } from './llm';
 import { crossReference, synthesize, generateFollowUps } from './synthesis';
 import { logger } from '@/lib/infrastructure/logger';
 import { AbortError } from '@/lib/utils/retry';
-import type {
-  LlmAdapter,
-  SearchAdapter,
-  SearchCtx,
-  SearchStore,
-} from './ports';
+import type { LlmAdapter, SearchCtx, SearchStore } from './ports';
+import { runSources } from './source-registry';
+import { createDefaultSources, modeConfig, normalizeSearchMode } from './adapters';
+import type { SourceRunResult } from './source-types';
 
-export type AISearchPipelineResult = AISearchResponse & { followUps: string[]; timings?: PhaseTimings };
+export type AISearchPipelineResult = AISearchResponse & { followUps: string[]; timings?: PhaseTimings; sourceRuns?: SourceRunResult[] };
 
-/** Terminal check between phases — an aborted deadline must not start more paid work. */
 function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) throw new AbortError('AI search aborted');
 }
 
-/** Forward the caller signal to every LLM call without touching the adapter implementations. */
 function bindSignal(llm: LlmAdapter, signal: AbortSignal | undefined): LlmAdapter {
   if (!signal) return llm;
   return {
@@ -32,18 +27,10 @@ function bindSignal(llm: LlmAdapter, signal: AbortSignal | undefined): LlmAdapte
   };
 }
 
-function phaseProviderLabel(config: SearchConfig): string {
-  if (config.searchMode === 'instant') {
-    return 'exa+gemini';
-  }
-  return 'exa+tavily+gemini';
-}
-
 function elapsedMs(start: number): number {
   return Date.now() - start;
 }
 
-/** Read-through cache: a store hit short-circuits the whole pipeline (zero LLM/search calls). Exported so routes share the single read path. */
 export async function readThroughCache(
   store: SearchStore,
   query: string,
@@ -68,23 +55,20 @@ export async function readThroughCache(
   }
 }
 
-/** Parallel fan-out mirroring searchSources semantics: one side may fail without killing the other. */
-async function runSearchFanout(
-  query: string,
-  classification: QueryClassification,
-  config: SearchConfig,
-  search: SearchAdapter
-): Promise<RawSearchResults> {
-  const [exaResult, tavilyResult] = await Promise.allSettled([
-    search.exa(query, classification, config),
-    search.tavily(query, classification, config),
-  ]);
+function labelFromTier(tier: 1 | 2 | 3 | 4, provider?: string): string {
+  if (provider === 'sastram') return 'Sastram';
+  if (tier === 1) return 'Official';
+  if (tier === 2) return 'Community';
+  if (tier === 3) return 'Reference';
+  return 'Web';
+}
 
-  return {
-    exaSources: exaResult.status === 'fulfilled' ? exaResult.value : [],
-    tavilySources: tavilyResult.status === 'fulfilled' ? tavilyResult.value.sources : [],
-    tavilyAnswer: tavilyResult.status === 'fulfilled' ? tavilyResult.value.answer : undefined,
-  };
+function enrichSources(sources: Source[]): Source[] {
+  return sources.map((s) => ({
+    ...s,
+    tierLabel: s.tierLabel || labelFromTier(s.tier, String(s.provider)),
+    sourceLabel: s.sourceLabel || (typeof s.provider === 'string' ? s.provider : 'source'),
+  }));
 }
 
 export async function executeAISearch(
@@ -102,45 +86,69 @@ export async function executeAISearch(
   }
 
   const llm = bindSignal(ctx.llm, signal);
+  const mode = normalizeSearchMode(config.searchMode);
+  const mcfg = modeConfig(mode);
 
   throwIfAborted(signal);
-  // Phase 1: Classify
   const classifyStart = Date.now();
   const classification = await classifyQuery(query, llm);
   const classifyMs = elapsedMs(classifyStart);
 
   throwIfAborted(signal);
-  // Phase 2: Search
   const searchStart = Date.now();
-  let rawResults: RawSearchResults;
-  const isInstantMode = config.searchMode === 'instant';
-  if (isInstantMode) {
-    const exaSources = await ctx.search.exa(query, classification, config);
-    rawResults = {
-      exaSources,
-      tavilySources: [],
-      tavilyAnswer: undefined,
-    };
+  let merged: Source[] = [];
+  let runs: SourceRunResult[] = [];
+  if (ctx.search) {
+    // Legacy/compat path for injected SearchAdapter (tests, existing callers).
+    const [exaResult, tavilyResult] = await Promise.allSettled([
+      ctx.search.exa(query, classification, { ...config, searchMode: mode }),
+      ctx.search.tavily(query, classification, { ...config, searchMode: mode }),
+    ]);
+    const exaSources = exaResult.status === 'fulfilled' ? exaResult.value : [];
+    const tavilySources = tavilyResult.status === 'fulfilled' ? tavilyResult.value.sources : [];
+    const exaMs = 0; const tavMs = 0;
+    runs = [
+      { key: 'exa', label: 'Exa', tierLabel: 'Web', status: exaResult.status === 'fulfilled' ? 'fulfilled' : 'rejected', sources: exaSources, durationMs: exaMs, error: exaResult.status === 'rejected' ? String(exaResult.reason) : undefined },
+      { key: 'tavily', label: 'Tavily', tierLabel: 'Web', status: tavilyResult.status === 'fulfilled' ? 'fulfilled' : 'rejected', sources: tavilySources, durationMs: tavMs, error: tavilyResult.status === 'rejected' ? String(tavilyResult.reason) : undefined },
+    ];
+    // Preserve legacy merge order for deterministic behavior.
+    const seen = new Set<string>();
+    for (const s of [...exaSources, ...tavilySources]) {
+      const key = (s.url || s.id).replace(/\/$/, '').toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(s);
+    }
   } else {
-    rawResults = await runSearchFanout(query, classification, config, ctx.search);
+    const adapters = createDefaultSources();
+    const out = await runSources(adapters, {
+      query,
+      classification,
+      config: { ...config, searchMode: mode },
+      mode,
+      signal,
+      viewerUserId: ctx.viewerUserId,
+      viewerRole: ctx.viewerRole,
+      keys: ctx.keys,
+    });
+    merged = out.merged;
+    runs = out.runs;
   }
   const searchMs = elapsedMs(searchStart);
 
   throwIfAborted(signal);
-  // Phase 3: Cross-reference
   const crossRefStart = Date.now();
-  const crossRefResult = await crossReference(rawResults, query, llm);
+  const crossRefResult = await crossReference({ rankedSourcesInput: merged }, query, llm);
   const crossrefMs = elapsedMs(crossRefStart);
 
-  const rankedSources = crossRefResult.rankedSources;
+  const rankedSources = enrichSources(crossRefResult.rankedSources.slice(0, mcfg.maxSources));
 
   throwIfAborted(signal);
-  // Phase 4: Synthesize
   const synthesizeStart = Date.now();
   let synthesis: SynthesisResult;
-  if (isInstantMode) {
+  if (!mcfg.synthesize) {
     synthesis = {
-      text: rawResults.tavilyAnswer || 'Instant mode — showing raw results only.',
+      text: 'Quick mode — showing ranked sources only.',
       queryType: classification.type,
       sourceCount: rankedSources.length,
       conflictData: crossRefResult.conflictData,
@@ -153,7 +161,7 @@ export async function executeAISearch(
       classification,
       crossRefResult.conflictData,
       llm,
-      rawResults.tavilyAnswer,
+      undefined,
       ctx.history,
       ctx.expertise
     );
@@ -162,25 +170,24 @@ export async function executeAISearch(
   const synthesizeMs = elapsedMs(synthesizeStart);
 
   throwIfAborted(signal);
-  // Phase 5: Follow-ups
   let followUps: string[] = [];
-  const shouldGenerateFollowUps = !isInstantMode && Boolean(synthesis.text);
-  if (shouldGenerateFollowUps) {
-    const followUpText = synthesis.text as string;
-    followUps = await generateFollowUps(query, followUpText, llm);
+  if (mode !== 'quick' && Boolean(synthesis.text)) {
+    followUps = await generateFollowUps(query, synthesis.text as string, llm);
   }
 
+  const provider = Array.from(new Set(runs.filter((r) => r.status === 'fulfilled' && r.sources.length > 0).map((r) => r.key))).join('+') || 'none';
   return {
     synthesis,
     sources: rankedSources,
     phase: 'done',
     followUps,
+    sourceRuns: runs,
     timings: {
       classifyMs,
       searchMs,
       crossrefMs,
       synthesizeMs,
-      provider: phaseProviderLabel(config),
+      provider,
     },
   };
 }

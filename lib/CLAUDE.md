@@ -41,11 +41,11 @@ Business logic services.
 - `soft-delete-purge.ts` - Purges soft-deleted users after 30 days
 - `usage-check.ts` - Usage limit checks
 - `user-memory.ts` - Weekly expertiseLevel inference (50 active users, `threadDna` + `AiSearchSession.queryType`)
-- `knowledge-promotion.ts` - Auto-promotes verified high-score threads (`resolutionScore > 85` + `verifiedAt` → `KnowledgePage`)
+- `knowledge-promotion.ts` - Auto-promotes PUBLIC, verified, current threads with `resolutionScore > 85` and a real `aiSummary` into `KnowledgePage`; demotes pages whose thread stops qualifying and bumps `version` only on content change
 
 ### `lib/infrastructure/`
 Database, cache, logging.
-- `prisma.ts` - Prisma Client (Neon adapter, global singleton)
+- `prisma.ts` - Prisma Client (Neon adapter on Neon hosts, PrismaPg otherwise; global singleton)
 - `logger.ts` - Structured logging with `scrub()` (masks emails, tokens, secrets)
 - `redis-upstash.ts` - Upstash REST Redis (quotas, rate limits, idempotency, spend cap, job dedup). Only Redis client — there is no ioredis/TCP client and no `redis.ts`.
 
@@ -79,18 +79,15 @@ Genuinely shared utility functions.
 - `sse.ts` - SSE single owner (`sseChunk` / `sseEvent` / `createSSEStream` / `parseSSE`)
 - `view-transitions.ts` - `isViewTransitionsEnabled()` + `supportsViewTransitions()`
 
-### `lib/actions/`
-- `result.ts` - Removed — the deprecated re-export shim was deleted; `ActionEnvelope`, `ActionErrorCode`, `actionSuccess`, `actionFailure` live in `lib/utils/server-action.ts`
-
 ### `lib/schemas/`
 Zod validation schemas.
 - `api.ts` - API request/response schemas
 - `thread-dna.ts` - Thread DNA output schema
-- `user-preferences.ts` - User preference schema (expertiseLevel + moat toggles)
+- `user-preferences.ts` - User preference schema (expertise level + legacy moat keys accepted for compatibility)
 
 ### `lib/queue/`
-Background job definitions and handlers (9 AI job types in `config.ts` + the `email` job = 10 handlers in the registry).
-- `config.ts` - `AIJobType` enum (9 AI job types)
+Background job definitions and handlers (AI job types in `config.ts` plus the `email` job).
+- `config.ts` - `AIJobType` enum
 - `types.ts` - Job data interfaces (discriminated union, incl. `EmailJobData`)
 - `registry.ts` - `jobHandlers` map — the single registration seam
 - `workers/ai-jobs.ts` - Coalesced AI job handlers (summary, DNA, score, conflicts, digest, staleness, insight notifications, deep research)

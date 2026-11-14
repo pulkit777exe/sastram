@@ -4,12 +4,24 @@ import { requireSessionOrThrow } from '@/modules/auth';
 import { ok, fail, withErrorHandling, HTTP_STATUS } from '@/lib/utils/api-response';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { requireReadOrThrow, visibilityFilter } from '@/lib/thread-access';
-import { forkThreadDomain, threadVisibilitySchema } from '@/modules/threads/mutations';
+import {
+  carryOverModeSchema,
+  forkKindSchema,
+  forkThreadDomain,
+  threadVisibilitySchema,
+} from '@/modules/threads/mutations';
 import { infraThreadSideEffects } from '@/modules/threads/infra-effects';
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { rateLimit } from '@/lib/services/rate-limit';
 
-const bodySchema = z.object({ title: z.string().min(3).max(120).optional(), visibility: threadVisibilitySchema.optional() });
+const bodySchema = z.object({
+  title: z.string().min(3).max(120).optional(),
+  visibility: threadVisibilitySchema.optional(),
+  forkKind: forkKindSchema.optional(),
+  premise: z.string().max(500).optional(),
+  carryOverMode: carryOverModeSchema.optional(),
+  selectedMessageIds: z.array(z.string().cuid()).max(10).optional(),
+});
 
 export const GET = withErrorHandling(async (_request: NextRequest, context?: { params: Promise<Record<string, string>> }) => {
   const session = await requireSessionOrThrow();
@@ -27,7 +39,19 @@ export const GET = withErrorHandling(async (_request: NextRequest, context?: { p
   };
   const forks = await prisma.thread.findMany({
     where: forksWhere,
-    select: { id: true, name: true, slug: true, description: true, createdAt: true, createdBy: true, visibility: true, messageCount: true, resolutionScore: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      createdAt: true,
+      createdBy: true,
+      visibility: true,
+      messageCount: true,
+      resolutionScore: true,
+      forkKind: true,
+      supersedeStatus: true,
+    },
     orderBy: { createdAt: 'desc' },
     take: 20,
   });
@@ -41,7 +65,7 @@ export const GET = withErrorHandling(async (_request: NextRequest, context?: { p
   const forkedFrom = relation?.forkedFromId
     ? await prisma.thread.findFirst({
         where: { id: relation.forkedFromId, deletedAt: null, ...filter },
-        select: { id: true, name: true, slug: true, description: true },
+        select: { id: true, name: true, slug: true, description: true, createdBy: true },
       })
     : null;
   return NextResponse.json(ok({ forks, forkedFrom }));
@@ -59,12 +83,20 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
 
   let title: string | undefined;
   let visibility: 'PUBLIC' | 'PRIVATE' | 'RESTRICTED' | undefined;
+  let forkKind: 'ASSUMPTION' | 'CONTINUE' | 'REMIX_AI' | 'EXTERNAL' | undefined;
+  let premise: string | undefined;
+  let carryOverMode: 'SUMMARY' | 'SELECTED_MESSAGES' | 'NONE' | undefined;
+  let selectedMessageIds: string[] | undefined;
   try {
     const json = await request.json().catch(() => ({}));
     const parsed = bodySchema.safeParse(json);
     if (parsed.success) {
       title = parsed.data.title;
       visibility = parsed.data.visibility;
+      forkKind = parsed.data.forkKind;
+      premise = parsed.data.premise;
+      carryOverMode = parsed.data.carryOverMode;
+      selectedMessageIds = parsed.data.selectedMessageIds;
     }
   } catch {
     // no body is fine
@@ -82,6 +114,10 @@ export const POST = withErrorHandling(async (request: NextRequest, context?: { p
     sourceThreadId: sourceCtx.threadId,
     title: safeTitle,
     visibility,
+    forkKind,
+    forkPremise: premise ? sanitizeUserContent(premise).sanitized : undefined,
+    carryOverMode,
+    selectedMessageIds,
     userId: session.user.id,
     sideEffects: infraThreadSideEffects,
   });

@@ -2,11 +2,27 @@
 
 Thanks for your interest in contributing to Sastram.
 
+## Good first issues
+
+Look for issues labelled **`good first issue`** in the repository. Good candidates
+are small docs corrections, focused tests, accessibility fixes, and obvious
+copy/UX bugs. Avoid schema, auth, payments, or moderation-policy changes until
+you have discussed them with a maintainer.
+
+1. Comment on the issue to claim it and ask any clarifying questions.
+2. Keep the PR to one concern; link the issue in the description.
+3. Run the checks below and paste the real output in the PR.
+4. If the task changes behavior, add or update a test.
+
+See [ROADMAP.md](./ROADMAP.md) for the current focus. If you are unsure where to
+start, open a discussion or ask on an issue — please do not send a cold PR that
+changes architecture without agreement first.
+
 ## Getting Started
 
 ### Option A — Docker (recommended)
 
-`docker compose up` starts PostgreSQL and the Next.js app in one command. Copy `.env.example` to `.env` first and fill in at least the required values. (A `redis` service exists under the `tools` profile for experimentation only — the app never connects to it; limits/quotas use Upstash or in-memory fallback.)
+`docker compose up` starts PostgreSQL, applies migrations, and starts the Next.js app in one command. Copy `.env.example` to `.env` first and fill in at least the required values. Your user must be able to reach the Docker daemon (`docker info` succeeds); on Linux that usually means membership in the `docker` group plus a re-login. Optional demo/activation data: `bun run db:seed` and `bun run db:seed:starters`. (A `redis` service exists under the `tools` profile for experimentation only — the app never connects to it; limits/quotas use Upstash or in-memory fallback.)
 
 ### Option B — Local without Docker
 
@@ -62,13 +78,16 @@ Each feature module in `modules/` follows a consistent pattern:
 
 ```
 modules/<feature>/
-  actions/        — Server actions (createServerAction)
-  repository/     — Database access layer
-  schemas.ts      — Zod validation schemas
-  types.ts        — TypeScript types
-  service.ts      — Business logic
-  index.ts        — Public API barrel export
+  actions.ts      — Server actions (createServerAction)
+  repository.ts   — Database access layer
+  service.ts      — Business logic (optional)
+  schemas.ts      — Zod validation schemas (most modules)
+  types.ts        — TypeScript types (optional)
+  index.ts        — Public exports (optional)
+  ...             — Module-specific flat files
 ```
+
+Modules are flat: no `actions/`, `repository/`, `ports/`, or `adapters/` subdirectories. Test seams are flat files (`store.ts`, `effects.ts`, `side-effects.ts`).
 
 ### Authorization Patterns
 
@@ -110,8 +129,8 @@ modules/      — Domain modules
 lib/          — Core utilities, services, infrastructure
 components/   — UI components
 hooks/        — React hooks (chat, thread, AI streaming, preferences)
-prisma/       — Database schema (35 models)
+prisma/       — Database schema and migrations
 test/         — Mocha suite + Playwright e2e (e2e runs in CI's e2e job)
 ```
 
-See [CLAUDE.md](./CLAUDE.md) for full architecture details.
+See [shared/ARCHITECTURE.md](./shared/ARCHITECTURE.md) for the canonical architecture reference and [CLAUDE.md](./CLAUDE.md) for the condensed operational guide.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-UI components organized by feature. Uses Tailwind CSS + shadcn/ui. SAI tokens: every card `border border-line rounded-card shadow-card`, `rounded-control` for inputs, `useUserPreferences` gates moat features.
+UI components organized by feature. Uses Tailwind CSS + shadcn/ui. SAI tokens: every card `border border-line rounded-card shadow-card`, `rounded-control` for inputs. `useUserPreferences` gates the two remaining user-controlled AI features (deep research and challenge mode); legacy always-on moat keys are accepted for backward-compatible parsing but ignored.
 
 ## Subdirectories
 
@@ -44,7 +44,7 @@ Thread-specific components:
 - AttachmentItem, MessageActions, EditHistory (`edit-history.tsx`), EditThreadDialog
 - AccessManagementModal, AppealMessageModal
 - VerifyNowButton
-- CodeRunner (Worker-sandboxed JS + Pyodide WASM Python)
+- CodeRunner (sandboxed-iframe JS/TS execution; Python placeholder-only because Pyodide cannot meet `connect-src 'none'`)
 - RenderContent, ExternalLinkPreview, ThreadListFilter
 
 ### `components/chat/`
@@ -54,7 +54,7 @@ Message composition components:
 
 ### `components/panels/`
 Thread info panel components:
-- ThreadResolutionCard (verified+decay+effectiveScore, pref-gated), RelatedThreadsCard, ParticipantsCard
+- ThreadResolutionCard (verified + decay + effectiveScore; always shown), RelatedThreadsCard, ParticipantsCard
 - (ThreadSummaryCard lives in `components/thread/`)
 
 ### `components/admin/`
@@ -109,4 +109,4 @@ Components use client-side rendering where needed. React hooks + `hooks/` (long 
 
 ## Testing Notes
 
-Component coverage exists in `test/` (Mocha + Testing Library): `components`, `thread-components`, `thread-details-panel`, `chat-message-list`, `overflow-menu`, `search-input-bar`, `thread-sync`, `use-now`, `view-transition`. E2E coverage in `test/e2e/` (Playwright: `smoke`, `collections`, `thread-edit`) — run in CI's `e2e` job.
+Component coverage exists in `test/` (Mocha + Testing Library): `components`, `thread-components`, `thread-details-panel`, `chat-message-list`, `overflow-menu`, `search-input-bar`, `thread-sync`, `use-now`, `view-transition`. E2E coverage in `test/e2e/` (Playwright: `smoke`, `collections`, `thread-edit`, `ux-fixes`) — run in CI's `e2e` job.

@@ -150,14 +150,14 @@ export function EvidenceBoard({
                 ) : null}
                 <div className="flex items-center gap-2 mt-2">
                   {confidence !== undefined && confidence !== null ? (
-                    <div className="flex items-center gap-1 text-xs">
+                    <div className="flex items-center gap-1 text-xs" title="AI-estimated confidence">
                       {hasHighConfidence ? (
                         <ShieldCheck className={cn('h-3 w-3', getConfidenceColor(confidence))} />
                       ) : (
                         <AlertTriangle className={cn('h-3 w-3', getConfidenceColor(confidence))} />
                       )}
                       <span className={cn('font-mono', getConfidenceColor(confidence))}>
-                        {(confidence * 100).toFixed(0)}%
+                        {(confidence * 100).toFixed(0)}% AI-est.
                       </span>
                     </div>
                   ) : null}

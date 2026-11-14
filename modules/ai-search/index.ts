@@ -18,4 +18,5 @@ export type {
   AISearchResponse,
   Citation,
   QueryType,
+  ResearchEvidence,
 } from './types';

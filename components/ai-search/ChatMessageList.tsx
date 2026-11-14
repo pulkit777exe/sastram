@@ -5,8 +5,8 @@ import { Clock, AlertCircle, X, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SynthesisCard } from '@/components/ai-search/SynthesisCard';
 import { TaskSteps } from '@/components/ai-search/TaskSteps';
-import type { ChatMessage, AppState } from '@/components/ai-search/use-search-stream';
-import { SEARCH_PHASES } from '@/components/ai-search/use-search-stream';
+import type { ChatMessage, AppState } from '@/components/ai-search/use-search-conversation';
+import { SEARCH_PHASES } from '@/components/ai-search/use-search-conversation';
 import type { RetryStyle, FeedbackType } from '@/components/ai-search/StreamingText';
 import type { Citation } from '@/modules/ai-search/types';
 import { SaiViewTransition } from '@/components/ui/view-transition';
@@ -50,6 +50,9 @@ function ChatMessageBubble({
         conflictData={message.conflictData}
         sourceCount={message.sourceCount ?? 0}
         queryType={message.queryType ?? 'technical'}
+        query={message.query}
+        sessionId={message.sessionId}
+        evidence={message.evidence}
         isStreaming={false}
         fromHistory={true}
         onRetry={isLatest ? onRetry : undefined}
@@ -214,6 +217,9 @@ export function ChatMessageList({
                   conflictData={streamingMessage.conflictData}
                   sourceCount={streamingMessage.sourceCount ?? 0}
                   queryType={streamingMessage.queryType ?? 'technical'}
+                  query={streamingMessage.query}
+                  sessionId={streamingMessage.sessionId}
+                  evidence={streamingMessage.evidence}
                   isStreaming={true}
                   fromHistory={false}
                 />

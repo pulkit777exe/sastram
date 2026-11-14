@@ -1,6 +1,6 @@
 # ADR-0001 — improve-codebase-architecture grilling decisions (2026-10-11)
 
-First ADR in this repo (`docs/ARCHITECTURE-REVIEW.md` noted none existed).
+First ADR in this repo. The former `docs/ARCHITECTURE-REVIEW.md` log is preserved as ADR-0002 instead of a second architecture reference.
 Records the human calls from the D1–D9 grilling loop so future passes don't re-litigate.
 
 ## Bulk save contract: all-or-nothing

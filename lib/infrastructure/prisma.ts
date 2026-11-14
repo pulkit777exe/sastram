@@ -14,49 +14,74 @@ const globalForPrisma = globalThis as unknown as {
 
 const PGBOUNCER_PARAM = 'pgbouncer=true';
 
+export type PrismaAdapterKind = 'neon' | 'pg';
+
+export interface ResolvedPrismaConnection {
+  connectionString: string;
+  adapter: PrismaAdapterKind;
+  appendedPgbouncer: boolean;
+}
+
 function isProduction(): boolean {
   return process.env.NODE_ENV === 'production';
 }
 
-function hasPgbouncerParam(url: string): boolean {
+export function hasPgbouncerParam(url: string): boolean {
   return url.includes(PGBOUNCER_PARAM);
 }
 
-function appendPgbouncerParam(url: string): string {
-  let separator = '?';
-  if (url.includes('?')) separator = '&';
-  return `${url}${separator}${PGBOUNCER_PARAM}`;
+export function appendPgbouncerParam(url: string): string {
+  if (!url.includes('?')) {
+    return `${url}?${PGBOUNCER_PARAM}`;
+  }
+  // Avoid an empty query pair when the URL already ends in `?` or `&`.
+  if (url.endsWith('?') || url.endsWith('&')) {
+    return `${url}${PGBOUNCER_PARAM}`;
+  }
+  return `${url}&${PGBOUNCER_PARAM}`;
 }
 
-function resolveConnectionString(): string {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error('DATABASE_URL is not defined in environment variables');
-  }
-
-  const needsPgbouncer = isProduction() && !hasPgbouncerParam(url);
-  if (needsPgbouncer) {
-    // Without pgbouncer=true each serverless invocation opens its own Neon connection
-    // and we hit the connection limit under load.
-    logger.info('[prisma] Auto-appended pgbouncer=true to DATABASE_URL for Neon serverless pooling.');
-    return appendPgbouncerParam(url);
-  }
-
-  return url;
-}
-
-function isNeonConnectionString(connectionString: string): boolean {
+export function isNeonConnectionString(connectionString: string): boolean {
   const isNeonHost = connectionString.includes('neon.tech');
   const isPoolerHost = connectionString.includes('-pooler.');
   return isNeonHost || isPoolerHost;
 }
 
-function createAdapter(connectionString: string) {
+/**
+ * Decide both the effective connection string and the driver adapter before a
+ * client is created. `pgbouncer=true` is a Neon/PgBouncer setting: appending it
+ * to a local or self-hosted Postgres URL in production is wrong, so only Neon
+ * and pooler hosts get it, and only when the flag is not already present.
+ */
+export function resolvePrismaConnection(
+  connectionString: string,
+  production: boolean = isProduction()
+): ResolvedPrismaConnection {
   const useNeonAdapter = isNeonConnectionString(connectionString);
-  if (useNeonAdapter) {
-    return new PrismaNeon({ connectionString });
+  const appendedPgbouncer = production && useNeonAdapter && !hasPgbouncerParam(connectionString);
+
+  return {
+    connectionString: appendedPgbouncer ? appendPgbouncerParam(connectionString) : connectionString,
+    adapter: useNeonAdapter ? 'neon' : 'pg',
+    appendedPgbouncer,
+  };
+}
+
+function resolveDatabaseUrl(): string {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error('DATABASE_URL is not defined in environment variables');
   }
-  return new PrismaPg({ connectionString });
+  return url;
+}
+
+function createAdapter(resolved: ResolvedPrismaConnection) {
+  if (resolved.adapter === 'neon') {
+    logger.info('[prisma] Using PrismaNeon adapter');
+    return new PrismaNeon({ connectionString: resolved.connectionString });
+  }
+  logger.info('[prisma] Using PrismaPg adapter');
+  return new PrismaPg({ connectionString: resolved.connectionString });
 }
 
 function getPrismaLogLevels(): ('error' | 'warn' | 'query')[] {
@@ -68,15 +93,25 @@ function getPrismaLogLevels(): ('error' | 'warn' | 'query')[] {
 }
 
 function createPrismaClient() {
-  let connectionString: string;
+  let databaseUrl: string;
   try {
-    connectionString = resolveConnectionString();
+    databaseUrl = resolveDatabaseUrl();
   } catch (err) {
     logger.error('[prisma] Failed to resolve DATABASE_URL', err);
     // Fallback to dummy URL that will fail gracefully at query time, not at boot
-    connectionString = 'postgresql://dummy:dummy@localhost:5432/dummy?schema=public';
+    databaseUrl = 'postgresql://dummy:dummy@localhost:5432/dummy?schema=public';
   }
-  const adapter = createAdapter(connectionString);
+
+  const resolved = resolvePrismaConnection(databaseUrl);
+  if (resolved.appendedPgbouncer) {
+    // Without pgbouncer=true each serverless invocation opens its own Neon connection
+    // and we hit the connection limit under load.
+    logger.info(
+      '[prisma] Auto-appended pgbouncer=true to DATABASE_URL for Neon serverless pooling.'
+    );
+  }
+
+  const adapter = createAdapter(resolved);
   const client = new PrismaClient({
     adapter,
     log: getPrismaLogLevels(),
@@ -86,11 +121,14 @@ function createPrismaClient() {
   if (process.env.NODE_ENV !== 'production') {
     // Use $connect() which will trigger DNS lookup; catch ENOTFOUND
     client.$connect().catch((err) => {
-      logger.warn('[prisma] Database connection failed on startup - app will run in degraded mode', {
-        code: (err as NodeJS.ErrnoException)?.code,
-        hostname: (err as { hostname?: string })?.hostname,
-        message: (err as Error)?.message?.slice(0, 100),
-      });
+      logger.warn(
+        '[prisma] Database connection failed on startup - app will run in degraded mode',
+        {
+          code: (err as NodeJS.ErrnoException)?.code,
+          hostname: (err as { hostname?: string })?.hostname,
+          message: (err as Error)?.message?.slice(0, 100),
+        }
+      );
     });
   }
 

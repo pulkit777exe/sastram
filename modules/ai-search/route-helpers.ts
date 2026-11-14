@@ -34,7 +34,7 @@ export const searchRequestSchema = z.object({
     exaMode: z.enum(['agentic', 'instant', 'websets']),
     tavilyMode: z.enum(['search', 'extract', 'crawl', 'research']),
     sourceFilter: z.enum(['all', 'technical', 'reddit-hn', 'docs']),
-    searchMode: z.enum(['standard', 'instant', 'table']),
+    searchMode: z.enum(['quick', 'pro', 'deep', 'standard', 'instant', 'table', 'advanced']),
   }),
   sessionId: z.string().uuid().optional(),
   clientNonce: z.string().min(8).max(64).optional(),
@@ -131,28 +131,24 @@ export interface MissingApiKey {
   envVar: string;
 }
 
-export function missingApiKeys(keys: ResolvedKeys): MissingApiKey[] {
+export function missingApiKeys(keys: ResolvedKeys, opts?: { allowWebKeyless?: boolean }): MissingApiKey[] {
   const missing: MissingApiKey[] = [];
-  if (!keys.exaKey) missing.push({ provider: 'exa', label: 'Exa', envVar: 'SASTRAM_EXA_KEY' });
-  if (!keys.tavilyKey) missing.push({ provider: 'tavily', label: 'Tavily', envVar: 'SASTRAM_TAVILY_KEY' });
+  const allowWebKeyless = opts?.allowWebKeyless === true;
+  if (!allowWebKeyless && !keys.exaKey) missing.push({ provider: 'exa', label: 'Exa', envVar: 'SASTRAM_EXA_KEY' });
+  if (!allowWebKeyless && !keys.tavilyKey) missing.push({ provider: 'tavily', label: 'Tavily', envVar: 'SASTRAM_TAVILY_KEY' });
   if (!keys.geminiKey) missing.push({ provider: 'gemini', label: 'Gemini', envVar: 'SASTRAM_GEMINI_KEY' });
   return missing;
 }
 
-/** Null when all present, else the exact 400 message the route used to inline. */
-export function missingKeysMessage(keys: ResolvedKeys): string | null {
-  const missing = missingApiKeys(keys);
+export function missingKeysMessage(keys: ResolvedKeys, opts?: { allowWebKeyless?: boolean }): string | null {
+  const missing = missingApiKeys(keys, opts);
   if (missing.length === 0) return null;
   return `Missing API key${missing.length > 1 ? 's' : ''}: ${missing.map((key) => key.label).join(', ')}. Configure in API Keys settings.`;
 }
 
-/**
- * Structured 400 so the client can open the key dialog, keep the user's query,
- * and retry automatically once the missing keys are supplied.
- */
-export function missingKeysResponse(keys: ResolvedKeys): NextResponse | null {
-  const missingKeys = missingApiKeys(keys);
-  const message = missingKeysMessage(keys);
+export function missingKeysResponse(keys: ResolvedKeys, opts?: { allowWebKeyless?: boolean }): NextResponse | null {
+  const missingKeys = missingApiKeys(keys, opts);
+  const message = missingKeysMessage(keys, opts);
   if (missingKeys.length === 0 || !message) return null;
   return NextResponse.json(fail('MISSING_API_KEYS', message, { missingKeys }), {
     status: HTTP_STATUS.BAD_REQUEST,

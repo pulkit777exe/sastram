@@ -1,19 +1,21 @@
 # Sastram Architecture
 
-Sastram is an AI-powered community forum where questions get **resolved**, not just answered. It combines traditional forum features with a live knowledge resolution engine — AI searches across the web, synthesizes results, detects conflicts, and assigns confidence scores. Human community validates and challenges AI output. Knowledge compounds over time through verified resolutions, workspace collections, deep research, and community jury appeals.
+Sastram is an AI-powered community forum where questions get **resolved**, not just answered. It combines traditional forum features with a live knowledge resolution engine — AI searches across the web, synthesizes results, detects conflicts, and assigns AI-estimated resolution scores (human-verified where marked). The community validates and challenges AI output; confidence in a score's freshness decays separately. Knowledge compounds over time through verified resolutions, workspace collections, deep research, and community jury appeals.
 
-The current moat features (all configurable from `Settings → Preferences`, all client + server gated) are:
+This is the single canonical architecture reference. Counts are intentionally not hard-coded here; inspect `prisma/schema.prisma`, `modules/`, `app/api/`, and `test/` for the current inventory.
+
+Core moat capabilities (deep research and challenge mode remain user-gated where applicable; collections, graph, source provenance, and verified resolution/trust decay are always available):
 - **Verified Resolution** (`Thread.verifiedAt/By`) — OP/admin `markThreadVerified` server action confirms AI score; cron skips high-confidence verified threads
 - **Source Provenance 2.0** (`StreamingText` drawer) — tier, confidence, freshness, provider, contentFetched all visible
-- **Collections** (`Collection` + `CollectionItem`) — save threads + searches to workspaces, export as Markdown with `[n]` footnotes
+- **Collections** (`Collection` + `CollectionItem`) — save threads + searches to workspaces, export as Markdown with `[n]` footnotes (always available)
 - **Graph Explorer** (`/dashboard/graph`) — `ThreadRelation` similarity ≥ 0.7 visualized via `force-graph` canvas (dynamic import, 360–560px, drag/zoom)
-- **Canvas** (`/dashboard/canvas?left=&right=`) — side-by-side compare via `crossReference` tier sort + conflict detection
-- **Deep Research** (`GENERATE_DEEP_RESEARCH` job) — async 12-source advanced research (Tavily `research` + Exa 12, Hobby 12 cap; QStash inline dev, async prod)
-- **Memory** (`User.preferences.expertiseLevel`) — weekly inference from `threadDna` + `AiSearchSession`, injected in `synthesis` prompt
-- **KnowledgePage** — threads `resolutionScore > 85` + `verifiedAt` auto-promoted
+- **Canvas** (`/dashboard/canvas?left=&right=`) — side-by-side compare via `crossReference` tier sort + conflict detection (AI-estimated diff signals)
+- **Deep Research** (`GENERATE_DEEP_RESEARCH` job) — async multi-source advanced research (Tavily `research` + Exa; QStash inline in dev, async in prod), user-gated via `deepResearchEnabled`
+- **Memory** (`User.preferences.expertiseLevel`) — weekly inference from `threadDna` + `AiSearchSession`, injected in `synthesis` prompt (AI-estimated/inferred personalization)
+- **KnowledgePage** — PUBLIC, non-deleted, non-outdated, human-verified threads with `resolutionScore > 85` and a real `aiSummary` are auto-promoted; pages whose thread stops meeting those rules are demoted on the next run (see `docs/PROMOTION_SYSTEM.md`)
 - **Community Jury** (`AppealVote` + 3 random `MODERATOR` 2/3 majority) — replaces single-admin appeal
-- **Code Runner** (`code-runner.tsx`) — fenced code blocks run client-side (JS in a Worker sandbox, 3s timeout; Python via Pyodide WASM)
-- **Fact-Check Badge** (`Message.factCheckStatus`) — visible on every message
+- **Code Runner** (`code-runner.tsx`) — fenced JS/TS blocks run client-side in an iframe served from `/code-sandbox` and sandboxed with `sandbox="allow-scripts"` only, so execution has an opaque origin with no app DOM/cookies/storage (`connect-src 'none'`, 3s timeout). Python is placeholder-only because Pyodide's network-loaded runtime cannot meet the sandbox CSP.
+- **Fact-Check Badge** (`Message.factCheckStatus`) — shown on messages whose status is `VERIFIED` or `DISPUTED` as an AI-estimated signal (not authoritative)
 
 ---
 
@@ -25,17 +27,17 @@ The current moat features (all configurable from `Settings → Preferences`, all
 | Language | TypeScript (strict) |
 | UI | React 19, Tailwind CSS 4, shadcn/ui |
 | Database | PostgreSQL via Prisma ORM (Neon serverless) |
-| Auth | Better Auth (email OTP + Google + GitHub OAuth) |
+| Auth | Better Auth (email + password, email OTP, Google/GitHub OAuth) |
 | Queue | Upstash QStash (webhook to `/api/jobs`) |
 | Cache / Rate Limit | Upstash Redis (REST) |
 | AI | Google Gemini (Flash + Pro), OpenAI GPT |
-| AI Search | Exa API (neural), Tavily API (web) |
+| AI Search | Sastram + Exa + Tavily + free public APIs (Hacker News, Stack Exchange, GitHub, arXiv, Wikipedia, Wikidata), behind `modules/ai-search/adapters.ts` |
 | File Storage | Vercel Blob |
 | Email | Resend |
 | Validation | Zod |
 | State Management | React hooks + `@tanstack/react-virtual` for long lists (no global store) |
 | Monitoring | Sentry, Vercel Analytics |
-| Testing | Mocha + Chai + Sinon (90 files), Playwright (E2E, run in CI's e2e job) |
+| Testing | Mocha + Chai + Sinon, Playwright (E2E, run in CI's e2e job) |
 
 ---
 
@@ -45,20 +47,20 @@ The current moat features (all configurable from `Settings → Preferences`, all
 Browser Client
 │
 ├── HTTP / Server Actions → Next.js App Router (Vercel Serverless)
-│   ├── modules/ (24 domain modules)
-│   │   ├── Prisma → PostgreSQL (Neon, 35 models)
+│   ├── modules/ (domain modules)
+│   │   ├── Prisma → PostgreSQL (Neon)
 │   │   ├── Upstash Redis (quotas, rate limits, spend cap, idempotency)
-│   │   ├── QStash → background jobs (/api/jobs webhook, 10 job types)
-│   │   ├── Vercel Cron → scheduled tasks (/api/cron/*, 4 crons)
+│   │   ├── QStash → background jobs (/api/jobs webhook)
+│   │   ├── Vercel Cron → scheduled tasks (/api/cron/*; schedules in vercel.json)
 │   │   ├── Vercel Blob (file storage)
-│   │   ├── Gemini / Exa / Tavily (AI, 12-source deep research)
+│   │   ├── Gemini / Exa / Tavily (AI, multi-source deep research)
 │   │   └── Resend (email)
-│   └── API Routes (49 REST endpoints)
+│   └── API Routes (inventory below)
 │
 └── SSE → AI reply streaming (/api/threads/[threadId]/ai-reply/stream)
 ```
 
-No custom server, no WebSocket layer. Real-time is SSE-only for AI streaming; all other updates use client polling.
+Vercel runs the App Router serverless. `server.ts` is only for self-hosted/Docker standalone (`bun dev:server` / `bun start:server`). There is no WebSocket layer; real-time is SSE-only for AI streaming, and all other updates use client polling.
 
 ---
 
@@ -77,6 +79,7 @@ sastram/
 │   │   ├── login/                        # Login page
 │   │   ├── forgot-password/              # Forgot password (email → verify → reset)
 │   │   ├── pricing/                      # Pricing page
+│   │   ├── privacy/                      # Privacy policy (draft pending legal review)
 │   │   └── terms/                        # Terms of service
 │   ├── (protected)/
 │   │   ├── dashboard/
@@ -96,7 +99,12 @@ sastram/
 │   │   │   └── admin/                    # Admin (tags, moderation, reports, appeals, health, spend)
 │   │   └── user/[userId]/                # Public user profile
 │   ├── banned/                           # Banned user page
+│   ├── code-sandbox/                     # Opaque-origin iframe document for the Code Runner
 │   ├── invitations/                      # Invitation accept page
+│   ├── q/[slug]/                         # Public thread (ISR, canonical, noindex rules)
+│   ├── k/[slug]/                         # Public KnowledgePage (ISR)
+│   ├── sitemap.ts                        # Paginated sitemap
+│   ├── robots.ts                         # Crawl policy
 │   └── api/
 │       ├── auth/[...all]/                # Better Auth catch-all
 │       ├── health/                       # Public health check
@@ -110,7 +118,7 @@ sastram/
 │       │   ├── thread-dna/               # Thread DNA analysis
 │       │   ├── resolution-score/         # Resolution score calculation
 │       │   ├── search-history/           # Search history retrieval
-│       │   ├── deep-research/            # Async 12-source research (QStash)
+│       │   ├── deep-research/            # Async multi-source research (QStash)
 │       │   └── spend/                    # AI spend usage (admin)
 │       ├── threads/
 │       │   ├── route.ts                  # Thread CRUD
@@ -121,7 +129,8 @@ sastram/
 │       │       │   ├── route.ts          # AI reply trigger
 │       │       │   └── stream/           # SSE streaming endpoint
 │       │       ├── challenge/             # Counter-source + re-score (enqueue CALCULATE_RESOLUTION_SCORE + DETECT_CONFLICTS)
-│       │       └── fork/                 # Thread fork
+│       │       └── fork/                 # Thread fork + lineage
+│       │           └── tree/            # Fork lineage tree (forkedFromId edges, access-filtered)
 │       ├── messages/                     # Message CRUD
 │       ├── collections/                  # Workspace collections API
 │       │   ├── route.ts                  # List/create collection
@@ -132,17 +141,17 @@ sastram/
 │       │       ├── bulk/                 # All-or-nothing bulk add (max 50)
 │       │       └── export/              # Markdown export with [n] footnotes
 │       ├── user/
-│       │   └── preferences/              # Read user preferences (expertiseLevel + moat toggles)
+│       │   └── preferences/              # Read user preferences (expertiseLevel + legacy moat keys; deep research/challenge toggles)
 │       ├── search/                       # Full-text search (threads, messages, users)
 │       ├── upload/                       # File upload (Vercel Blob)
 │       ├── sign-in/email-otp/            # Email OTP sign-in
 │       ├── email-otp/
 │       │   ├── send-verification-otp/    # Send OTP
 │       │   ├── check-verification-otp/   # Check OTP
-│       │   └── reset-otp/               # Reset OTP
-│       ├── forget-password/email-otp/    # Password reset flow
+│       │   └── reset-otp/               # Reset password with OTP
+│       ├── forget-password/email-otp/    # Password reset request (compatibility wrapper for the login modal)
 │       ├── invitations/accept/           # Accept thread invitation
-│       ├── bounties/                     # Bounty CRUD
+│       ├── bounties/                     # Bounty create/list + claim
 │       ├── jobs/                         # QStash webhook (background jobs)
 │       ├── csp-report/                   # CSP violation collector
 │       └── cron/
@@ -151,7 +160,7 @@ sastram/
 │           └── cleanup-blobs/            # Blob cleanup
 │           └── promote-knowledge/        # KnowledgePage auto-promote
 │
- ├── modules/                              # Domain logic (24 modules)
+ ├── modules/                              # Domain logic (flat modules)
 │   ├── auth/                             # Session management, OAuth
 │   ├── users/                            # User CRUD, profiles, avatar/banner upload
 │   ├── threads/                          # Thread CRUD, slug routing, relations, confidence decay
@@ -185,7 +194,7 @@ sastram/
 │   │   ├── routes.ts                     # Route constants
 │   │   └── resend.ts                     # Resend email client
 │   ├── infrastructure/
-│   │   ├── prisma.ts                     # Prisma Client (Neon adapter, global singleton)
+│   │   ├── prisma.ts                     # Prisma Client (Neon adapter on Neon hosts, PrismaPg otherwise; global singleton)
 │   │   ├── logger.ts                     # Structured logging with scrub()
 │   │   └── redis-upstash.ts              # Upstash REST Redis (quotas, rate limits, spend cap)
 │   ├── ai/
@@ -199,11 +208,11 @@ sastram/
 │   │   ├── helpers.ts                    # AI helpers
 │   │   └── text.ts                       # Raw-text seam (Gemini→OpenAI failover)
 │   ├── queue/
-│   │   ├── config.ts                     # AIJobType enum (9 AI job types)
+│   │   ├── config.ts                     # AIJobType enum
 │   │   ├── types.ts                      # Job data interfaces (incl. EmailJobData)
-│   │   ├── registry.ts                   # jobHandlers map (10 handlers: 9 AI + email)
+│   │   ├── registry.ts                   # jobHandlers map (AI jobs + email)
 │   │   └── workers/
-│   │       ├── ai-jobs.ts                # Coalesced AI job handlers (8)
+│   │       ├── ai-jobs.ts                # Coalesced AI job handlers
 │   │       ├── ai-inline.worker.ts       # Streaming @sai handler
 │   │       ├── email.worker.ts           # Email job handler
 │   │       ├── _shared.ts                # Spend-cap + validation helpers
@@ -239,8 +248,6 @@ sastram/
 │   │   ├── moderation.ts                 # requireModerator(), requireAdmin()
 │   │   ├── cron-auth.ts                  # Cron Bearer token verification
 │   │   └── ai-guard-route.ts            # guardAiRoute (session→rate→guards→thread)
-│   ├── actions/
-│   │   └── result.ts                     # Removed — deprecated shim deleted; canonical: lib/utils/server-action.ts
 │   ├── types/
 │   │   └── index.ts                      # Shared client-side types
 │   ├── utils/
@@ -266,16 +273,16 @@ sastram/
 │   └── ai/guard.ts                       # checkAiGuards/runGuardedAi/checkCronSpendCaps
 │
 ├── prisma/
-│   ├── schema.prisma                     # 35 models (FactCheckStatus enum, Bounty, forkedFromId, isMarket)
+│   ├── schema.prisma                     # Prisma schema (FactCheckStatus enum, Bounty, fork lineage/forkKind/carry-over/supersede, isMarket)
 │   └── seed.ts                           # Database seed script
 │
-├── test/                                 # 90 Mocha test files + Playwright e2e (e2e in CI)
+├── test/                                 # Mocha tests + Playwright e2e (e2e in CI)
 │   └── e2e/                              # Playwright end-to-end tests
 │
 ├── components/                           # React components
 │   ├── ai-search/                        # SearchBox, Sidebar, SynthesisCard, etc.
 │   ├── thread/                           # comment-tree, message-list, poll-*, etc.
-│   │   └── code-runner.tsx               # Worker-sandboxed JS runner (3s timeout) + Pyodide WASM Python
+│   │   └── code-runner.tsx               # Sandboxed-iframe JS runner (opaque origin, 3s timeout); Python placeholder
 │   ├── chat/                             # post-message-form, mention-suggest
 │   ├── dashboard/                        # sidebar, settings-form, stats-card, etc.
 │   ├── panels/                           # ThreadResolutionCard (verified+decay+effectiveScore), RelatedThreadsCard, ParticipantsCard
@@ -292,7 +299,7 @@ sastram/
 │
 ├── hooks/                                # React hooks (no stores/ directory)
 │   ├── useAIReplyStream.ts               # SSE consumer for @sai streaming
-│   ├── use-user-preferences.ts           # Preferences gating (moat toggles)
+│   ├── use-user-preferences.ts           # Preferences loader (deep research/challenge; legacy keys ignored)
 │   ├── chat/                             # use-message-composer, use-message-draft, use-mentions, use-toolbar
 │   └── thread/                           # use-thread-messages, use-thread-polling, use-thread-read-receipts
 ```
@@ -301,14 +308,14 @@ sastram/
 
 ## Data Model
 
-35 Prisma models in `prisma/schema.prisma`.
+Prisma models are defined in `prisma/schema.prisma`. Phase 3 adds minimal claim-level verification: `AiSearchResult.evidence` persists synthesis claim-source mappings, and `Claim`/`ClaimVote` rows attach verifiable claims to a verification thread's initial `Message`. Public claim reads expose only safe source fields (internal Sastram sources redacted).
 
 ### Core Content
 
 | Model | Purpose | Key Fields |
 |-------|---------|------------|
 | User | User accounts | `role` (USER/MODERATOR/ADMIN), `status` (ACTIVE/SUSPENDED/BANNED), `profilePrivacy`, `preferences` (JSON), `deletedAt` |
-| Thread | Discussion threads | `visibility` (PUBLIC/PRIVATE/RESTRICTED), `resolutionScore`, `threadDna` (JSON), `aiSummary`, `isOutdated`, `forkedFromId` (self-FK), `verifiedAt/By`, `deletedAt` |
+| Thread | Discussion threads | `visibility` (PUBLIC/PRIVATE/RESTRICTED), `resolutionScore`, `threadDna` (JSON), `aiSummary`, `isOutdated`, lineage via `forkedFromId` (self-FK) + `forkKind` (ASSUMPTION/CONTINUE/REMIX_AI/EXTERNAL), carry-over snapshot/metadata, external source payload, supersede state (`supersedeStatus` proposed/accepted/declined), `verifiedAt/By`, `deletedAt` |
 | Message | Thread messages | `parentId` (tree), `depth` (0-4), `isAiResponse`, `isEdited`, `isPinned`, `likeCount`, `replyCount`, nullable `senderId`, `factCheckStatus` (`FactCheckStatus` enum), `deletedAt` |
 | MessageEdit | Edit history | Content snapshot per edit |
 | MessageMention | @mentions | `messageId`, `userId` |
@@ -354,14 +361,19 @@ sastram/
 | AiSearchSession | AI search history with query classification, timing metadata, threading (parent/child) |
 | AiSearchResult | Cached synthesis per query hash (TTL-based expiry) |
 | AiUsageLog | Per-request token counts and cost estimates |
-| ThreadRelation | Semantic similarity between threads (0.0–1.0 cosine) |
+| ThreadRelation | Semantic similarity between threads (0.0–1.0 cosine), derived from embedding kNN where available |
+| KnowledgePage | One-to-one synthesized public page for an eligible verified thread (versioned content) |
 | Feedback | User feedback (BUG/SUGGESTION/OTHER) |
+
+`Thread` and `KnowledgePage` also carry nullable 768-dimension pgvector columns
+(`embedding`) plus the model identifier (`embeddingModel`) for hybrid search and
+kNN relations.
 
 ---
 
 ## Module Architecture
 
-24 domain modules under `modules/`. Each follows a consistent pattern:
+Domain modules live under `modules/` (flat, one directory per feature). Each follows a consistent pattern:
 
 ```
 modules/{feature}/
@@ -416,61 +428,63 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 
 ---
 
-## API Routes (49 endpoints)
+## API Routes
 
-### Authentication (6)
-- `/api/auth/[...all]` — Better Auth catch-all
+### Authentication
+- `/api/auth/[...all]` — Better Auth catch-all (email + password, email OTP, Google/GitHub OAuth)
 - `/api/sign-in/email-otp` — Email OTP sign-in
 - `/api/email-otp/send-verification-otp` — Send OTP
 - `/api/email-otp/check-verification-otp` — Check OTP
-- `/api/email-otp/reset-otp` — Reset OTP
-- `/api/forget-password/email-otp` — Password reset flow
+- `/api/email-otp/reset-otp` — Reset password with OTP
+- `/api/forget-password/email-otp` — Password reset request (compatibility wrapper used by the login modal; delegates to Better Auth `requestPasswordResetEmailOTP`)
 
-### AI Features (7)
-- `/api/ai/forum-search` — Full AI search pipeline (Exa + Tavily + Gemini, 12-source advanced)
+### AI Features
+- `/api/ai/forum-search` — Full AI search pipeline (Exa + Tavily + Gemini, multi-source advanced)
 - `/api/ai/thread-summary` — Generate AI thread summary (POST); poll current summary (GET)
 - `/api/ai/thread-dna` — Generate thread DNA analysis
 - `/api/ai/resolution-score` — Calculate resolution score (POST); poll current score (GET)
 - `/api/ai/search-history` — Get search history
 - `/api/ai/spend` — Get AI spend usage (admin)
-- `/api/ai/deep-research` — Async 12-source research (QStash)
+- `/api/ai/deep-research` — Async multi-source research (QStash)
 
-### Core Resources (12)
+### Core Resources
 - `/api/threads` — Thread CRUD
 - `/api/threads/similar` — Similar thread lookup
-- `/api/threads/fork-external` — External URL fork (isSafePublicUrl + sanitized title)
+- `/api/threads/fork-external` — External URL fork (SSRF-safe, user-provided title/excerpt/attribution/link only; no full mirroring)
 - `/api/threads/[threadId]/ai-reply` — AI reply trigger
 - `/api/threads/[threadId]/ai-reply/stream` — SSE streaming endpoint
 - `/api/threads/[threadId]/challenge` — Counter-source challenge
-- `/api/threads/[threadId]/fork` — Thread fork
+- `/api/threads/[threadId]/fork` — Unified thread fork (kind, carry-over snapshot, visibility constraints, lineage) + fork list
+- `/api/threads/[threadId]/fork/tree` — Access-filtered fork lineage tree for graph view
 - `/api/messages` — Message CRUD
-- `/api/search` — Local full-text search (tokenized, typo-tolerant, ranked)
-- `/api/bounties` — Bounty CRUD
+- `/api/search` — Local full-text search (tokenized, typo-tolerant, ranked); user results are limited to self, PUBLIC profiles, and followed FOLLOWERS_ONLY profiles
+- `/api/bounties` — Bounty create/list
+- `/api/bounties/claim` — Claim unclaimed bounties (thread creator only)
 - `/api/polls/[pollId]/resolve` — Market poll resolve
 - `/api/link-preview` — Link preview (OG + Exa fallback, SSRF-safe manual redirect)
 
-### File & Invitations (2)
+### File & Invitations
 - `/api/upload` — File upload (Vercel Blob, MIME sniff + moderation)
 - `/api/invitations/accept` — Accept thread invitation
 
-### Collections (6)
-- `/api/collections` — List/create (FEATURE_DISABLED if collectionsEnabled=false, `?light=1` for dropdown, `private max-age 10`)
+### Collections
+- `/api/collections` — List/create (always enabled; legacy `collectionsEnabled` preference is ignored, `?light=1` for dropdown, `private max-age 10`)
 - `/api/collections/[id]` — Get/delete (ownership, `rateLimit:api`)
 - `/api/collections/[id]/items` — Add/remove items (policy + cuid, `rateLimit:api`)
 - `/api/collections/[id]/bulk` — All-or-nothing bulk add (max 50, duplicates skip)
 - `/api/collections/[id]/export` — Markdown export with [n] footnotes (`rateLimit:api`)
 - `/api/collections/saved` — Check saved collections for item (threadId|sessionId|messageId|metadata, `rateLimit:api`)
 
-### User (1)
-- `/api/user/preferences` — Read/update preferences (all moat toggles)
+### User
+- `/api/user/preferences` — Read preferences (GET); updates go through the `updateUserPreferencesAction` server action. Deep research/challenge toggles remain meaningful; legacy moat keys are accepted for parsing only.
 
-### Cron / Scheduled (4)
+### Cron / Scheduled
 - `/api/cron/update-threads` — Batch AI metadata refresh + relations + expertise refresh
 - `/api/cron/daily-digest` — Email digest trigger
 - `/api/cron/cleanup-blobs` — Blob cleanup (paginated 50×20 batches)
 - `/api/cron/promote-knowledge` — KnowledgePage auto-promote
 
-### Admin / Moderation (7)
+### Admin / Moderation
 - `/api/admin/health` — Admin health check
 - `/api/admin/sla` — Moderation SLA stats
 - `/api/v1/moderation/queue` — Moderation queue
@@ -479,8 +493,9 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 - `/api/v1/moderation/appeals/submit` — Submit appeal
 - `/api/v1/moderation/appeals/review/[id]` — Review appeal
 
-### Other (4)
-- `/api/health` — Public health check
+### Other
+- `/api/health/live` — Liveness probe (no DB/Redis calls)
+- `/api/health` — Public readiness check (Postgres + Redis + AI config)
 - `/api/bootstrap` — App init (user + notifications + activity)
 - `/api/jobs` — QStash webhook (background jobs)
 - `/api/csp-report` — CSP violation collector
@@ -498,7 +513,7 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 | `generateSummary()` | Quick content summary | Gemini Flash |
 | `generateThreadSummary()` | Thread-level summary (LangChain map-reduce) | Gemini Flash |
 | `generateThreadDNA()` | Metadata analysis (questionType, expertiseLevel, topics) | Gemini Flash |
-| `calculateResolutionScore()` | 0–100 confidence score | Gemini Flash |
+| `calculateResolutionScore()` | 0–100 resolution score (freshness/confidence decays separately) | Gemini Flash |
 | `detectConflicts()` | Contradiction detection | Gemini Flash |
 | `generateDailyDigest()` | HTML email digest | Gemini Pro |
 | `generateStreamingResponse()` | Real-time token streaming | Gemini Flash / OpenAI |
@@ -523,31 +538,36 @@ Guard failures preserve `AppError` statuses (404 stays 404, 403 stays 403, 400 s
 
 ### AI Search Pipeline (`modules/ai-search/service.ts`)
 
-5-phase pipeline:
+Pipeline stages (parallel where noted):
 
 ```
 User query → POST /api/ai/forum-search
 │
-├─ Phase 1: Classify (Gemini Flash)
+├─ Classify (Gemini Flash)
 │  → type: factual | opinion | technical | comparison
-│  → suggestedSources, searchTerms[3], isControversial
+│  → suggested sources, search terms, controversy signal
 │
-├─ Phase 2: Parallel Search (Promise.allSettled)
-│  → Exa: neural search for forum/technical content
-│  → Tavily: general web + news
+├─ Source fan-out (Promise.allSettled, per-source timeout)
+│  → Sastram threads + messages (visibility-filtered for the viewer)
+│  → Exa and Tavily web search when keys are configured
+│  → Hacker News, Stack Exchange, GitHub, arXiv, Wikipedia, Wikidata
+│    (enabled per mode/query type)
+│  → canonical-URL dedupe + reciprocal-rank fusion (k=60)
 │
-├─ Phase 3: Cross-reference + Conflict Detection (Gemini Flash)
-│  → Tier assignment (T1=official docs, T2=SO/HN, T3=Reddit, T4=blogs)
-│  → Freshness check (isOutdated if >2 years)
-│  → Conflict detection prompt
+├─ Cross-reference + conflict detection (Gemini Flash)
+│  → tier/confidence/freshness, isOutdated flag, contradiction prompt
 │
-├─ Phase 4: Synthesis (Gemini Pro)
-│  → Max 400 words, cite tier inline [official] [community]
-│  → Confidence score (0-100)
+├─ Synthesis (Gemini Pro)
+│  → numbered inline citations; confidence score; honest evidence gap
+│  → follow-up questions in Pro/Deep modes
 │
-└─ Phase 5: Cache (Redis with TTL)
-   → technical=6h, opinion=1h, news=15min
+└─ Cache (Redis, TTL by query type: technical/factual 6h, otherwise 1h)
 ```
+
+The source list is illustrative; `modules/ai-search/adapters.ts` is the current
+registry. Quick/Pro/Deep modes control which sources run and the synthesis
+budget. All fetched content is treated as hostile and kept behind
+prompt-boundary delimiters.
 
 ### @sai Inline Response Flow
 
@@ -596,10 +616,10 @@ Handlers are registered in the `jobHandlers` map (`lib/queue/registry.ts`); `run
 
 | Endpoint | Schedule | Purpose |
 |----------|----------|---------|
-| `/api/cron/update-threads` | Daily 03:00 UTC | Batch AI metadata refresh (DNA, score, conflicts, digest), update thread relations, prewarm follow-up queries, purge soft-deleted rows, reconcile counters, auto-promote verified KnowledgePages |
-| `/api/cron/daily-digest` | Daily 09:00 UTC | Process subscriptions by frequency, generate AI summaries, send via Resend |
+| `/api/cron/update-threads` | Daily 03:00 UTC | Batch AI metadata refresh (DNA, score, conflicts, digest), update thread relations, prewarm follow-up queries, purge soft-deleted rows, reconcile counters |
+| `/api/cron/daily-digest` | Daily 09:00 UTC | Process subscriptions by frequency, resolve current access from one bounded thread snapshot per page (exact per-recipient check), generate AI summaries, send via Resend. Checkpointed (`lastAttemptedAt`) and paged (100 subscriptions, 45s budget); remaining pages resume on the next day's run. Hobby-compatible single daily run. |
 | `/api/cron/cleanup-blobs` | Daily 04:00 UTC | Find attachments from soft-deleted messages, delete Vercel Blob, delete DB records |
-| `/api/cron/promote-knowledge` | Daily 05:00 UTC | Auto-promote `Thread.resolutionScore > 85 && verifiedAt != null` into `KnowledgePage` (best-effort, never throws) |
+| `/api/cron/promote-knowledge` | Daily 05:00 UTC | Promote PUBLIC, verified, non-outdated `Thread.resolutionScore > 85` rows with a real `aiSummary` into `KnowledgePage`; demote pages whose thread no longer qualifies (best-effort, never throws) |
 
 **Security:** All cron endpoints use `verifyCronAuth()` with timing-safe Bearer token comparison (`crypto.timingSafeEqual`).
 
@@ -618,7 +638,7 @@ This is a serverless, forum-style platform. There are no persistent WebSocket co
 ## Security
 
 ### Authentication
-- Better Auth with email OTP + OAuth (Google, GitHub)
+- Better Auth with email + password, email OTP, and OAuth (Google, GitHub)
 - Session cookie: `better-auth.session_token`
 - CRON_SECRET: Bearer token with min 32 characters
 
@@ -634,9 +654,10 @@ This is a serverless, forum-style platform. There are no persistent WebSocket co
 - Buckets: auth(5/15min), api(100/min), upload(10/hr), message(20/min)
 
 ### Security Headers (`proxy.ts`)
-- `Content-Security-Policy` — per-request nonce-based; Report-Only in dev, **enforced in production** unless `CSP_REPORT_ONLY=true` (`proxy.ts`)
+- `Content-Security-Policy` — per-request nonce-based; Report-Only in dev, **enforced in production** unless `CSP_REPORT_ONLY=true` (`proxy.ts`). Includes `frame-src 'self'` for the code-runner iframe.
+- **Code sandbox:** `/code-sandbox` is public and returns its own strict CSP (`connect-src 'none'`, `frame-ancestors 'self'`) plus `X-Frame-Options: SAMEORIGIN`; the runner embeds it with `sandbox="allow-scripts"` (opaque origin).
 - `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
+- `X-Frame-Options: DENY` (SAMEORIGIN only on `/code-sandbox`)
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Strict-Transport-Security` (HSTS)
 - `Permissions-Policy` (no camera/mic/geo)
@@ -669,7 +690,7 @@ One Redis client (Upstash REST over HTTP, serverless-safe):
 
 ## Testing
 
-### Unit Tests (86 files)
+### Unit Tests
 
 | Area | Files |
 |------|-------|
@@ -689,17 +710,18 @@ One Redis client (Upstash REST over HTTP, serverless-safe):
 - `smoke.spec.ts` — Auth + thread creation + reply + AI search smoke
 - `collections.spec.ts` — Workspace collections flow
 - `thread-edit.spec.ts` — Thread/message edit, tags, reactions, AI status polling
+- `ux-fixes.spec.ts` — Regression coverage for UX fixes
 - `global-setup.ts` — Deterministic fixtures (pins `DATABASE_URL` to test DB, seeds the fixture thread + test user, signs in, warms the first routes)
 
 ### CI (GitHub Actions)
-Four jobs: `secrets` (gitleaks), `audit` (`bun run audit:gate`), `check` (PostgreSQL 16 service): `bun install` → `bun run db:deploy` → `bun run db:extensions` → `typecheck` → `lint` → `build` → `bun run test` (Mocha), and `e2e` (PostgreSQL 16 service): `db:deploy` → `db:extensions` → Chromium → `bun run test:e2e` against a Playwright-managed `bun run dev:next` (`E2E_MANAGE_SERVER`, `E2E_SERVER_COMMAND`). `format:check` is not run in CI.
+Five jobs: `secrets` (gitleaks), `audit` (`bun run audit:gate`), `check` (PostgreSQL 16 service): `bun install` → `bun run db:deploy` → `bun run db:extensions` → `typecheck` → `lint` → `build` → `bun run test` (Mocha), `docker` (image build), and `e2e` (PostgreSQL 16 service): `db:deploy` → `db:extensions` → Chromium → `bun run test:e2e` against a Playwright-managed `bun run dev:next` (`E2E_MANAGE_SERVER`, `E2E_SERVER_COMMAND`). `format:check` is not run in CI.
 
 ---
 
 ## Deployment
 
-- **Host:** Vercel (serverless)
-- **Database:** Neon PostgreSQL (serverless, connection pooling via `pgbouncer=true`)
+- **Host:** Vercel (serverless) by default; Docker standalone via `server.ts` for self-hosting
+- **Database:** Neon PostgreSQL (serverless, connection pooling via `pgbouncer=true`). `lib/infrastructure/prisma.ts` selects `PrismaNeon` for `neon.tech`/`-pooler` hosts and `PrismaPg` otherwise, so local Docker Compose uses the standard `pg` adapter.
 - **Redis:** Upstash (serverless)
 - **Storage:** Vercel Blob
 - **CI/CD:** Vercel Git integration (auto-deploy on main); GitHub Actions runs CI checks only
@@ -708,7 +730,7 @@ Four jobs: `secrets` (gitleaks), `audit` (`bun run audit:gate`), `check` (Postgr
 
 ```bash
 bun dev            # Next.js dev server
-bun build          # Prisma generate + Next build
+bun run build      # Prisma generate + Next build (bare `bun build` is Bun's bundler)
 bun start          # Production server
 bun run test       # Mocha suite
 bun test:e2e       # Playwright e2e (runs in CI's e2e job)

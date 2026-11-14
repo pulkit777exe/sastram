@@ -10,3 +10,5 @@ export {
   handleDeepResearchJob,
 } from './ai-jobs';
 export { handleAIInlineJob } from './ai-inline.worker';
+
+export { handleEmbeddingsBackfillJob } from './embeddings.worker';

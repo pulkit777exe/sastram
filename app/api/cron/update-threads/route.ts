@@ -12,7 +12,6 @@ import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { purgeSoftDeleted } from '@/lib/services/soft-delete-purge';
 import { purgeExpiredData } from '@/lib/services/data-retention';
 import { reconcileCounters } from '@/lib/services/counter-reconciliation';
-import { promoteThreadsToKnowledgePages } from '@/lib/services/knowledge-promotion';
 import { checkCronSpendCaps } from '@/lib/ai/guard';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { hasTrustedProvenance } from '@/modules/threads/confidence-decay';
@@ -67,11 +66,13 @@ export async function GET(req: NextRequest) {
     AiCallPath.RESOLUTION_SCORE,
     AiCallPath.CONFLICT_DETECTION,
     AiCallPath.DAILY_DIGEST,
+    AiCallPath.EMBEDDING,
   ]);
   const dnaAllowed = spendCaps[AiCallPath.THREAD_DNA] ?? { allowed: true, remaining: -1 };
   const scoreAllowed = spendCaps[AiCallPath.RESOLUTION_SCORE] ?? { allowed: true, remaining: -1 };
   const conflictAllowed = spendCaps[AiCallPath.CONFLICT_DETECTION] ?? { allowed: true, remaining: -1 };
   const digestAllowed = spendCaps[AiCallPath.DAILY_DIGEST] ?? { allowed: true, remaining: -1 };
+  const embeddingAllowed = spendCaps[AiCallPath.EMBEDDING] ?? { allowed: true, remaining: -1 };
 
   try {
     let totalProcessed = 0;
@@ -307,6 +308,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Incremental embedding backfill (Phase 3): small batches via QStash under AI spend cap.
+    // Each worker run embeds a capped batch; cron enqueues a few bounded jobs per run.
+    if (embeddingAllowed.allowed) {
+      const embeddingJobs: Array<Promise<EnqueueJobResult>> = [];
+      pushBoundedJob(embeddingJobs, AIJobType.GENERATE_EMBEDDINGS_BACKFILL, { target: 'threads', cronJob: true });
+      pushBoundedJob(embeddingJobs, AIJobType.GENERATE_EMBEDDINGS_BACKFILL, { target: 'knowledge_pages', cronJob: true });
+      const embOutcomes = await Promise.allSettled(embeddingJobs);
+      for (const outcome of embOutcomes) {
+        if (outcome.status === 'fulfilled' && outcome.value.ok) totalJobsAdded++;
+        else totalJobsDropped++;
+      }
+    }
+
     if (enqueuesSkippedByCap > 0) {
       logger.warn(
         `[cron/update-threads] fan-out capped at ${MAX_ENQUEUES_PER_RUN} enqueues this run — ${enqueuesSkippedByCap} skipped`
@@ -332,14 +346,6 @@ export async function GET(req: NextRequest) {
       await checkAndLogUsage();
     } catch (error) {
       logger.warn('[cron/update-threads] checkAndLogUsage failed', error);
-    }
-
-    // KnowledgePage auto-promotion — best-effort, never throws (per-thread isolation inside service)
-    let knowledgeResult: Awaited<ReturnType<typeof promoteThreadsToKnowledgePages>> | null = null;
-    try {
-      knowledgeResult = await promoteThreadsToKnowledgePages();
-    } catch (error) {
-      logger.error('[cron/update-threads] knowledge promotion failed', error);
     }
 
     let expertiseRefreshed = 0;
@@ -389,7 +395,6 @@ export async function GET(req: NextRequest) {
           scanned: reconciliationResult.scanned,
           driftsFound: reconciliationResult.drifts.length,
         },
-        knowledgePages: knowledgeResult,
         expertiseRefreshed,
       })
     );

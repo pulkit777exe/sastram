@@ -14,6 +14,7 @@ import ThreadResolutionCard from '@/components/panels/ThreadResolutionCard';
 import RelatedThreadsCard from '@/components/panels/RelatedThreadsCard';
 import ParticipantsCard from '@/components/panels/ParticipantsCard';
 import { ForkRelationCard } from '@/components/thread/ForkRelationCard';
+import { ForkLineageBreadcrumb } from '@/components/thread/fork-lineage-breadcrumb';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
 import { DetailCard } from '@/components/ui/detail-card';
@@ -203,7 +204,11 @@ async function ThreadSidebar({
 
       <RelatedThreadsCard threadId={thread.id} />
 
-      <ForkRelationCard threadId={thread.id} />
+      <ForkRelationCard
+        threadId={thread.id}
+        currentUserId={session.user.id}
+        isParentOp={thread.createdBy === session.user.id}
+      />
 
       <ParticipantsCard threadId={thread.id} ownerId={thread.createdBy} />
 
@@ -229,6 +234,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ slug: s
   return (
     <div className="flex h-full w-full overflow-hidden">
       <main className="flex min-w-0 flex-1 flex-col">
+        <ForkLineageBreadcrumb threadId={thread.id} />
         <Suspense fallback={<ThreadContentSkeleton />}>
           <ThreadContent thread={thread} session={session} />
         </Suspense>

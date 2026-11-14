@@ -6,7 +6,7 @@ import type { SSEPhase } from '@/components/ai-search/PhaseTracker';
 import type { HistoryItem } from '@/components/ai-search/sai-search-layout';
 import { getStoredApiKeys, type ApiKeyIssue } from '@/components/ai-search/ApiKeysModal';
 import { parseSSE } from '@/lib/utils/sse';
-import type { SearchConfig, Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
+import type { SearchConfig, Source, SynthesisResult, Citation, ResearchEvidence } from '@/modules/ai-search/types';
 
 export interface ChatMessage {
   id: string;
@@ -19,6 +19,8 @@ export interface ChatMessage {
   conflictData?: SynthesisResult['conflictData'];
   queryType?: SynthesisResult['queryType'];
   sourceCount?: number;
+  sessionId?: string;
+  evidence?: ResearchEvidence[];
   timestamp: number;
 }
 
@@ -28,7 +30,7 @@ export const DEFAULT_CONFIG: SearchConfig = {
   exaMode: 'agentic',
   tavilyMode: 'search',
   sourceFilter: 'all',
-  searchMode: 'standard',
+  searchMode: 'pro',
 };
 
 export const SEARCH_PHASES: { id: string; label: string }[] = [
@@ -171,7 +173,7 @@ export function handleStatusError(status: number, response: Response, ctx: { set
 
 export function buildFinalizedMessage(
   base: ChatMessage,
-  event: { synthesis?: SynthesisResult; sources?: Source[]; followUps?: string[] }
+  event: { synthesis?: SynthesisResult; sources?: Source[]; followUps?: string[]; sessionId?: string }
 ): ChatMessage {
   return {
     ...base,
@@ -182,6 +184,8 @@ export function buildFinalizedMessage(
     conflictData: event.synthesis?.conflictData,
     queryType: event.synthesis?.queryType,
     sourceCount: event.synthesis?.sourceCount,
+    sessionId: event.sessionId ?? base.sessionId,
+    evidence: event.synthesis?.evidence ?? base.evidence,
   };
 }
 
@@ -491,6 +495,8 @@ export function useSearchConversation(initialQuery: string = '') {
         },
         queryType: (item.queryType as SynthesisResult['queryType']) || 'technical',
         sourceCount: item.sourceCount,
+        sessionId: item.id,
+        evidence: item.evidence ?? [],
         timestamp: new Date(item.createdAt).getTime(),
       };
       setMessages(() => [userMsg, assistantMsg]);

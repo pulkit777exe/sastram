@@ -115,8 +115,10 @@ describe('ai-search route helpers', () => {
       expect(mapped.errorCode).to.equal('PROVIDER_QUOTA');
     });
 
-    it('429 message maps to a quota message', () => {
-      expect(mapStreamError(new Error('429 RESOURCE_EXHAUSTED')).message).to.contain('quota');
+    it('429 message maps to PROVIDER_QUOTA with the friendly demand copy', () => {
+      const mapped = mapStreamError(new Error('429 RESOURCE_EXHAUSTED'));
+      expect(mapped.errorCode).to.equal('PROVIDER_QUOTA');
+      expect(mapped.message).to.contain('high demand');
     });
   });
 

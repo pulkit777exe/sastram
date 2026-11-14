@@ -14,7 +14,13 @@ import { ok, fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { enforceAiSpendCap } from '@/lib/services/ai-spend-cap';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { env } from '@/lib/config/env';
-import { filterReadableUserIds, type ThreadAccessContext } from '@/lib/thread-access';
+import { Role } from '@prisma/client';
+import {
+  buildBatchVisibilityFilter,
+  canReadFromSnapshot,
+  type ThreadReadSnapshot,
+  type ThreadViewerSnapshot,
+} from '@/lib/thread-access';
 
 export const maxDuration = 60;
 
@@ -79,13 +85,11 @@ export async function GET(req: NextRequest) {
               id: true,
               name: true,
               slug: true,
-              createdBy: true,
-              visibility: true,
             },
           },
           // The denormalized email is only a snapshot. Resolve the account's
           // current address so a changed email cannot keep receiving digests.
-          user: { select: { email: true, deletedAt: true } },
+          user: { select: { email: true, deletedAt: true, role: true } },
         },
         take: BATCH_SIZE,
         ...(after ? { cursor: { id: after }, skip: 1 } : {}),
@@ -118,30 +122,58 @@ export async function GET(req: NextRequest) {
       cursor = batch.length === BATCH_SIZE ? batch[batch.length - 1].id : undefined;
 
       // A subscription is a hint, not proof of access: invitations can be
-      // revoked and a public thread can become private after someone subscribes.
-      // Resolve each thread's current readers for this page.
-      const threadContexts = new Map<string, ThreadAccessContext>();
-      const subscribersByThread = new Map<string, string[]>();
+      // revoked and a public thread can become private or deleted after someone
+      // subscribes. Resolve every viewer on this page once, then load all
+      // candidate threads with one bounded query. The where-clause is only a
+      // coarse prefilter; `canReadFromSnapshot` makes the exact decision below.
+      const viewerById = new Map<string, ThreadViewerSnapshot>();
       for (const sub of batch) {
-        threadContexts.set(sub.thread.id, {
-          threadId: sub.thread.id,
-          createdBy: sub.thread.createdBy,
-          visibility: sub.thread.visibility,
+        if (!sub.userId || viewerById.has(sub.userId)) continue;
+        viewerById.set(sub.userId, {
+          id: sub.userId,
+          email: sub.user?.email ?? null,
+          role: sub.user?.role ?? Role.USER,
         });
-        if (!sub.userId) continue;
-        const subscriberIds = subscribersByThread.get(sub.threadId) ?? [];
-        subscriberIds.push(sub.userId);
-        subscribersByThread.set(sub.threadId, subscriberIds);
       }
-
-      const readableByThread = new Map<string, Set<string>>();
-      await Promise.all(
-        [...subscribersByThread.entries()].map(async ([threadId, subscriberIds]) => {
-          const context = threadContexts.get(threadId);
-          if (!context) return;
-          const readable = await filterReadableUserIds(context, subscriberIds);
-          readableByThread.set(threadId, new Set(readable));
-        })
+      const viewers = [...viewerById.values()];
+      const viewerIds = viewers.map((viewer) => viewer.id);
+      const viewerEmails = [
+        ...new Set(
+          viewers
+            .map((viewer) => viewer.email)
+            .filter((email): email is string => email !== null && email.length > 0)
+        ),
+      ];
+      const batchThreadIds = [...new Set(batch.map((sub) => sub.thread.id))];
+      const currentThreads = await prisma.thread.findMany({
+        where: buildBatchVisibilityFilter(viewers, batchThreadIds),
+        select: {
+          id: true,
+          createdBy: true,
+          visibility: true,
+          // Accepted invitations are only needed for viewers on this page.
+          invitations: {
+            where: {
+              status: 'ACCEPTED',
+              OR: [
+                { inviteeId: { in: viewerIds } },
+                ...(viewerEmails.length > 0 ? [{ email: { in: viewerEmails } }] : []),
+              ],
+            },
+            select: { inviteeId: true, email: true },
+          },
+        },
+      });
+      const snapshotById = new Map<string, ThreadReadSnapshot>(
+        currentThreads.map((thread) => [
+          thread.id,
+          {
+            threadId: thread.id,
+            createdBy: thread.createdBy,
+            visibility: thread.visibility,
+            acceptedInvitations: thread.invitations,
+          },
+        ])
       );
 
       for (const sub of batch) {
@@ -169,8 +201,11 @@ export async function GET(req: NextRequest) {
           }
 
           const canDeliver = sub.userId
-            ? readableByThread.get(sub.threadId)?.has(sub.userId) === true
-            : sub.thread.visibility === 'PUBLIC';
+            ? canReadFromSnapshot(
+                snapshotById.get(sub.threadId) ?? null,
+                viewerById.get(sub.userId) ?? null
+              )
+            : snapshotById.get(sub.threadId)?.visibility === 'PUBLIC';
           if (!canDeliver) {
             results.skipped++;
             continue;

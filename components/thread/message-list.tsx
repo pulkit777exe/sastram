@@ -16,6 +16,7 @@ import { InlineReplyBox } from './inline-reply-box';
 import { Badge } from '@/components/ui/badge';
 import { AttachmentItem } from './attachment-item';
 import { PollDisplay } from './poll-display';
+import { ClaimList } from './claim-list';
 import { renderContent } from '@/components/thread/render-content';
 import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -403,13 +404,13 @@ const MessageRow = React.memo(function MessageRow({
                 </Badge>
               )}
               {String(message.factCheckStatus ?? '').toLowerCase() === 'verified' && (
-                <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-emerald-500/10 text-emerald-700 border-emerald-500/20" title="Fact-checked and verified — sources confirm this claim">
-                  ✓ verified
+                <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-emerald-500/10 text-emerald-700 border-emerald-500/20" title="AI-estimated signal: sources appear to support this claim (not authoritative)">
+                  ✓ AI signal: verified
                 </Badge>
               )}
               {String(message.factCheckStatus ?? '').toLowerCase() === 'disputed' && (
-                <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-red-500/10 text-red-700 border-red-500/20" title="Fact-checked and disputed — sources contradict this claim">
-                  ! disputed
+                <Badge variant="secondary" className="px-1.5 py-px text-xs leading-none bg-red-500/10 text-red-700 border-red-500/20" title="AI-estimated signal: sources appear to conflict with this claim (not authoritative)">
+                  ! AI signal: disputed
                 </Badge>
               )}
               {message.truncated && (
@@ -537,6 +538,10 @@ const MessageRow = React.memo(function MessageRow({
                 }}
               />
             </div>
+          )}
+
+          {message.claims && message.claims.length > 0 && !isEditing && (
+            <ClaimList claims={message.claims} />
           )}
 
           <MessageReactions reactions={reactions} onToggle={handleToggleReaction} isPending={isReacting} />

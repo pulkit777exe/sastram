@@ -3,10 +3,9 @@ import { expect } from 'chai';
 import { buildCsp } from '@/proxy';
 
 describe('proxy CSP', () => {
-  it('pins worker-src so the code-runner blob sandbox is not downgraded', () => {
+  it('allows only the same-origin code-runner frame', () => {
     const csp = buildCsp('test-nonce');
-    expect(csp).to.contain('worker-src');
-    expect(csp).to.contain('blob:');
+    expect(csp).to.contain("frame-src 'self'");
   });
 
   it('disallows plugins via object-src none', () => {

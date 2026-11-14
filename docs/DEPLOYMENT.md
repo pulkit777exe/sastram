@@ -98,6 +98,84 @@ successfully before `app` starts.
 docker compose up --build
 ```
 
+### Database adapter selection (Docker and Neon)
+
+`lib/infrastructure/prisma.ts` picks the driver adapter from the connection
+string:
+
+- URLs whose host contains `neon.tech` or `-pooler.` use `PrismaNeon`
+  (`@prisma/adapter-neon`).
+- Every other URL uses `PrismaPg` (`@prisma/adapter-pg`), including the local
+  PostgreSQL service in `docker-compose.yml`.
+
+The app logs the selected adapter at startup:
+
+```text
+[prisma] Using PrismaNeon adapter
+[prisma] Using PrismaPg adapter
+```
+
+For Neon/pooler URLs, production also appends `pgbouncer=true` when the
+parameter is missing. It never appends it to local or self-hosted Postgres URLs,
+and it does not duplicate an existing parameter. The adapter log contains no
+credentials or full URLs; it is the evidence for which path a container
+actually took.
+
+The default Compose stack exercises the `PrismaPg` path, not the Neon adapter.
+Compose `environment:` values are literals: the `app` and `migrate` services
+hard-code their local `DATABASE_URL`, so a shell assignment such as
+`DATABASE_URL=... docker compose up` does **not** override them. Plain
+`docker compose up` therefore migrates and runs against the local `db` service
+only.
+
+To exercise Docker + Neon, first make sure the Docker socket is usable by your
+user (membership in the `docker` group for a rootful daemon, or a working
+rootless setup). `docker info` must succeed; otherwise these commands fail with
+a permission error instead of testing the app.
+
+Export both Neon endpoints in the host shell, apply migrations to the direct
+endpoint, then start the app with the pooled endpoint. `-e NAME` forwards the
+host value into the container, overriding the literal Compose value:
+
+```bash
+export DATABASE_URL='postgresql://...-pooler...neon.tech/...'
+export DATABASE_URL_UNPOOLED='postgresql://...direct...neon.tech/...'
+
+# Migrations use the direct endpoint.
+docker compose run --rm --no-deps \
+  -e DATABASE_URL -e DATABASE_URL_UNPOOLED \
+  migrate
+
+# The app uses the pooled endpoint; --service-ports publishes port 3001.
+docker compose run --rm --service-ports --no-deps \
+  -e DATABASE_URL -e DATABASE_URL_UNPOOLED \
+  app
+```
+
+The first `/api/health` request may return `503` while Neon wakes up: the probe
+has a 750 ms timeout and a cold database can exceed it. Retry for a few seconds
+and require `"database":"ok"` in the response:
+
+```bash
+for i in $(seq 1 10); do
+  body="$(curl -sS http://localhost:3001/api/health || true)"
+  echo "$body"
+  echo "$body" | grep -q '"database":"ok"' && break
+  sleep 3
+done
+echo "$body" | grep -q '"database":"ok"'
+```
+
+Redis may still report an error in a local Compose run, so the overall `status`
+can stay `degraded` even when the database path works. For adapter verification,
+also confirm the startup log shows `[prisma] Using PrismaNeon adapter` (or
+`PrismaPg` for the local stack).
+
+The Docker daemon is not available in every development/CI environment; when it
+is unavailable, adapter selection can still be checked by inspection against
+the rules above and by the unit tests. A live container run against Neon is
+still required before claiming Docker+Neon is verified.
+
 ## 3. Probes
 
 | Endpoint | Purpose | Expected |
@@ -117,14 +195,20 @@ load balancer must never act on a cached healthy result.
 
 ## 4. Scheduled jobs
 
-Vercel schedules four jobs from `vercel.json`:
+Vercel schedules four cron paths from `vercel.json`:
 
 | Job | UTC | Purpose |
 | --- | --- | --- |
 | `update-threads` | 03:00 | AI refresh, retention/purge, counter reconciliation |
 | `cleanup-blobs` | 04:00 | Delete orphaned uploads |
-| `promote-knowledge` | 05:00 | Promote verified high-confidence threads |
-| `daily-digest` | 09:00, 09:15, 09:30, 09:45 | Newsletter/digest delivery, paged with per-subscription checkpoints |
+| `promote-knowledge` | 05:00 | Promote verified high-confidence public threads |
+| `daily-digest` | 09:00 | Newsletter/digest delivery, paged with per-subscription checkpoints |
+
+> **Plan constraint:** Vercel Hobby allows only one run per cron path per day.
+> All schedules in `vercel.json` are daily. `daily-digest` processes what fits in
+> its 45-second budget and checkpoints each subscription; remaining pages resume
+> on the next day's run. A second run on the same day skips subscriptions already
+> attempted today.
 
 Every route under `/api/cron` requires `Authorization: Bearer $CRON_SECRET`.
 Vercel sends this automatically when `CRON_SECRET` is configured. For another
@@ -136,9 +220,11 @@ and read notifications older than 90 days. Soft-deleted users/threads are
 hard-purged after 30 days.
 
 `daily-digest` processes 100 subscriptions per page with a 45-second budget and
-writes `lastAttemptedAt`/`lastSentAt`. The four 09:00 runs drain later pages
-without resending earlier ones; a crashed worker leaves the short QStash
-processing lease to expire so the delivery can be retried.
+writes `lastAttemptedAt`/`lastSentAt`. Before sending, it re-reads the current
+thread rows and re-checks each recipient's read access, so a thread that turned
+private or was deleted after the subscription was created is skipped. The
+remaining pages resume on the next day's run; a crashed worker leaves the short
+QStash processing lease to expire so the delivery can be retried.
 
 ### Self-hosted scheduler
 
@@ -149,7 +235,7 @@ jobs from host cron (or your orchestrator) with the production secret:
 0 3 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://sastram.example/api/cron/update-threads
 0 4 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://sastram.example/api/cron/cleanup-blobs
 0 5 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://sastram.example/api/cron/promote-knowledge
-0,15,30,45 9 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://sastram.example/api/cron/daily-digest
+0 9 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://sastram.example/api/cron/daily-digest
 ```
 
 QStash delivers `/api/jobs` with an Upstash signature. `QSTASH_CURRENT_SIGNING_KEY`
