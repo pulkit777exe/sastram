@@ -8,6 +8,20 @@ export type ThreadMessageReactionAggregate = {
   _count: number;
 };
 
+export type ThreadMessageClaim = {
+  id: string;
+  messageId: string;
+  position: number;
+  text: string;
+  status: 'OPEN' | 'CONFIRMED' | 'DISPUTED' | 'CONTESTED';
+  sourceLabel: string | null;
+  sourceUrl: string | null;
+  excerpt: string | null;
+  confidence: number | null;
+  confirmCount: number;
+  disputeCount: number;
+};
+
 export type ThreadMessage = {
   id: string;
   content: string;
@@ -58,6 +72,7 @@ export type ThreadMessage = {
       createdAt: Date;
     }>;
   } | null;
+  claims?: ThreadMessageClaim[];
 };
 
 type ThreadTag = {
@@ -252,8 +267,21 @@ function mapDbMessageToThreadMessage(
       isActive: boolean;
       expiresAt: Date | null;
       createdAt: Date;
-      votes: Array<{ id: string; pollId: string; userId: string; optionIndex: number; createdAt: Date }>;
+      votes?: Array<{ id: string; pollId: string; userId: string; optionIndex: number; createdAt: Date }>;
     } | null;
+    claims?: Array<{
+      id: string;
+      messageId: string;
+      position: number;
+      text: string;
+      status: 'OPEN' | 'CONFIRMED' | 'DISPUTED' | 'CONTESTED';
+      sourceLabel: string | null;
+      sourceUrl: string | null;
+      excerpt: string | null;
+      confidence: number | null;
+      confirmCount: number;
+      disputeCount: number;
+    }>;
   },
   reactionsByMessage: Map<string, ThreadMessageReactionAggregate[]>,
   userReactionsByMessage?: Map<string, Set<string>>
@@ -287,6 +315,19 @@ function mapDbMessageToThreadMessage(
       size: toNumberOrNull(a.size),
     })),
     poll: mapPoll(m.poll),
+    claims: (m.claims ?? []).map((c) => ({
+      id: c.id,
+      messageId: c.messageId,
+      position: c.position,
+      text: c.text,
+      status: c.status,
+      sourceLabel: c.sourceLabel,
+      sourceUrl: c.sourceUrl,
+      excerpt: c.excerpt,
+      confidence: c.confidence,
+      confirmCount: c.confirmCount,
+      disputeCount: c.disputeCount,
+    })),
   };
 }
 
@@ -396,9 +437,23 @@ export async function getThreadMessagesPaginated(
       sender: { select: { id: true, name: true, image: true } },
       attachments: { select: { id: true, url: true, type: true, name: true, size: true } },
       // No votes: poll tallies come from the getPollResults groupBy seam.
-      // The unbounded include pulled every vote row for every poll on the
-      // page (50 msgs × N votes) while no consumer reads message.poll.votes.
       poll: { select: { id: true, question: true, options: true, isActive: true, expiresAt: true, createdAt: true } },
+      claims: {
+        select: {
+          id: true,
+          messageId: true,
+          position: true,
+          text: true,
+          status: true,
+          sourceLabel: true,
+          sourceUrl: true,
+          excerpt: true,
+          confidence: true,
+          confirmCount: true,
+          disputeCount: true,
+        },
+        orderBy: { position: 'asc' },
+      },
     },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: effectiveLimit + 1,

@@ -12,7 +12,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import type { Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
+import type { Source, SynthesisResult, Citation, ResearchEvidence } from '@/modules/ai-search/types';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
@@ -28,6 +28,7 @@ export interface HistoryItem {
   sourceCount: number;
   sources: Source[];
   followUps: string[];
+  evidence?: ResearchEvidence[];
   conflictData: SynthesisResult['conflictData'];
   parentSessionId: string | null;
   createdAt: string;

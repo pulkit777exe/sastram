@@ -70,6 +70,20 @@ export function toClientMessage(
       count: reaction._count,
       hasReacted: message.reactedEmojis?.includes(reaction.type) ?? false,
     })),
+    claims: (message.claims ?? []).map((c) => ({
+      id: c.id,
+      messageId: c.messageId,
+      position: c.position,
+      text: c.text,
+      status: c.status,
+      sourceLabel: c.sourceLabel,
+      sourceUrl: c.sourceUrl,
+      excerpt: c.excerpt,
+      confidence: c.confidence,
+      confirmCount: c.confirmCount,
+      disputeCount: c.disputeCount,
+      net: c.confirmCount - c.disputeCount,
+    })),
   };
 }
 
@@ -141,7 +155,7 @@ function resolveAiSummary(
 }
 
 function mapDetailMessage(
-  message: NonNullable<ThreadRecord['messages']>[number]
+  message: NonNullable<ThreadRecord['messages']>[number] & { claims?: Array<{ id: string; messageId: string; position: number; text: string; status: 'OPEN' | 'CONFIRMED' | 'DISPUTED' | 'CONTESTED'; sourceLabel: string | null; sourceUrl: string | null; excerpt: string | null; confidence: number | null; confirmCount: number; disputeCount: number; }> }
 ): ThreadDetail['messages'][number] {
   return {
     id: message.id,
@@ -160,6 +174,19 @@ function mapDetailMessage(
     isAiResponse: message.isAiResponse,
     sender: toDetailSender(message),
     attachments: (message.attachments ?? []).map(mapDetailAttachment),
+    claims: (message.claims ?? []).map((c) => ({
+      id: c.id,
+      messageId: c.messageId,
+      position: c.position,
+      text: c.text,
+      status: c.status,
+      sourceLabel: c.sourceLabel,
+      sourceUrl: c.sourceUrl,
+      excerpt: c.excerpt,
+      confidence: c.confidence,
+      confirmCount: c.confirmCount,
+      disputeCount: c.disputeCount,
+    })),
   };
 }
 

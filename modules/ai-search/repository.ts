@@ -7,6 +7,7 @@ import type {
   SynthesisResult,
   Citation,
   PhaseTimings,
+  ResearchEvidence,
 } from './types';
 import { hashQuery } from './hash';
 
@@ -20,6 +21,7 @@ export interface PersistedSession {
   sourceCount: number;
   sources: Source[];
   followUps: string[];
+  evidence: ResearchEvidence[];
   conflictData: SynthesisResult['conflictData'];
   parentSessionId: string | null;
   createdAt: Date;
@@ -73,6 +75,7 @@ export async function persistSearchSession(
           synthesis: synthesis.text,
           citations: (synthesis.citations ?? []) as unknown as Prisma.InputJsonValue,
           followUps: (followUps ?? []) as unknown as Prisma.InputJsonValue,
+          evidence: (synthesis.evidence ?? []) as unknown as Prisma.InputJsonValue,
           confidence: Math.round(synthesis.confidence ?? 0),
           sourceCount: sources.length,
           conflictFound: synthesis.conflictData?.detected ?? false,
@@ -254,6 +257,7 @@ function mapSession(s: {
     sourceCount: number;
     citations?: unknown;
     followUps?: unknown;
+    evidence?: unknown;
     conflictData?: unknown;
     sources?: unknown;
   }>;
@@ -272,6 +276,7 @@ function mapSession(s: {
     sourceCount: result?.sourceCount ?? 0,
     sources,
     followUps: (result?.followUps as unknown as string[]) ?? [],
+    evidence: (result?.evidence as unknown as ResearchEvidence[]) ?? [],
     conflictData,
     parentSessionId: s.parentSessionId,
     createdAt: s.createdAt,

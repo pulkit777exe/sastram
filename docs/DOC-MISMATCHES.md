@@ -4,7 +4,7 @@
 with the code. The code is the source of truth; this file records what was checked
 and what changed.
 
-**Last verified against code:** 2026-11-13 (Phase 1 truth repair + Phase 2 hardening).
+**Last verified against code:** 2026-11-14 (Phase 1 truth repair + Phase 2 hardening + Phase 3 minimal claim verification).
 
 ## Fixed in this pass
 
@@ -52,7 +52,7 @@ and what changed.
   former architecture-review log, and `shared/ARCHITECTURE.md` is the single
   current architecture reference.
 
-## Known gaps / deferred (not Phase 1 doc fixes)
+## Known gaps / deferred
 
 These are product or operational gaps captured here so later phases do not
 rediscover them. Do not treat the docs as promising the missing behavior.
@@ -60,4 +60,5 @@ rediscover them. Do not treat the docs as promising the missing behavior.
 | Gap | Evidence | Phase |
 |---|---|---|
 | Docker + Neon adapter path has not been exercised in a live container in this environment. The Neon adapter itself was exercised outside Docker (`SELECT 1` on the pooled URL, `prisma migrate status` on the direct URL), and adapter selection now logs explicitly. | Docker daemon is active, but the current user is not in the `docker` group and cannot access `/var/run/docker.sock`. See `docs/DEPLOYMENT.md` for the live runbook. | Blocked on local Docker permission; requires one `docker` group membership + re-login, then run the documented `docker compose run --no-deps` sequence against a scratch Neon branch. |
+| Claim-driven promotion, correction/regeneration flow, score explanations, and topic-scoped credibility are not implemented. | Phase 3 shipped only the minimal slice: evidence persistence, `Claim`/`ClaimVote`, structured verification threads, confirm/dispute voting, dashboard claims, and read-only public `/q` claims. | Future trust-loop phases. |
 | `docs/FORKING.md`, `docs/PHASE-5-PREREQUISITES.md`, and `docs/PHASE-7-CUTS-PROPOSAL.md` were written as pre-implementation gates; the linked behavior has since shipped. | Git history and `CHANGELOG.md`. | Marked as historical/implemented in this pass. |

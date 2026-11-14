@@ -308,7 +308,7 @@ sastram/
 
 ## Data Model
 
-Prisma models are defined in `prisma/schema.prisma`.
+Prisma models are defined in `prisma/schema.prisma`. Phase 3 adds minimal claim-level verification: `AiSearchResult.evidence` persists synthesis claim-source mappings, and `Claim`/`ClaimVote` rows attach verifiable claims to a verification thread's initial `Message`. Public claim reads expose only safe source fields (internal Sastram sources redacted).
 
 ### Core Content
 

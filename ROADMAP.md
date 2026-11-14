@@ -18,7 +18,7 @@ more public surfaces or adding new product mechanics.
 | Multi-source search | **Shipped** | Source registry with Sastram, web, community, code, and academic sources; per-source timeouts; canonical dedupe; Quick/Pro/Deep modes. |
 | Forking | **Shipped** | Unified `forkKind`, lineage, carry-over snapshots, external imports, supersede proposals, fork tree. |
 | Legal, abuse protection, moderation | **Planned** | Privacy/Terms/Cookies/AI-use/DMCA drafts, data export/delete, Turnstile, new-account limits, report auto-hide. **Draft legal text is not legal advice.** |
-| Claim-level trust loop | **Planned** | Claim/ClaimVote model, per-claim chips, correction/regeneration flow, score explanations, topic-scoped credibility. |
+| Claim-level trust loop (minimal) | **In progress** | Persisted AI-search `evidence`, `Claim`/`ClaimVote` schema, structured verification threads from owned search sessions, confirm/dispute voting with status thresholds, dashboard claim rendering, and read-only public `/q` claim summary. Still planned: correction/regeneration flow, score explanations, topic-scoped credibility, and claim-driven promotion. |
 | First-run experience and seeded content | **Planned** | Ask-first landing, curated seed threads, guided “ask the community to verify” flow. |
 | Cost control and fairness | **Planned** | BYOK path, per-user slice of the global AI cap, graceful degradation, conditional polling, backups. |
 | UX polish | **Planned** | Command palette, mobile bottom sheet, composer slash commands, naming cleanup, notifications, WCAG AA, i18n-ready strings. |

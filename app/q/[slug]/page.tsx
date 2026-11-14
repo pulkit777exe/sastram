@@ -9,6 +9,8 @@ import {
   shouldNoIndexThread,
 } from '@/lib/public-content/thread';
 import { ROUTES } from '@/lib/config/routes';
+import { PublicClaimSummaryList } from '@/components/thread/public-claim-summary';
+import type { PublicClaimSummary } from '@/modules/claims/types';
 
 export const revalidate = 300;
 
@@ -48,6 +50,22 @@ export default async function PublicThreadPage({ params }: Props) {
     getPendingReportCount(thread.id),
   ]);
   const noindex = shouldNoIndexThread(thread, pendingReports);
+  const publicClaims: PublicClaimSummary[] = messages.flatMap((m) =>
+    (m.claims ?? []).map((c) => ({
+      id: c.id,
+      messageId: c.messageId,
+      position: c.position,
+      text: c.text,
+      status: c.status,
+      sourceLabel: c.sourceLabel,
+      sourceUrl: c.sourceUrl,
+      excerpt: c.excerpt,
+      confidence: c.confidence,
+      confirmCount: c.confirmCount,
+      disputeCount: c.disputeCount,
+      net: c.confirmCount - c.disputeCount,
+    }))
+  );
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const canonical = `${siteUrl}/q/${thread.slug}`;
   const answerText = thread.aiSummary?.trim() || thread.description?.trim() || undefined;
@@ -113,6 +131,8 @@ export default async function PublicThreadPage({ params }: Props) {
           <p className="mt-3 text-xs text-ink-3">AI-estimated summary. Verify important claims against the discussion and sources.</p>
         </section>
       ) : null}
+
+      {publicClaims.length > 0 ? <PublicClaimSummaryList claims={publicClaims} /> : null}
 
       <section className="mt-8 flex flex-wrap gap-3">
         {session ? (

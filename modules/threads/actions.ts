@@ -30,6 +30,9 @@ import {
 import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { moderateThreadContent } from '@/lib/services/moderation';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { prisma } from '@/lib/infrastructure/prisma';
+import { buildClaimRowsFromEvidence, computeClaimStatus, toClaimSummary } from '@/modules/claims';
+import type { ResearchEvidence, Source } from '@/modules/ai-search/types';
 
 const PAGE_SIZE = 50;
 const BACKFILL_LIMIT = 100;
@@ -313,5 +316,189 @@ export const backfillThreadMessages = createServerAction(
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
     return actionSuccess({ messages });
+  }
+);
+
+const createVerificationThreadInput = z.object({
+  sessionId: z.string().cuid(),
+  title: z.string().min(3).max(120).optional().or(z.literal('')),
+});
+
+function buildVerificationInitialMessage(query: string, synthesis: string): string {
+  const q = query.trim();
+  const s = synthesis.trim();
+  const body = s || 'No synthesized answer available.';
+  const content = q ? `AI search: ${q}\n\n${body}` : body;
+  return content.slice(0, 10000);
+}
+
+export const createVerificationThreadAction = createServerAction(
+  { schema: createVerificationThreadInput, actionName: 'createVerificationThreadAction' },
+  async ({ sessionId, title }) => {
+    const session = await requireSessionOrThrow();
+    const rl = await rateLimit({ key: `create-verify-thread:${session.user.id}`, type: 'message' });
+    if (!rl.success) throw new AppError('Too many threads, slow down', 'RATE_LIMITED', 429);
+
+    const aiSession = await prisma.aiSearchSession.findFirst({
+      where: { id: sessionId, userId: session.user.id, deletedAt: null },
+      include: {
+        results: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+    if (!aiSession) {
+      throw new AppError('AI search session not found', 'NOT_FOUND', 404);
+    }
+
+    const result = aiSession.results[0];
+    if (!result) {
+      throw new AppError('No claimable evidence available for this answer. Start a plain verification thread instead.', 'VALIDATION_ERROR', 400);
+    }
+
+    const evidence = (result.evidence as unknown as ResearchEvidence[] | null) ?? [];
+    const sources = (result.sources as unknown as Source[] | null) ?? [];
+    const claimRows = buildClaimRowsFromEvidence(evidence, sources);
+    if (claimRows.length === 0) {
+      throw new AppError('No claimable evidence available for this answer. Start a plain verification thread instead.', 'VALIDATION_ERROR', 400);
+    }
+
+    const rawTitle = title?.trim() || (aiSession.title?.trim() ? `Verify: ${aiSession.title.trim()}` : `Verify: ${aiSession.query.trim()}`);
+    const safeTitle = sanitizeUserContent(rawTitle).sanitized.trim().slice(0, 120) || 'Verification thread';
+    const initialMessage = buildVerificationInitialMessage(aiSession.query, result.synthesis ?? '');
+    const safeInitial = sanitizeUserContent(initialMessage).sanitized;
+
+    const moderation = await moderateThreadContent({
+      content: [safeTitle, safeInitial].filter(Boolean).join('\n\n'),
+      authorId: session.user.id,
+    });
+    if (!moderation.success) {
+      throw new AppError(moderation.reason ?? 'Thread blocked by content filter', 'FORBIDDEN', 403);
+    }
+
+    const created = await prisma.$transaction(async (tx) => {
+      const thread = await tx.thread.create({
+        data: {
+          name: safeTitle,
+          description: null,
+          slug: buildThreadSlug(safeTitle),
+          createdBy: session.user.id,
+          visibility: 'PUBLIC',
+          messageCount: 1,
+          messages: {
+            create: {
+              content: safeInitial,
+              senderId: session.user.id,
+              claims: {
+                create: claimRows.map((c) => ({
+                  position: c.position,
+                  text: c.text,
+                  status: c.status,
+                  sourceId: c.sourceId,
+                  sourceLabel: c.sourceLabel,
+                  sourceUrl: c.sourceUrl,
+                  excerpt: c.excerpt,
+                  confidence: c.confidence,
+                  confirmCount: 0,
+                  disputeCount: 0,
+                })),
+              },
+            },
+          },
+        },
+        include: {
+          messages: {
+            select: { id: true },
+            orderBy: { createdAt: 'asc' },
+            take: 1,
+          },
+        },
+      });
+      return { thread, messageId: thread.messages[0]?.id ?? null };
+    });
+
+    if (!created.messageId) {
+      throw new AppError('Failed to create verification message', 'INTERNAL_ERROR', 500);
+    }
+
+    infraThreadSideEffects.revalidateDashboard();
+    return actionSuccess({ slug: created.thread.slug, threadId: created.thread.id, messageId: created.messageId });
+  }
+);
+
+const voteClaimInput = z.object({
+  claimId: z.string().cuid(),
+  type: z.enum(['CONFIRM', 'DISPUTE']),
+});
+
+export const voteClaimAction = createServerAction(
+  { schema: voteClaimInput, actionName: 'voteClaimAction' },
+  async ({ claimId, type }) => {
+    const session = await requireSessionOrThrow();
+    const rl = await rateLimit({ key: `vote-claim:${session.user.id}`, type: 'message' });
+    if (!rl.success) throw new AppError('Too many votes, slow down', 'RATE_LIMITED', 429);
+
+    const claim = await prisma.claim.findUnique({
+      where: { id: claimId },
+      select: { id: true, message: { select: { threadId: true } } },
+    });
+    if (!claim || !claim.message) {
+      throw new AppError('Claim not found', 'NOT_FOUND', 404);
+    }
+
+    await requireWriteOrThrow(claim.message.threadId, session.user.id, session.user.role);
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.claimVote.findUnique({
+        where: { claimId_userId: { claimId, userId: session.user.id } },
+        select: { type: true },
+      });
+      const current = await tx.claim.findUnique({
+        where: { id: claimId },
+        select: { confirmCount: true, disputeCount: true },
+      });
+      if (!current) throw new AppError('Claim not found', 'NOT_FOUND', 404);
+
+      let confirmCount = current.confirmCount;
+      let disputeCount = current.disputeCount;
+
+      if (!existing) {
+        await tx.claimVote.create({ data: { claimId, userId: session.user.id, type } });
+        if (type === 'CONFIRM') confirmCount += 1;
+        else disputeCount += 1;
+      } else if (existing.type !== type) {
+        await tx.claimVote.update({
+          where: { claimId_userId: { claimId, userId: session.user.id } },
+          data: { type },
+        });
+        if (existing.type === 'CONFIRM') confirmCount -= 1;
+        else disputeCount -= 1;
+        if (type === 'CONFIRM') confirmCount += 1;
+        else disputeCount += 1;
+      }
+
+      const status = computeClaimStatus(confirmCount, disputeCount);
+      const saved = await tx.claim.update({
+        where: { id: claimId },
+        data: { confirmCount, disputeCount, status },
+        select: {
+          id: true,
+          messageId: true,
+          position: true,
+          text: true,
+          status: true,
+          sourceLabel: true,
+          sourceUrl: true,
+          excerpt: true,
+          confidence: true,
+          confirmCount: true,
+          disputeCount: true,
+        },
+      });
+      return saved;
+    });
+
+    return actionSuccess({ claim: toClaimSummary(updated) });
   }
 );

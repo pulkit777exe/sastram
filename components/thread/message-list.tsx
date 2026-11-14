@@ -16,6 +16,7 @@ import { InlineReplyBox } from './inline-reply-box';
 import { Badge } from '@/components/ui/badge';
 import { AttachmentItem } from './attachment-item';
 import { PollDisplay } from './poll-display';
+import { ClaimList } from './claim-list';
 import { renderContent } from '@/components/thread/render-content';
 import { cn } from '@/lib/utils/cn';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -537,6 +538,10 @@ const MessageRow = React.memo(function MessageRow({
                 }}
               />
             </div>
+          )}
+
+          {message.claims && message.claims.length > 0 && !isEditing && (
+            <ClaimList claims={message.claims} />
           )}
 
           <MessageReactions reactions={reactions} onToggle={handleToggleReaction} isPending={isReacting} />

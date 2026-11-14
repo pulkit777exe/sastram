@@ -23,6 +23,20 @@ export type PublicThread = {
   _count: { messages: number };
 };
 
+export type PublicThreadClaim = {
+  id: string;
+  messageId: string;
+  position: number;
+  text: string;
+  status: 'OPEN' | 'CONFIRMED' | 'DISPUTED' | 'CONTESTED';
+  sourceLabel: string | null;
+  sourceUrl: string | null;
+  excerpt: string | null;
+  confidence: number | null;
+  confirmCount: number;
+  disputeCount: number;
+};
+
 export type PublicThreadMessage = {
   id: string;
   content: string;
@@ -33,6 +47,7 @@ export type PublicThreadMessage = {
   isAI: boolean;
   senderId: string | null;
   author: { id: string; name: string | null; image: string | null } | null;
+  claims?: PublicThreadClaim[];
 };
 
 export const getPublicThreadBySlug = cache(async (slug: string): Promise<PublicThread | null> => {
@@ -74,6 +89,22 @@ export async function getPublicThreadMessages(threadId: string, limit = 50): Pro
       isAiResponse: true,
       senderId: true,
       sender: { select: { id: true, name: true, image: true } },
+      claims: {
+        select: {
+          id: true,
+          messageId: true,
+          position: true,
+          text: true,
+          status: true,
+          sourceLabel: true,
+          sourceUrl: true,
+          excerpt: true,
+          confidence: true,
+          confirmCount: true,
+          disputeCount: true,
+        },
+        orderBy: { position: 'asc' },
+      },
     },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     take: Math.min(Math.max(limit, 1), 100),
@@ -88,6 +119,19 @@ export async function getPublicThreadMessages(threadId: string, limit = 50): Pro
     isAI: m.isAiResponse,
     senderId: m.senderId,
     author: m.sender ?? null,
+    claims: (m.claims ?? []).map((c) => ({
+      id: c.id,
+      messageId: c.messageId,
+      position: c.position,
+      text: c.text,
+      status: c.status,
+      sourceLabel: c.sourceLabel,
+      sourceUrl: c.sourceUrl,
+      excerpt: c.excerpt,
+      confidence: c.confidence,
+      confirmCount: c.confirmCount,
+      disputeCount: c.disputeCount,
+    })),
   }));
 }
 

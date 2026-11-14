@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Sparkles, AlertTriangle, MessageSquarePlus, GitFork } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import type { ConflictInfo, Citation, Source } from '@/modules/ai-search/types';
+import type { ConflictInfo, Citation, Source, ResearchEvidence } from '@/modules/ai-search/types';
 import { orderSourcesByCitation } from '@/modules/ai-search/citations';
 import { StreamingText, type RetryStyle, type FeedbackType } from './StreamingText';
 import { CollectionSaveButton } from '@/components/collections/CollectionSaveButton';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { toasts } from '@/lib/utils/toast';
 import { createThreadAction } from '@/modules/threads/actions';
 import { renderCitationSources } from '@/modules/ai-search/citation-sources';
+import { createVerificationThreadAction } from '@/modules/threads/actions';
 
 interface SynthesisCardProps {
   text: string;
@@ -20,6 +21,8 @@ interface SynthesisCardProps {
   sourceCount: number;
   queryType: 'factual' | 'opinion' | 'technical' | 'comparison';
   query?: string;
+  sessionId?: string;
+  evidence?: ResearchEvidence[];
   onCiteClick?: (sourceId: string) => void;
   isStreaming?: boolean;
   fromHistory?: boolean;
@@ -42,6 +45,8 @@ export function SynthesisCard({
   sourceCount,
   queryType,
   query,
+  sessionId,
+  evidence = [],
   onCiteClick,
   isStreaming = false,
   fromHistory = false,
@@ -52,6 +57,7 @@ export function SynthesisCard({
   const typeConfig = QUERY_TYPE_LABELS[queryType] || QUERY_TYPE_LABELS.technical;
 
   const orderedSources = useMemo(() => orderSourcesByCitation(sources, citations), [sources, citations]);
+  const canCreateVerificationThread = !isStreaming && Boolean(sessionId) && evidence.length > 0;
 
   const saveMetadata = useMemo(
     () => ({ type: 'ai_synthesis', text, queryType, sourceCount, sources: orderedSources.slice(0, 3), citations }),
@@ -64,6 +70,19 @@ export function SynthesisCard({
     setActionBusy(mode);
     try {
       const q = (query || 'AI search result').slice(0, 100);
+      if (mode === 'verify' && canCreateVerificationThread && sessionId) {
+        const title = `Verify: ${q}`.slice(0, 120);
+        const res = await createVerificationThreadAction({ sessionId, title });
+        if (res?.ok && res.data?.slug) {
+          toasts.success('Verification thread created');
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- navigate after server action create
+          window.location.href = `/dashboard/threads/${res.data.slug}`;
+        } else {
+          toasts.error(res?.error || 'Failed to create verification thread');
+        }
+        return;
+      }
+
       const title = mode === 'verify' ? `Verify: ${q}`.slice(0, 120) : `Discussion: ${q}`.slice(0, 120);
       const citeLines = renderCitationSources(citations, orderedSources as Parameters<typeof renderCitationSources>[1]).slice(0, 8).join('\n');
       const body = [
@@ -82,7 +101,7 @@ export function SynthesisCard({
         toasts.error(res?.error || 'Failed to create thread');
       }
     } catch {
-      toasts.error('Failed to create thread');
+      toasts.error(mode === 'verify' ? 'Failed to create verification thread' : 'Failed to create thread');
     } finally {
       setActionBusy(null);
     }
