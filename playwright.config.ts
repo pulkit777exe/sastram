@@ -32,5 +32,5 @@ export default defineConfig({
         timeout: 120_000,
       }
     : undefined,
-  globalSetup: './test/e2e/global-setup.ts',
+  globalSetup: './test/e2e/global-setup.mjs',
 });
