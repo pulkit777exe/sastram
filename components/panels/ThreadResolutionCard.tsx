@@ -3,11 +3,12 @@
 // KISS: while the resolution score is pending, poll a lightweight GET
 // endpoint (one JSON row) instead of router.refresh() — the old approach
 // re-rendered the entire thread page every 4s just to catch one number.
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VerifyNowButton } from '@/components/thread/verify-now-button';
 import { computeConfidence } from '@/modules/threads/confidence-decay';
+import { explainResolution, type ResolutionClaimSignal } from '@/lib/utils/resolution-explanation';
 import { DetailCard } from '@/components/ui/detail-card';
 import { useNow } from '@/components/ui/use-now';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
@@ -18,6 +19,8 @@ interface ThreadResolutionCardProps {
   lastVerifiedAt: Date | string | null;
   verifiedAt?: Date | string | null;
   verifiedBy?: string | null;
+  isOutdated?: boolean | null;
+  claimSignal?: ResolutionClaimSignal | null;
 }
 
 function getLabel(score: number): string {
@@ -71,6 +74,8 @@ export default function ThreadResolutionCard({
   lastVerifiedAt,
   verifiedAt,
   verifiedBy,
+  isOutdated,
+  claimSignal,
 }: ThreadResolutionCardProps) {
   // Shared 30s tab clock (use-now) — was a per-card 60s interval.
   const now = useNow();
@@ -137,6 +142,19 @@ export default function ThreadResolutionCard({
   const isStale = confidence < 1;
   const effectiveScore = currentScore != null ? Math.round(currentScore * confidence) : null;
   const isVerified = !!currentVerifiedAt;
+  const explanation = useMemo(
+    () =>
+      explainResolution({
+        score: currentScore,
+        verifiedAt: currentVerifiedAt,
+        verifiedBy: currentVerifiedBy,
+        lastVerifiedAt: currentLastVerifiedAt,
+        isOutdated,
+        claimSignal,
+        now,
+      }),
+    [currentScore, currentVerifiedAt, currentVerifiedBy, currentLastVerifiedAt, isOutdated, claimSignal, now]
+  );
 
   if (currentScore === null) {
     if (!timedOut) {
@@ -245,6 +263,40 @@ export default function ThreadResolutionCard({
           <VerifyNowButton threadId={threadId} />
         </div>
       )}
+
+      <div className="space-y-2 border-t border-line/60 pt-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Why this trust signal</p>
+        <ul className="space-y-1.5">
+          {explanation.factors.map((f) => (
+            <li key={f.key} className="text-xs leading-relaxed text-ink-2">
+              <span
+                className={
+                  f.tone === 'critical'
+                    ? 'font-medium text-sai-red'
+                    : f.tone === 'warning'
+                      ? 'font-medium text-sai-orange'
+                      : f.tone === 'positive'
+                        ? 'font-medium text-emerald-700'
+                        : 'font-medium text-ink'
+                }
+              >
+                {f.label}:
+              </span>{' '}
+              {f.detail}
+            </li>
+          ))}
+        </ul>
+        {explanation.hints.length > 0 && (
+          <div className="rounded-control bg-field px-2.5 py-2">
+            <p className="text-[11px] font-medium text-ink-3">How to strengthen trust</p>
+            <ul className="mt-1 space-y-0.5">
+              {explanation.hints.slice(0, 2).map((h) => (
+                <li key={h} className="text-xs text-ink-2">• {h}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </DetailCard>
   );
 }

@@ -5,6 +5,7 @@ import {
   getPublicKnowledgeBySlug,
 } from '@/lib/public-content/thread';
 import { ROUTES } from '@/lib/config/routes';
+import { explainResolution } from '@/lib/utils/resolution-explanation';
 
 export const revalidate = 300;
 
@@ -37,6 +38,14 @@ export default async function KnowledgePage({ params }: Props) {
   const page = await getPublicKnowledgeBySlug(slug);
   if (!page) notFound();
 
+  const thread = page.thread as typeof page.thread & { isOutdated?: boolean | null; verifiedBy?: string | null };
+  const trustExplanation = explainResolution({
+    score: thread.resolutionScore,
+    verifiedAt: thread.verifiedAt,
+    verifiedBy: thread.verifiedBy ?? null,
+    lastVerifiedAt: thread.lastVerifiedAt,
+    isOutdated: thread.isOutdated ?? false,
+  });
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const canonical = `${siteUrl}/k/${page.thread.slug}`;
   const qaJsonLd = {
@@ -84,6 +93,43 @@ export default async function KnowledgePage({ params }: Props) {
         <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">{page.synthesizedContent}</div>
         <p className="mt-4 text-xs text-ink-3">AI-estimated synthesis of a verified public discussion.</p>
       </article>
+
+      <section className="mt-6 rounded-card border border-line bg-surface p-5 shadow-card">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-3">Trust signals (AI-estimated)</h2>
+          {typeof page.thread.resolutionScore === 'number' ? (
+            <p className="text-sm font-semibold tabular-nums text-ink">
+              {Math.round(page.thread.resolutionScore)}/100
+              {trustExplanation.effectiveScore != null && trustExplanation.confidence < 1 ? (
+                <span className="ml-2 text-xs font-medium text-ink-3">effective {trustExplanation.effectiveScore}/100</span>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+        <ul className="mt-3 space-y-2">
+          {trustExplanation.factors.map((f) => (
+            <li key={f.key} className="text-sm leading-relaxed text-ink-2">
+              <span
+                className={
+                  f.tone === 'critical'
+                    ? 'font-medium text-sai-red'
+                    : f.tone === 'warning'
+                      ? 'font-medium text-sai-orange'
+                      : f.tone === 'positive'
+                        ? 'font-medium text-emerald-700'
+                        : 'font-medium text-ink'
+                }
+              >
+                {f.label}:
+              </span>{' '}
+              {f.detail}
+            </li>
+          ))}
+        </ul>
+        {trustExplanation.hints.length > 0 ? (
+          <p className="mt-3 text-xs text-ink-3">Strengthen trust: {trustExplanation.hints.slice(0, 2).join(' ')}</p>
+        ) : null}
+      </section>
 
       <section className="mt-8 flex flex-wrap gap-3">
         <Link href={`/q/${page.thread.slug}`} className="rounded-control border border-line bg-surface px-4 py-2 text-sm font-medium text-ink">

@@ -166,6 +166,7 @@ async function ThreadSidebar({
         lastVerifiedAt={thread.lastVerifiedAt}
         verifiedAt={(thread as unknown as { verifiedAt?: Date | null }).verifiedAt ?? null}
         verifiedBy={(thread as unknown as { verifiedBy?: string | null }).verifiedBy ?? null}
+        isOutdated={(thread as unknown as { isOutdated?: boolean | null }).isOutdated ?? null}
       />
 
       <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} messageCount={thread._count.messages} />

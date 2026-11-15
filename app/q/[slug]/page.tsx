@@ -11,6 +11,7 @@ import {
 import { ROUTES } from '@/lib/config/routes';
 import { PublicClaimSummaryList } from '@/components/thread/public-claim-summary';
 import type { PublicClaimSummary } from '@/modules/claims/types';
+import { explainResolution, summarizeClaimSignal } from '@/lib/utils/resolution-explanation';
 
 export const revalidate = 300;
 
@@ -66,6 +67,14 @@ export default async function PublicThreadPage({ params }: Props) {
       net: c.confirmCount - c.disputeCount,
     }))
   );
+  const trustExplanation = explainResolution({
+    score: thread.resolutionScore,
+    verifiedAt: thread.verifiedAt,
+    verifiedBy: thread.verifiedBy,
+    lastVerifiedAt: thread.lastVerifiedAt,
+    isOutdated: thread.isOutdated,
+    claimSignal: summarizeClaimSignal(publicClaims),
+  });
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const canonical = `${siteUrl}/q/${thread.slug}`;
   const answerText = thread.aiSummary?.trim() || thread.description?.trim() || undefined;
@@ -131,6 +140,43 @@ export default async function PublicThreadPage({ params }: Props) {
           <p className="mt-3 text-xs text-ink-3">AI-estimated summary. Verify important claims against the discussion and sources.</p>
         </section>
       ) : null}
+
+      <section className="mt-6 rounded-card border border-line bg-surface p-5 shadow-card">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-3">Trust signals (AI-estimated)</h2>
+          {typeof thread.resolutionScore === 'number' ? (
+            <p className="text-sm font-semibold tabular-nums text-ink">
+              {Math.round(thread.resolutionScore)}/100
+              {trustExplanation.effectiveScore != null && trustExplanation.confidence < 1 ? (
+                <span className="ml-2 text-xs font-medium text-ink-3">effective {trustExplanation.effectiveScore}/100</span>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+        <ul className="mt-3 space-y-2">
+          {trustExplanation.factors.map((f) => (
+            <li key={f.key} className="text-sm leading-relaxed text-ink-2">
+              <span
+                className={
+                  f.tone === 'critical'
+                    ? 'font-medium text-sai-red'
+                    : f.tone === 'warning'
+                      ? 'font-medium text-sai-orange'
+                      : f.tone === 'positive'
+                        ? 'font-medium text-emerald-700'
+                        : 'font-medium text-ink'
+                }
+              >
+                {f.label}:
+              </span>{' '}
+              {f.detail}
+            </li>
+          ))}
+        </ul>
+        {trustExplanation.hints.length > 0 ? (
+          <p className="mt-3 text-xs text-ink-3">Strengthen trust: {trustExplanation.hints.slice(0, 2).join(' ')}</p>
+        ) : null}
+      </section>
 
       {publicClaims.length > 0 ? <PublicClaimSummaryList claims={publicClaims} /> : null}
 
