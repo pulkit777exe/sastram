@@ -1,5 +1,3 @@
-import 'server-only';
-
 import { prisma } from '@/lib/infrastructure/prisma';
 import { cache } from 'react';
 
@@ -166,6 +164,9 @@ export const getPublicKnowledgeBySlug = cache(async (slug: string) => {
   });
 });
 
+export const PUBLIC_REPORT_NOINDEX_THRESHOLD = 1;
+export const PUBLIC_REPORT_SOFT_HIDE_THRESHOLD = 2;
+
 export async function getPendingReportCount(threadId: string): Promise<number> {
   return prisma.report.count({
     where: { status: 'PENDING', message: { threadId } },
@@ -176,10 +177,14 @@ export function shouldNoIndexThread(
   thread: Pick<PublicThread, 'verifiedAt' | 'resolutionScore' | 'aiSummary' | '_count'>,
   pendingReports: number
 ): boolean {
-  if (pendingReports > 0) return true;
+  if (pendingReports >= PUBLIC_REPORT_NOINDEX_THRESHOLD) return true;
   const hasQualityContent = Boolean(thread.aiSummary?.trim()) || thread._count.messages >= 2;
   if (!hasQualityContent) return true;
   const isResolved = thread.verifiedAt != null || (thread.resolutionScore ?? 0) > 70;
   if (!isResolved) return true;
   return false;
+}
+
+export function shouldSoftHidePublicThread(pendingReports: number): boolean {
+  return pendingReports >= PUBLIC_REPORT_SOFT_HIDE_THRESHOLD;
 }

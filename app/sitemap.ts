@@ -38,6 +38,9 @@ export default async function sitemap(props: {
       { url: `${base}/pricing`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
       { url: `${base}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
       { url: `${base}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
+      { url: `${base}/cookies`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
+      { url: `${base}/ai-use`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
+      { url: `${base}/dmca`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     ];
   }
 
@@ -87,18 +90,25 @@ export default async function sitemap(props: {
       where: { thread: { visibility: 'PUBLIC', deletedAt: null, isOutdated: false, verifiedAt: { not: null } } },
       select: {
         updatedAt: true,
-        thread: { select: { slug: true } },
+        thread: {
+          select: {
+            slug: true,
+            messages: { where: { reports: { some: { status: 'PENDING' } } }, select: { id: true }, take: 1 },
+          },
+        },
       },
       orderBy: { updatedAt: 'desc' },
       skip: page * PAGE_SIZE,
       take: PAGE_SIZE,
     });
-    return pages.map((p) => ({
-      url: `${base}/k/${p.thread.slug}`,
-      lastModified: p.updatedAt,
-      changeFrequency: 'weekly' as const,
-      priority: 0.9,
-    }));
+    return pages
+      .filter((p) => p.thread.messages.length < 2)
+      .map((p) => ({
+        url: `${base}/k/${p.thread.slug}`,
+        lastModified: p.updatedAt,
+        changeFrequency: 'weekly' as const,
+        priority: 0.9,
+      }));
   }
 
   return [];

@@ -1,10 +1,11 @@
 import { Lock } from 'lucide-react';
+import Link from 'next/link';
 import { SerifHeading } from '@/components/layout/serif-heading';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — Sastram',
-  description: 'How Sastram collects, uses, and protects your data.',
+  description: 'Draft notice: how Sastram collects, uses, and protects data.',
 };
 
 const sections = [
@@ -29,16 +30,16 @@ const sections = [
   {
     title: '3. AI features and your content',
     body: [
-      'When you use an AI feature, the relevant content is sent to the model provider configured for this deployment (currently Google Gemini or OpenAI) and, for search, to the configured search provider (Exa or Tavily).',
-      'AI features are optional. If you never use @sai, AI search, or automatic summaries, your content is not sent to those providers for AI processing.',
-      'We do not use your content to train our own models.',
+      'When you use an AI feature, relevant content may be sent to the model/search providers configured for this deployment (for example, Google Gemini/OpenAI for models and Exa/Tavily for search, depending on configuration).',
+      'AI features are optional. If you never use @sai, AI search, or automatic summaries, your content is not sent to those providers for AI processing by those features.',
+      'Sastram does not use your content to train its own models. Third-party provider handling is subject to their terms and policies; see the AI Use Notice for a draft summary.',
     ],
   },
   {
     title: '4. Cookies and sessions',
     body: [
-      'We use a session cookie to keep you signed in. It is required for the service to work.',
-      'We do not run advertising or third-party tracking cookies.',
+      'We use an essential session cookie to keep you signed in. It is required for the service to work.',
+      'We do not run advertising or third-party tracking cookies. See our Cookie Notice for a draft summary.',
     ],
   },
   {
@@ -80,7 +81,13 @@ export default function PrivacyPage() {
           Privacy Policy
         </SerifHeading>
 
-        <p className="text-lg text-muted-foreground mb-12">Last updated: October 2026</p>
+        <p className="text-lg text-muted-foreground mb-4">Last updated: November 2026</p>
+        <p className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 mb-10">
+          <strong>Draft notice:</strong> this policy describes current behavior for transparency and is not legal advice. It may
+          change as the service and legal review evolve. Related drafts: <Link href="/cookies" className="underline">Cookie Notice</Link>,{' '}
+          <Link href="/ai-use" className="underline">AI Use Notice</Link>, and{' '}
+          <Link href="/dmca" className="underline">Copyright &amp; Takedown</Link>.
+        </p>
 
         <div className="space-y-8">
           {sections.map((section) => (

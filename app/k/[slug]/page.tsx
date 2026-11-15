@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
+  getPendingReportCount,
   getPublicKnowledgeBySlug,
+  shouldSoftHidePublicThread,
 } from '@/lib/public-content/thread';
 import { ROUTES } from '@/lib/config/routes';
 import { explainResolution } from '@/lib/utils/resolution-explanation';
@@ -15,6 +17,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const page = await getPublicKnowledgeBySlug(slug);
   if (!page) return {};
+  const pendingReports = await getPendingReportCount(page.thread.id);
+  if (shouldSoftHidePublicThread(pendingReports)) return { robots: { index: false, follow: false } };
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const url = `${siteUrl}/k/${page.thread.slug}`;
   const description =
@@ -37,6 +41,9 @@ export default async function KnowledgePage({ params }: Props) {
   const { slug } = await params;
   const page = await getPublicKnowledgeBySlug(slug);
   if (!page) notFound();
+
+  const pendingReports = await getPendingReportCount(page.thread.id);
+  if (shouldSoftHidePublicThread(pendingReports)) notFound();
 
   const thread = page.thread as typeof page.thread & { isOutdated?: boolean | null; verifiedBy?: string | null };
   const trustExplanation = explainResolution({

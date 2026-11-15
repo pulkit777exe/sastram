@@ -7,6 +7,7 @@ import {
   getPublicThreadBySlug,
   getPublicThreadMessages,
   shouldNoIndexThread,
+  shouldSoftHidePublicThread,
 } from '@/lib/public-content/thread';
 import { ROUTES } from '@/lib/config/routes';
 import { PublicClaimSummaryList } from '@/components/thread/public-claim-summary';
@@ -22,10 +23,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const thread = await getPublicThreadBySlug(slug);
   if (!thread) return {};
   const pendingReports = await getPendingReportCount(thread.id);
+  const softHidden = shouldSoftHidePublicThread(pendingReports);
   const noindex = shouldNoIndexThread(thread, pendingReports);
   const title = thread.name;
-  const description =
-    thread.aiSummary?.trim() || thread.description?.trim() || `Public discussion on Sastram: ${thread.name}`;
+  const description = softHidden
+    ? `This public discussion is under moderation review on Sastram.`
+    : thread.aiSummary?.trim() || thread.description?.trim() || `Public discussion on Sastram: ${thread.name}`;
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const url = `${siteUrl}/q/${thread.slug}`;
   return {
@@ -46,11 +49,10 @@ export default async function PublicThreadPage({ params }: Props) {
   const { slug } = await params;
   const [thread, session] = await Promise.all([getPublicThreadBySlug(slug), getSession()]);
   if (!thread) notFound();
-  const [messages, pendingReports] = await Promise.all([
-    getPublicThreadMessages(thread.id),
-    getPendingReportCount(thread.id),
-  ]);
+  const pendingReports = await getPendingReportCount(thread.id);
+  const softHidden = shouldSoftHidePublicThread(pendingReports);
   const noindex = shouldNoIndexThread(thread, pendingReports);
+  const messages = softHidden ? [] : await getPublicThreadMessages(thread.id, 50);
   const publicClaims: PublicClaimSummary[] = messages.flatMap((m) =>
     (m.claims ?? []).map((c) => ({
       id: c.id,
@@ -78,26 +80,27 @@ export default async function PublicThreadPage({ params }: Props) {
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const canonical = `${siteUrl}/q/${thread.slug}`;
   const answerText = thread.aiSummary?.trim() || thread.description?.trim() || undefined;
-  const qaJsonLd = answerText
-    ? {
-        '@context': 'https://schema.org',
-        '@type': 'QAPage',
-        mainEntity: {
-          '@type': 'Question',
-          name: thread.name,
-          text: thread.description || thread.name,
-          answerCount: 1,
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: answerText,
-            url: canonical,
-            dateCreated: thread.createdAt.toISOString(),
-            ...(thread.verifiedAt ? { dateModified: thread.verifiedAt.toISOString() } : {}),
-            author: { '@type': 'Organization', name: 'Sastram' },
+  const qaJsonLd =
+    !softHidden && answerText
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'QAPage',
+          mainEntity: {
+            '@type': 'Question',
+            name: thread.name,
+            text: thread.description || thread.name,
+            answerCount: 1,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: answerText,
+              url: canonical,
+              dateCreated: thread.createdAt.toISOString(),
+              ...(thread.verifiedAt ? { dateModified: thread.verifiedAt.toISOString() } : {}),
+              author: { '@type': 'Organization', name: 'Sastram' },
+            },
           },
-        },
-      }
-    : null;
+        }
+      : null;
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-10 md:px-6">
@@ -122,102 +125,119 @@ export default async function PublicThreadPage({ params }: Props) {
           ) : null}
           {noindex ? (
             <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs text-ink-3">
-              Limited indexing
+              {softHidden ? 'Under moderation review' : 'Limited indexing'}
             </span>
           ) : null}
         </div>
         <h1 className="font-serif-heading text-3xl leading-tight text-ink md:text-4xl">{thread.name}</h1>
-        {thread.description ? <p className="text-base leading-relaxed text-ink-2">{thread.description}</p> : null}
+        {!softHidden && thread.description ? <p className="text-base leading-relaxed text-ink-2">{thread.description}</p> : null}
         <p className="text-sm text-ink-3">
           Updated {formatDate(thread.updatedAt)} · {thread._count.messages} messages
         </p>
       </header>
 
-      {thread.aiSummary ? (
-        <section className="mt-8 rounded-card border border-line bg-surface p-5 shadow-card">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-3">Synthesized answer</h2>
-          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-ink">{thread.aiSummary}</p>
-          <p className="mt-3 text-xs text-ink-3">AI-estimated summary. Verify important claims against the discussion and sources.</p>
+      {softHidden ? (
+        <section className="mt-8 rounded-card border border-amber-200 bg-amber-50 p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-900">Under moderation review</h2>
+          <p className="mt-3 text-sm leading-relaxed text-amber-900">
+            This public discussion has received reports and is temporarily limited from public view while moderators review it.
+            This does not mean the content has been removed for a violation.
+          </p>
+          <p className="mt-2 text-xs text-amber-800">
+            Participants and moderators may still access the discussion in the signed-in app where permitted. If you need to
+            report an issue, use the in-app reporting or contact channels described in our{' '}
+            <Link href="/dmca" className="underline">takedown notice</Link>.
+          </p>
         </section>
-      ) : null}
-
-      <section className="mt-6 rounded-card border border-line bg-surface p-5 shadow-card">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-3">Trust signals (AI-estimated)</h2>
-          {typeof thread.resolutionScore === 'number' ? (
-            <p className="text-sm font-semibold tabular-nums text-ink">
-              {Math.round(thread.resolutionScore)}/100
-              {trustExplanation.effectiveScore != null && trustExplanation.confidence < 1 ? (
-                <span className="ml-2 text-xs font-medium text-ink-3">effective {trustExplanation.effectiveScore}/100</span>
-              ) : null}
-            </p>
+      ) : (
+        <>
+          {thread.aiSummary ? (
+            <section className="mt-8 rounded-card border border-line bg-surface p-5 shadow-card">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-3">Synthesized answer</h2>
+              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-ink">{thread.aiSummary}</p>
+              <p className="mt-3 text-xs text-ink-3">AI-estimated summary. Verify important claims against the discussion and sources.</p>
+            </section>
           ) : null}
-        </div>
-        <ul className="mt-3 space-y-2">
-          {trustExplanation.factors.map((f) => (
-            <li key={f.key} className="text-sm leading-relaxed text-ink-2">
-              <span
-                className={
-                  f.tone === 'critical'
-                    ? 'font-medium text-sai-red'
-                    : f.tone === 'warning'
-                      ? 'font-medium text-sai-orange'
-                      : f.tone === 'positive'
-                        ? 'font-medium text-emerald-700'
-                        : 'font-medium text-ink'
-                }
-              >
-                {f.label}:
-              </span>{' '}
-              {f.detail}
-            </li>
-          ))}
-        </ul>
-        {trustExplanation.hints.length > 0 ? (
-          <p className="mt-3 text-xs text-ink-3">Strengthen trust: {trustExplanation.hints.slice(0, 2).join(' ')}</p>
-        ) : null}
-      </section>
 
-      {publicClaims.length > 0 ? <PublicClaimSummaryList claims={publicClaims} /> : null}
+          <section className="mt-6 rounded-card border border-line bg-surface p-5 shadow-card">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-3">Trust signals (AI-estimated)</h2>
+              {typeof thread.resolutionScore === 'number' ? (
+                <p className="text-sm font-semibold tabular-nums text-ink">
+                  {Math.round(thread.resolutionScore)}/100
+                  {trustExplanation.effectiveScore != null && trustExplanation.confidence < 1 ? (
+                    <span className="ml-2 text-xs font-medium text-ink-3">effective {trustExplanation.effectiveScore}/100</span>
+                  ) : null}
+                </p>
+              ) : null}
+            </div>
+            <ul className="mt-3 space-y-2">
+              {trustExplanation.factors.map((f) => (
+                <li key={f.key} className="text-sm leading-relaxed text-ink-2">
+                  <span
+                    className={
+                      f.tone === 'critical'
+                        ? 'font-medium text-sai-red'
+                        : f.tone === 'warning'
+                          ? 'font-medium text-sai-orange'
+                          : f.tone === 'positive'
+                            ? 'font-medium text-emerald-700'
+                            : 'font-medium text-ink'
+                    }
+                  >
+                    {f.label}:
+                  </span>{' '}
+                  {f.detail}
+                </li>
+              ))}
+            </ul>
+            {trustExplanation.hints.length > 0 ? (
+              <p className="mt-3 text-xs text-ink-3">Strengthen trust: {trustExplanation.hints.slice(0, 2).join(' ')}</p>
+            ) : null}
+          </section>
 
-      <section className="mt-8 flex flex-wrap gap-3">
-        {session ? (
-          <Link href={`/dashboard/threads/${thread.slug}`} className="rounded-control bg-brand px-4 py-2 text-sm font-medium text-white">
-            Open in dashboard
-          </Link>
-        ) : (
-          <>
-            <Link href={`${ROUTES.LOGIN}?redirect=/dashboard/threads/${thread.slug}`} className="rounded-control bg-brand px-4 py-2 text-sm font-medium text-white">
-              Sign in to verify, fork, or ask
-            </Link>
-            <Link href={`${ROUTES.LOGIN}?redirect=/dashboard/threads/${thread.slug}`} className="rounded-control border border-line bg-surface px-4 py-2 text-sm font-medium text-ink">
-              Ask the community to verify
-            </Link>
-          </>
-        )}
-      </section>
+          {publicClaims.length > 0 ? <PublicClaimSummaryList claims={publicClaims} /> : null}
 
-      <section className="mt-10 space-y-4">
-        <h2 className="text-lg font-semibold text-ink">Discussion</h2>
-        {messages.length === 0 ? (
-          <p className="text-sm text-ink-3">No messages yet.</p>
-        ) : (
-          <ol className="space-y-3">
-            {messages.map((m) => (
-              <li key={m.id} className="rounded-card border border-line bg-surface p-4">
-                <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-3">
-                  <span className="font-medium text-ink-2">{m.author?.name ?? (m.isAI ? 'Sai' : 'Member')}</span>
-                  <span>·</span>
-                  <time dateTime={m.createdAt.toISOString()}>{formatDate(m.createdAt)}</time>
-                  {m.isAI ? <span className="rounded-full border border-line px-2 py-0.5">AI</span> : null}
-                  {m.isEdited ? <span>(edited)</span> : null}
-                </div>
-                <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">{m.content}</div>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+          <section className="mt-8 flex flex-wrap gap-3">
+            {session ? (
+              <Link href={`/dashboard/threads/${thread.slug}`} className="rounded-control bg-brand px-4 py-2 text-sm font-medium text-white">
+                Open in dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href={`${ROUTES.LOGIN}?redirect=/dashboard/threads/${thread.slug}`} className="rounded-control bg-brand px-4 py-2 text-sm font-medium text-white">
+                  Sign in to verify, fork, or ask
+                </Link>
+                <Link href={`${ROUTES.LOGIN}?redirect=/dashboard/threads/${thread.slug}`} className="rounded-control border border-line bg-surface px-4 py-2 text-sm font-medium text-ink">
+                  Ask the community to verify
+                </Link>
+              </>
+            )}
+          </section>
+
+          <section className="mt-10 space-y-4">
+            <h2 className="text-lg font-semibold text-ink">Discussion</h2>
+            {messages.length === 0 ? (
+              <p className="text-sm text-ink-3">No messages yet.</p>
+            ) : (
+              <ol className="space-y-3">
+                {messages.map((m) => (
+                  <li key={m.id} className="rounded-card border border-line bg-surface p-4">
+                    <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-3">
+                      <span className="font-medium text-ink-2">{m.author?.name ?? (m.isAI ? 'Sai' : 'Member')}</span>
+                      <span>·</span>
+                      <time dateTime={m.createdAt.toISOString()}>{formatDate(m.createdAt)}</time>
+                      {m.isAI ? <span className="rounded-full border border-line px-2 py-0.5">AI</span> : null}
+                      {m.isEdited ? <span>(edited)</span> : null}
+                    </div>
+                    <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">{m.content}</div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </>
+      )}
     </main>
   );
 }

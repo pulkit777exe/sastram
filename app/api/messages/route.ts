@@ -4,6 +4,7 @@ import { ok, fail, errorCodeToStatus, HTTP_STATUS } from '@/lib/utils/api-respon
 import { requireSessionOrThrow } from '@/modules/auth';
 import { requireWriteOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { enforceNewAccountWriteLimitOrThrow } from '@/lib/services/new-account-limits';
 import { trackNeonRequest } from '@/lib/services/usage-check';
 import { AppError } from '@/lib/utils/errors';
 import { logger } from '@/lib/infrastructure/logger';
@@ -100,6 +101,12 @@ function handleActionError(result: { ok: boolean; error?: string; errorCode?: st
 export async function POST(request: NextRequest) {
   try {
     const session = await authenticateRequest();
+
+    await enforceNewAccountWriteLimitOrThrow({
+      userId: session.user.id,
+      role: session.user.role,
+      action: 'message',
+    });
 
     const rateLimitResponse = await checkRateLimitOrThrow(session);
     if (rateLimitResponse) return rateLimitResponse;

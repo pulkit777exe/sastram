@@ -83,7 +83,7 @@ test.describe("Authenticated smoke", () => {
     const aiOutcome = page.getByText(
       /I'm temporarily over my AI quota|Sorry, I couldn't generate|@sai limit reached|couldn't generate a response/i
     ).first();
-    await expect(submitDone.or(aiOutcome)).toBeVisible({ timeout: 20e3 });
+    await expect(submitDone.or(aiOutcome).first()).toBeVisible({ timeout: 20e3 });
     expect(errors, errors.join("\n")).toHaveLength(0);
   });
 });

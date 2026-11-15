@@ -8,6 +8,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { sanitizeContent } from '@/lib/services/content-safety';
 import { createMessageWithAttachmentsSchema } from '@/modules/messages/schemas';
 import { getMessageLimiter } from '@/lib/services/rate-limit';
+import { enforceNewAccountWriteLimit } from '@/lib/services/new-account-limits';
 import { parseMentions, resolveUserMentions } from '@/modules/messages/mention-parser';
 import { infraMessageSideEffects } from '@/modules/messages/infra-effects';
 import { moderateIncomingMessage } from './moderation-hooks';
@@ -206,6 +207,13 @@ export const postMessage = createServerAction(
     // private thread's name/preview. Rate limit first so authorization DB work
     // is not an unbounded spam target.
     const session = await requireSession();
+
+    const newAccount = await enforceNewAccountWriteLimit({
+      userId: session.user.id,
+      role: session.user.role,
+      action: 'message',
+    });
+    if (!newAccount.ok) return actionFailure(newAccount.code, newAccount.message);
 
     const withinRateLimit = await checkRateLimit(session.user.id);
     if (!withinRateLimit) return actionFailure('RATE_LIMITED', 'Rate limit exceeded. Please slow down.');

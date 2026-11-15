@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Terms of Service — Sastram',
-  description: 'Sastram Terms of Service and usage policies.',
+  description: 'Draft terms of service and usage policies for Sastram.',
 };
 
 interface TermsSection {
@@ -28,8 +28,8 @@ const TERMS_SECTIONS: TermsSection[] = [
     body: 'You keep ownership of the threads, messages, and other content you post. You grant Sastram the permission needed to host, display, and process that content so the service can operate — for example, to render a thread or generate a summary you requested.',
   },
   {
-    title: '4. Acceptable Use',
-    body: 'Do not use Sastram for unlawful purposes, to harass others, to post spam or malware, or to attempt to gain unauthorized access to any part of the service. Moderators may remove content or restrict accounts that violate these rules.',
+    title: '4. Acceptable Use and Reporting',
+    body: 'Do not use Sastram for unlawful purposes, to harass others, to post spam or malware, or to attempt to gain unauthorized access to any part of the service. You can report content or behavior that appears abusive or policy-violating; moderators may review reports, restrict public visibility of reported content while under review, remove content, or restrict accounts where appropriate.',
   },
   {
     title: '5. AI Features',
@@ -44,9 +44,8 @@ const TERMS_SECTIONS: TermsSection[] = [
     body: 'Sastram is provided as-is and may change, be interrupted, or be discontinued. We may update these terms; continued use after an update means you accept the revised terms.',
   },
   {
-    title: '8. Privacy',
-    body: 'Our Privacy Policy explains what we collect, how we use it, and how you can export or delete your data.',
-    link: { href: '/privacy', label: 'Privacy Policy' },
+    title: '8. Privacy, Cookies, and AI Use',
+    body: 'Our draft Privacy Policy, Cookie Notice, and AI Use Notice explain what we collect, how we use it, how cookies/sessions work, and how AI features handle content. You can export or delete your data from account settings where available.',
   },
   {
     title: '9. Disclaimers and Liability',
@@ -70,7 +69,14 @@ export default function TermsPage() {
           Terms of Service
         </SerifHeading>
 
-        <p className="text-lg text-muted-foreground mb-12">Last updated: October 2026</p>
+        <p className="text-lg text-muted-foreground mb-4">Last updated: November 2026</p>
+        <p className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 mb-10">
+          <strong>Draft notice:</strong> these terms are provided for transparency and are not legal advice. They may change as the
+          service and legal review evolve. Related drafts: <Link href="/privacy" className="underline">Privacy Policy</Link>,{' '}
+          <Link href="/cookies" className="underline">Cookie Notice</Link>,{' '}
+          <Link href="/ai-use" className="underline">AI Use Notice</Link>, and{' '}
+          <Link href="/dmca" className="underline">Copyright &amp; Takedown</Link>.
+        </p>
 
         <div className="space-y-8">
           {TERMS_SECTIONS.map((section) => (

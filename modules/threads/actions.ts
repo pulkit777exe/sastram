@@ -31,6 +31,7 @@ import { sanitizeUserContent } from '@/lib/services/content-safety';
 import { moderateThreadContent } from '@/lib/services/moderation';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { prisma } from '@/lib/infrastructure/prisma';
+import { enforceNewAccountWriteLimitOrThrow } from '@/lib/services/new-account-limits';
 import { buildClaimRowsFromEvidence, computeClaimStatus, toClaimSummary } from '@/modules/claims';
 import type { ResearchEvidence, Source } from '@/modules/ai-search/types';
 
@@ -75,6 +76,7 @@ export const createThreadAction = createServerAction(
   { schema: createThreadInput, actionName: 'createThreadAction' },
   async ({ title, description, initialMessage, pollQuestion, pollOptions, pollExpiresAt }) => {
     const session = await requireSessionOrThrow();
+    await enforceNewAccountWriteLimitOrThrow({ userId: session.user.id, role: session.user.role, action: 'thread' });
     const rl = await rateLimit({ key: `create-thread:${session.user.id}`, type: 'message' });
     if (!rl.success) throw new AppError('Too many threads, slow down', 'RATE_LIMITED', 429);
     const safeTitle = sanitizeUserContent(title).sanitized.trim().slice(0, 120);
@@ -336,6 +338,7 @@ export const createVerificationThreadAction = createServerAction(
   { schema: createVerificationThreadInput, actionName: 'createVerificationThreadAction' },
   async ({ sessionId, title }) => {
     const session = await requireSessionOrThrow();
+    await enforceNewAccountWriteLimitOrThrow({ userId: session.user.id, role: session.user.role, action: 'thread' });
     const rl = await rateLimit({ key: `create-verify-thread:${session.user.id}`, type: 'message' });
     if (!rl.success) throw new AppError('Too many threads, slow down', 'RATE_LIMITED', 429);
 
