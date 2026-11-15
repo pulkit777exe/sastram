@@ -123,9 +123,31 @@ export function MessageList({ messages, firstUnreadMessageId }: MessageListProps
     prevCountRef.current = topLevelMessages.length;
   }, [topLevelMessages.length, scrollContainerRef]);
 
+  const virtualItems = virtualizer.getVirtualItems();
+  const canRenderVirtual = scrollElement !== null && virtualItems.length > 0;
+  if (!canRenderVirtual && topLevelMessages.length > 0) {
+    return (
+      <div>
+        {topLevelMessages.map((msg, index) => {
+          const replies = getRepliesForParent(msg.id, repliesMap);
+          const isCompact = compactFlags[index];
+          return (
+            <MessageRow
+              key={msg.id}
+              message={msg}
+              isCompact={isCompact}
+              isFirstUnread={msg.id === firstUnreadMessageId}
+              replies={replies}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div style={{ position: 'relative', height: `${virtualizer.getTotalSize()}px`, minHeight: 0 }}>
-      {virtualizer.getVirtualItems().map((virtualItem) => {
+      {virtualItems.map((virtualItem) => {
         const msg = topLevelMessages[virtualItem.index];
         const replies = getRepliesForParent(msg.id, repliesMap);
         const isCompact = compactFlags[virtualItem.index];

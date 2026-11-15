@@ -91,6 +91,8 @@ On Vercel, run these from CI/a release job with `DATABASE_URL_UNPOOLED` set.
 Prisma migrations are forward-only; never edit a migration that has already
 run in production.
 
+**Local/self-hosted PostgreSQL prerequisite:** migrations (including retrieval/vector foundation) require PostgreSQL extensions to be available, notably **`pgvector`** (`vector` type/HNSW indexes) and `pg_trgm`. A stock `postgres` image may not include `pgvector`; use a pgvector-capable image/build for local/test databases that run `prisma migrate deploy`, and ensure the DB role can `CREATE EXTENSION`.
+
 Docker Compose encodes the same order: the `migrate` service must complete
 successfully before `app` starts.
 

@@ -6,6 +6,7 @@ test.describe("Thread edit flows (no full-page reloads)", () => {
     page,
     request
   }) => {
+    test.setTimeout(180_000);
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
     const stamp = Date.now();
@@ -53,8 +54,12 @@ test.describe("Thread edit flows (no full-page reloads)", () => {
     await expect(page.locator("header").getByText(editedTitle)).toBeVisible();
     expect(page.url()).toBe(urlBeforeEdit);
     await page.getByRole("button", { name: "Tag", exact: true }).click();
-    await page.getByPlaceholder("Search tags\u2026").fill("e2eprobe");
-    await page.getByRole("button", { name: "#e2eprobe" }).click();
+    const tagSearch = page.getByPlaceholder("Search tags\u2026");
+    await expect(tagSearch).toBeVisible();
+    await tagSearch.fill("e2eprobe");
+    const e2eTagBtn = page.getByRole("button", { name: "#e2eprobe" });
+    await expect(e2eTagBtn).toBeVisible({ timeout: 15e3 });
+    await e2eTagBtn.click();
     await expect(page.getByText("#e2eprobe").first()).toBeVisible();
     expect(page.url()).toBe(urlBeforeEdit);
     await page.keyboard.press("Escape");

@@ -49,6 +49,8 @@ bun db:seed               # optional demo content
 bun dev
 ```
 
+> Local PostgreSQL must have required extensions available (including **`pgvector`**) for migrations/retrieval features; use a pgvector-capable Postgres image/build if your local DB lacks `vector`.
+
 Or run the Compose stack (PostgreSQL + migrations + app):
 
 ```bash

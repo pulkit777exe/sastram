@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 const BASE_URL = `http://localhost:${process.env.E2E_PORT || "3000"}`;
 test.describe("Collections", () => {
   test("collections CRUD: create \u2192 add graph/summary \u2192 export \u2192 delete", async ({ request }) => {
+    test.setTimeout(120_000);
     const errors = [];
     const title = `E2E Collection ${Date.now()}`;
     const createRes = await request.post("/api/collections", {

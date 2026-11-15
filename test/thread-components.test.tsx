@@ -374,7 +374,7 @@ describe('ThreadLiveWrapper', () => {
         />
       </MockNextJsProvider>
     );
-    expect(screen.getByText('This is pinned')).to.not.be.null;
+    expect(screen.getAllByText('This is pinned').length).to.be.at.least(1);
     expect(screen.getByText('Jump')).to.not.be.null;
   });
 });
