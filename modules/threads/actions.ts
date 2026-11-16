@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import { requireSessionOrThrow, assertAdminOrThrow } from '@/modules/auth';
+import { revalidatePath } from 'next/cache';
 import { buildThreadSlug } from '@/modules/threads/slug';
 import { createThread, deleteThread, updateThreadVerified } from './write';
 import {
@@ -444,7 +445,7 @@ export const voteClaimAction = createServerAction(
 
     const claim = await prisma.claim.findUnique({
       where: { id: claimId },
-      select: { id: true, message: { select: { threadId: true } } },
+      select: { id: true, message: { select: { threadId: true, thread: { select: { slug: true } } } } },
     });
     if (!claim || !claim.message) {
       throw new AppError('Claim not found', 'NOT_FOUND', 404);
@@ -501,6 +502,13 @@ export const voteClaimAction = createServerAction(
       });
       return saved;
     });
+
+    const threadSlug = claim.message.thread?.slug;
+    if (threadSlug) {
+      revalidatePath(`/q/${threadSlug}`);
+      revalidatePath(`/k/${threadSlug}`);
+      revalidatePath(`/dashboard/threads/${threadSlug}`);
+    }
 
     return actionSuccess({ claim: toClaimSummary(updated) });
   }
