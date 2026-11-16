@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Hash } from 'lucide-react';
 import { getSession } from '@/modules/auth';
-import { getTagBySlug, getThreadsByTag } from '@/modules/tags';
+import { getTagBySlug, getTagCredibilitySummary, getThreadsByTag } from '@/modules/tags';
 import { TopicGrid } from '@/components/dashboard/topic-grid';
 import { Button } from '@/components/ui/button';
 
@@ -14,8 +14,19 @@ export default async function TagDetailPage({ params }: { params: { slug: string
   const tag = await getTagBySlug(slug, session.user.id, session.user.role);
   if (!tag) notFound();
 
-  const threads = await getThreadsByTag(tag.id, session.user.id, session.user.role);
+  const [threads, credibility] = await Promise.all([
+    getThreadsByTag(tag.id, session.user.id, session.user.role),
+    getTagCredibilitySummary(tag.id, session.user.id, session.user.role),
+  ]);
   const threadLabel = tag.threadCount === 1 ? 'thread' : 'threads';
+  const credibilityTone =
+    credibility.level === 'SUPPORTED'
+      ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200'
+      : credibility.level === 'MIXED'
+        ? 'border-amber-500/25 bg-amber-500/10 text-amber-900 dark:text-amber-200'
+        : credibility.level === 'EMERGING'
+          ? 'border-sky-500/25 bg-sky-500/10 text-sky-900 dark:text-sky-200'
+          : 'border-line bg-muted/40 text-ink-2';
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -40,6 +51,42 @@ export default async function TagDetailPage({ params }: { params: { slug: string
           </div>
         </div>
       </header>
+
+      <section className="rounded-card border border-line bg-surface p-4 md:p-5" aria-label="Topic credibility">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-ink">Topic credibility</h2>
+            <p className="mt-1 text-xs text-ink-3">
+              Derived from existing visible thread and claim signals (AI/community-derived, not authoritative or user expertise).
+            </p>
+          </div>
+          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${credibilityTone}`}>
+            {credibility.label}
+          </span>
+        </div>
+        <p className="mt-3 text-sm text-ink-2">{credibility.description}</p>
+        <dl className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+          <div className="rounded-control border border-line bg-canvas/50 px-3 py-2">
+            <dt className="text-ink-3">Visible threads</dt>
+            <dd className="mt-0.5 font-medium text-ink">{credibility.threadCount}</dd>
+          </div>
+          <div className="rounded-control border border-line bg-canvas/50 px-3 py-2">
+            <dt className="text-ink-3">Resolved threads</dt>
+            <dd className="mt-0.5 font-medium text-ink">{credibility.resolvedThreadCount}</dd>
+          </div>
+          <div className="rounded-control border border-line bg-canvas/50 px-3 py-2">
+            <dt className="text-ink-3">Claims</dt>
+            <dd className="mt-0.5 font-medium text-ink">{credibility.totalClaims}</dd>
+          </div>
+          <div className="rounded-control border border-line bg-canvas/50 px-3 py-2">
+            <dt className="text-ink-3">Confirm / Dispute votes</dt>
+            <dd className="mt-0.5 font-medium text-ink">{credibility.confirmVotes} / {credibility.disputeVotes}</dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-[11px] text-ink-3">
+          Claim statuses: {credibility.byStatus.CONFIRMED} confirmed, {credibility.byStatus.OPEN} open, {credibility.byStatus.CONTESTED} contested, {credibility.byStatus.DISPUTED} disputed.
+        </p>
+      </section>
 
       {threads.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center rounded-card border border-dashed border-line bg-surface">

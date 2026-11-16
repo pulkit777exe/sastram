@@ -3,7 +3,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { slugify } from '@/lib/utils/slug';
 import { countActiveUsersByThread } from '@/modules/threads/list';
 import { visibilityFilter } from '@/lib/thread-access';
-import type { Role } from '@prisma/client';
+import type { ClaimStatus, Role } from '@prisma/client';
 
 const withThreadCount = { _count: { select: { threads: true } } };
 
@@ -191,4 +191,137 @@ export async function mergeTags(sourceId: string, targetId: string) {
   await prisma.threadTag.delete({ where: { id: sourceId } });
 
   return prisma.threadTag.findUnique({ where: { id: targetId } });
+}
+
+export type TopicCredibilityLevel = 'INSUFFICIENT_DATA' | 'EMERGING' | 'MIXED' | 'SUPPORTED';
+
+export interface TagCredibilitySummary {
+  level: TopicCredibilityLevel;
+  label: string;
+  description: string;
+  threadCount: number;
+  resolvedThreadCount: number;
+  totalClaims: number;
+  byStatus: Record<ClaimStatus, number>;
+  confirmVotes: number;
+  disputeVotes: number;
+}
+
+export function deriveTopicCredibility(input: {
+  threadCount: number;
+  resolvedThreadCount: number;
+  byStatus: Record<ClaimStatus, number>;
+}): Pick<TagCredibilitySummary, 'level' | 'label' | 'description'> {
+  const totalClaims = input.byStatus.OPEN + input.byStatus.CONFIRMED + input.byStatus.DISPUTED + input.byStatus.CONTESTED;
+  if (input.threadCount < 2 || totalClaims < 2) {
+    return {
+      level: 'INSUFFICIENT_DATA',
+      label: 'Insufficient data',
+      description: 'Not enough visible threads or claims yet to estimate topic credibility.',
+    };
+  }
+
+  const contestedShare = (input.byStatus.DISPUTED + input.byStatus.CONTESTED) / totalClaims;
+  const confirmedShare = input.byStatus.CONFIRMED / totalClaims;
+  const resolvedShare = input.resolvedThreadCount / Math.max(1, input.threadCount);
+
+  if (confirmedShare >= 0.45 && contestedShare <= 0.2 && (input.resolvedThreadCount >= 1 || resolvedShare >= 0.25)) {
+    return {
+      level: 'SUPPORTED',
+      label: 'Supported',
+      description: 'Visible threads and claims show relatively strong confirmation with limited dispute.',
+    };
+  }
+
+  if (contestedShare >= 0.25 || (input.byStatus.DISPUTED + input.byStatus.CONTESTED >= 2 && confirmedShare < 0.5)) {
+    return {
+      level: 'MIXED',
+      label: 'Mixed',
+      description: 'Signals are mixed: confirmed and disputed or contested claims coexist for this topic.',
+    };
+  }
+
+  return {
+    level: 'EMERGING',
+    label: 'Emerging',
+    description: 'Some trust signals exist, but evidence is still developing for this topic.',
+  };
+}
+
+export async function getTagCredibilitySummary(
+  tagId: string,
+  viewerId?: string,
+  viewerRole?: Role | null
+): Promise<TagCredibilitySummary> {
+  try {
+    const filter = await visibilityFilter(viewerId, viewerRole);
+    const threads = await prisma.thread.findMany({
+      where: { tags: { some: { tagId } }, deletedAt: null, ...filter },
+      select: { id: true, verifiedAt: true, resolutionScore: true },
+    });
+
+    const threadIds = threads.map((t) => t.id);
+    const threadCount = threads.length;
+    const resolvedThreadCount = threads.filter((t) => t.verifiedAt !== null || (t.resolutionScore ?? 0) > 70).length;
+
+    const emptyByStatus: Record<ClaimStatus, number> = {
+      OPEN: 0,
+      CONFIRMED: 0,
+      DISPUTED: 0,
+      CONTESTED: 0,
+    };
+
+    if (threadIds.length === 0) {
+      return {
+        ...deriveTopicCredibility({ threadCount, resolvedThreadCount, byStatus: emptyByStatus }),
+        threadCount,
+        resolvedThreadCount,
+        totalClaims: 0,
+        byStatus: emptyByStatus,
+        confirmVotes: 0,
+        disputeVotes: 0,
+      };
+    }
+
+    const claimWhere = { message: { threadId: { in: threadIds }, deletedAt: null } };
+    const [grouped, agg] = await Promise.all([
+      prisma.claim.groupBy({
+        by: ['status'],
+        where: claimWhere,
+        _count: { _all: true },
+      }),
+      prisma.claim.aggregate({
+        where: claimWhere,
+        _sum: { confirmCount: true, disputeCount: true },
+      }),
+    ]);
+
+    const byStatus: Record<ClaimStatus, number> = { ...emptyByStatus };
+    for (const row of grouped) {
+      byStatus[row.status] = row._count._all;
+    }
+    const totalClaims = byStatus.OPEN + byStatus.CONFIRMED + byStatus.DISPUTED + byStatus.CONTESTED;
+
+    return {
+      ...deriveTopicCredibility({ threadCount, resolvedThreadCount, byStatus }),
+      threadCount,
+      resolvedThreadCount,
+      totalClaims,
+      byStatus,
+      confirmVotes: agg._sum.confirmCount ?? 0,
+      disputeVotes: agg._sum.disputeCount ?? 0,
+    };
+  } catch (error) {
+    logger.error('[getTagCredibilitySummary]', error);
+    const byStatus: Record<ClaimStatus, number> = { OPEN: 0, CONFIRMED: 0, DISPUTED: 0, CONTESTED: 0 };
+    return {
+      ...deriveTopicCredibility({ threadCount: 0, resolvedThreadCount: 0, byStatus }),
+      threadCount: 0,
+      resolvedThreadCount: 0,
+      totalClaims: 0,
+      byStatus,
+      confirmVotes: 0,
+      disputeVotes: 0,
+    };
+  }
 }
