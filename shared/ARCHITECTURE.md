@@ -12,7 +12,7 @@ Core moat capabilities (deep research and challenge mode remain user-gated where
 - **Canvas** (`/dashboard/canvas?left=&right=`) — side-by-side compare via `crossReference` tier sort + conflict detection (AI-estimated diff signals)
 - **Deep Research** (`GENERATE_DEEP_RESEARCH` job) — async multi-source advanced research (Tavily `research` + Exa; QStash inline in dev, async in prod), user-gated via `deepResearchEnabled`
 - **Memory** (`User.preferences.expertiseLevel`) — weekly inference from `threadDna` + `AiSearchSession`, injected in `synthesis` prompt (AI-estimated/inferred personalization)
-- **KnowledgePage** — PUBLIC, non-deleted, non-outdated, human-verified threads with `resolutionScore > 85` and a real `aiSummary` are auto-promoted; pages whose thread stops meeting those rules are demoted on the next run (see `docs/PROMOTION_SYSTEM.md`)
+- **KnowledgePage** — PUBLIC, non-deleted, non-outdated, human-verified threads with `resolutionScore > 85`, a real `aiSummary`, and no `DISPUTED`/`CONTESTED` claims on non-deleted messages are auto-promoted; pages whose thread stops meeting those rules (including claim-driven ineligibility) are demoted/unserved on the next run (see `docs/PROMOTION_SYSTEM.md`)
 - **Community Jury** (`AppealVote` + 3 random `MODERATOR` 2/3 majority) — replaces single-admin appeal
 - **Code Runner** (`code-runner.tsx`) — fenced JS/TS blocks run client-side in an iframe served from `/code-sandbox` and sandboxed with `sandbox="allow-scripts"` only, so execution has an opaque origin with no app DOM/cookies/storage (`connect-src 'none'`, 3s timeout). Python is placeholder-only because Pyodide's network-loaded runtime cannot meet the sandbox CSP.
 - **Fact-Check Badge** (`Message.factCheckStatus`) — shown on messages whose status is `VERIFIED` or `DISPUTED` as an AI-estimated signal (not authoritative)
@@ -308,7 +308,7 @@ sastram/
 
 ## Data Model
 
-Prisma models are defined in `prisma/schema.prisma`. Phase 3 adds minimal claim-level verification: `AiSearchResult.evidence` persists synthesis claim-source mappings, and `Claim`/`ClaimVote` rows attach verifiable claims to a verification thread's initial `Message`. Public claim reads expose only safe source fields (internal Sastram sources redacted).
+Prisma models are defined in `prisma/schema.prisma`. Minimal claim-level trust loop (no schema changes in this slice beyond existing Phase 3 models): `AiSearchResult.evidence` persists synthesis claim-source mappings, and `Claim`/`ClaimVote` rows attach verifiable claims to a verification thread's initial `Message` (status derived from votes). Owners can explicitly regenerate AI search answers (`forceRefresh` on forum search) bypassing read-through cache and appending a fresh result to the same owned session (latest read), while disputed/contested claims show derived “needs correction/review” signaling in thread claim UI; regeneration does not edit/propagate to existing materialized claims. Topic-scoped credibility is derived/read-only on dashboard tag pages from existing visible thread/claim signals. Claim-driven promotion/public `/k` eligibility blocks disputed/contested claims on non-deleted messages (cron-convergent). Public claim reads expose only safe source fields (internal Sastram sources redacted).
 
 ### Core Content
 
@@ -482,7 +482,7 @@ await requireWriteOrThrow(threadId, session.user.id, session.user.role);
 - `/api/cron/update-threads` — Batch AI metadata refresh + relations + expertise refresh
 - `/api/cron/daily-digest` — Email digest trigger
 - `/api/cron/cleanup-blobs` — Blob cleanup (paginated 50×20 batches)
-- `/api/cron/promote-knowledge` — KnowledgePage auto-promote
+- `/api/cron/promote-knowledge` — KnowledgePage auto-promote/demote (claim-aware eligibility, cron-convergent)
 
 ### Admin / Moderation
 - `/api/admin/health` — Admin health check
@@ -619,7 +619,7 @@ Handlers are registered in the `jobHandlers` map (`lib/queue/registry.ts`); `run
 | `/api/cron/update-threads` | Daily 03:00 UTC | Batch AI metadata refresh (DNA, score, conflicts, digest), update thread relations, prewarm follow-up queries, purge soft-deleted rows, reconcile counters |
 | `/api/cron/daily-digest` | Daily 09:00 UTC | Process subscriptions by frequency, resolve current access from one bounded thread snapshot per page (exact per-recipient check), generate AI summaries, send via Resend. Checkpointed (`lastAttemptedAt`) and paged (100 subscriptions, 45s budget); remaining pages resume on the next day's run. Hobby-compatible single daily run. |
 | `/api/cron/cleanup-blobs` | Daily 04:00 UTC | Find attachments from soft-deleted messages, delete Vercel Blob, delete DB records |
-| `/api/cron/promote-knowledge` | Daily 05:00 UTC | Promote PUBLIC, verified, non-outdated `Thread.resolutionScore > 85` rows with a real `aiSummary` into `KnowledgePage`; demote pages whose thread no longer qualifies (best-effort, never throws) |
+| `/api/cron/promote-knowledge` | Daily 05:00 UTC | Promote PUBLIC, verified, non-outdated `Thread.resolutionScore > 85` rows with a real `aiSummary` and no disputed/contested claims on non-deleted messages into `KnowledgePage`; demote/unpublish pages whose thread no longer qualifies (best-effort, never throws, cron-convergent) |
 
 **Security:** All cron endpoints use `verifyCronAuth()` with timing-safe Bearer token comparison (`crypto.timingSafeEqual`).
 

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { requireSessionOrThrow, type SessionPayload } from '@/modules/auth';
-import { AppError } from '@/lib/utils/errors';
 import { isAbortError } from '@/lib/utils/retry';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
