@@ -28,6 +28,7 @@ interface SynthesisCardProps {
   fromHistory?: boolean;
   onRetry?: (style: RetryStyle) => void;
   onFeedback?: (type: FeedbackType, reason?: string) => void;
+  onRegenerate?: () => void;
 }
 
 const QUERY_TYPE_LABELS: Record<string, { label: string; variant: 'live' | 'warning' | 'success' | 'secondary' }> = {
@@ -52,6 +53,7 @@ export function SynthesisCard({
   fromHistory = false,
   onRetry,
   onFeedback,
+  onRegenerate,
 }: SynthesisCardProps) {
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const typeConfig = QUERY_TYPE_LABELS[queryType] || QUERY_TYPE_LABELS.technical;
@@ -204,6 +206,18 @@ export function SynthesisCard({
             >
               <GitFork size={12} /> {actionBusy === 'fork' ? 'Creating…' : 'Fork into thread'}
             </Button>
+            {sessionId && onRegenerate && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 rounded-full text-xs"
+                onClick={onRegenerate}
+                disabled={actionBusy !== null}
+              >
+                <Sparkles size={12} /> Regenerate answer
+              </Button>
+            )}
             <CollectionSaveButton metadata={saveMetadata} label="Save to collection" />
           </div>
         </div>

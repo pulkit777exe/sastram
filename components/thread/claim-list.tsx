@@ -94,6 +94,10 @@ export function ClaimList({ claims }: { claims: UiClaim[] }) {
   const sorted = useMemo(() => [...claims].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)), [claims]);
   const [items, setItems] = useState<UiClaim[]>(sorted);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const needsCorrection = useMemo(
+    () => sorted.some((claim) => claim.status === 'DISPUTED' || claim.status === 'CONTESTED'),
+    [sorted]
+  );
 
   // Sync when server data changes (e.g. revalidation/navigation).
   useEffect(() => setItems(sorted), [sorted]);
@@ -123,6 +127,15 @@ export function ClaimList({ claims }: { claims: UiClaim[] }) {
         <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-3">Claims to verify</h4>
         <span className="text-[11px] text-ink-3">Confirm or dispute each claim</span>
       </div>
+      {needsCorrection && (
+        <div className="mb-2 rounded-control border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[12px] leading-relaxed text-amber-900 dark:text-amber-200">
+          <p className="font-medium">Some claims may need correction or review</p>
+          <p className="mt-0.5 text-amber-900/90 dark:text-amber-200/90">
+            One or more claims are disputed or contested. Add evidence or discuss corrections here; regenerating the source
+            AI answer does not update these materialized claims.
+          </p>
+        </div>
+      )}
       <ul className="space-y-2">
         {items.map((claim) => (
           <ClaimRow key={claim.id} claim={claim} onVote={onVote} busy={busyId === claim.id} />

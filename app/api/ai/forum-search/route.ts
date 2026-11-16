@@ -9,7 +9,7 @@ import { logger } from '@/lib/infrastructure/logger';
 import { executeAISearch } from '@/modules/ai-search/service';
 import { cacheResult } from '@/modules/ai-search/cache';
 import { createKeyedLlm } from '@/lib/ai/text';
-import { persistSearchSession } from '@/modules/ai-search/repository';
+import { appendSearchResultToSession, persistSearchSession } from '@/modules/ai-search/repository';
 import { sseChunk, sseEvent, sseHeaders } from '@/lib/utils/sse';
 import { getUserExpertiseLevel, refreshUserExpertise } from '@/lib/services/user-memory';
 import {
@@ -94,6 +94,7 @@ function buildLiveStream(
     expertiseLevel?: string;
     signal: AbortSignal;
     clearDeadline: () => void;
+    forceRefresh?: boolean;
   }
 ): Response {
   const encoder = new TextEncoder();
@@ -132,6 +133,7 @@ function buildLiveStream(
           viewerUserId: session.user.id,
           viewerRole: session.user.role ?? null,
           keys: { exa: searchKeys.exa || undefined, tavily: searchKeys.tavily || undefined },
+          bypassCache: params.forceRefresh,
         });
 
         sendEvent({ phase: 'reading', sources: result.sources });
@@ -143,16 +145,34 @@ function buildLiveStream(
             message: 'No results found for this query. Please try a different search.',
             errorCode: 'NO_RESULTS',
           });
-          controller.close();
+          safeClose();
           return;
         }
 
         sendEvent({ phase: 'synthesizing' });
 
-        let createdSessionId: string | undefined;
-        if (!params.hasHistory) {
-          createdSessionId = params.sessionId || crypto.randomUUID();
-          const sid = createdSessionId;
+        let emittedSessionId: string | undefined;
+        const regenerateExisting = Boolean(params.forceRefresh && params.sessionId);
+        if (regenerateExisting && params.sessionId) {
+          emittedSessionId = params.sessionId;
+          const appended = await appendSearchResultToSession(
+            session.user.id,
+            params.sessionId,
+            params.query,
+            result.synthesis,
+            result.sources,
+            result.followUps,
+            { timings: result.timings }
+          );
+          if (!appended) {
+            logger.warn('[forum-search] forced regeneration append skipped (session missing/not owned)', {
+              sessionId: params.sessionId,
+              userId: session.user.id,
+            });
+          }
+        } else if (!params.hasHistory) {
+          emittedSessionId = params.sessionId || crypto.randomUUID();
+          const sid = emittedSessionId;
           persistSearchSession(
             session.user.id,
             params.query,
@@ -163,7 +183,7 @@ function buildLiveStream(
           ).catch((e) => logger.error('[forum-search] persist session failed', { error: e }));
         }
 
-        if (!params.hasHistory) {
+        if ((!params.hasHistory || regenerateExisting) && result.sources.length > 0) {
           cacheResult(params.query, result, result.synthesis.queryType, expertiseLevel).catch((e) =>
             logger.error('[forum-search] cache write failed', { error: e })
           );
@@ -177,7 +197,7 @@ function buildLiveStream(
           phase: 'done',
           synthesis: result.synthesis,
           followUps: result.followUps,
-          sessionId: createdSessionId,
+          sessionId: emittedSessionId,
           sources: result.sources,
         });
         safeClose();
@@ -210,7 +230,7 @@ export async function POST(request: NextRequest) {
 
     const data = validateSearchBody(await parseSearchJsonBody(request));
     const keys = resolveApiKeys(data.keys);
-    const { query, config, sessionId, clientNonce, conversationHistory } = data;
+    const { query, config, sessionId, clientNonce, conversationHistory, forceRefresh } = data;
     const normalizedMode = normalizeMode(config.searchMode);
     const effectiveConfig = { ...config, searchMode: normalizedMode };
     const allowWebKeyless = normalizedMode === 'quick';
@@ -248,7 +268,7 @@ export async function POST(request: NextRequest) {
     const hasHistory = conversationHistory !== undefined && conversationHistory.length > 0;
     const expertiseLevel = await getUserExpertiseLevel(session.user.id);
 
-    if (!hasHistory) {
+    if (!hasHistory && !forceRefresh) {
       const cached = await tryGetCachedResult(query, expertiseLevel);
       if (cached) {
         return buildCachedStream(cached);
@@ -275,6 +295,7 @@ export async function POST(request: NextRequest) {
       expertiseLevel,
       signal: deadline.signal,
       clearDeadline: deadline.clear,
+      forceRefresh,
     });
   } catch (error) {
     return mapTopLevelError(error);

@@ -30,10 +30,15 @@ export interface SearchState {
 
 export interface SearchActions {
   setQuery: (q: string) => void;
-  run: (q: string, config: SearchConfig, sessionId?: string) => Promise<void>;
+  run: (
+    q: string,
+    config: SearchConfig,
+    sessionIdOrOptions?: string | { sessionId?: string; forceRefresh?: boolean }
+  ) => Promise<void>;
   newSearch: (initial: string) => void;
   selectSession: (item: HistoryItem) => void;
   abort: () => void;
+  regenerate: () => void;
 }
 
 export interface SearchMeta {
@@ -95,6 +100,7 @@ export function SearchProvider({
         newSearch: logic.newSearch,
         selectSession: logic.selectSession,
         abort: logic.abort,
+        regenerate: logic.regenerate,
       },
       meta: {},
     }),
@@ -117,6 +123,7 @@ export function SearchProvider({
       logic.newSearch,
       logic.selectSession,
       logic.abort,
+      logic.regenerate,
     ]
   );
 

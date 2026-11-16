@@ -38,6 +38,7 @@ export const searchRequestSchema = z.object({
   }),
   sessionId: z.string().uuid().optional(),
   clientNonce: z.string().min(8).max(64).optional(),
+  forceRefresh: z.boolean().optional().default(false),
   conversationHistory: z
     .array(
       z.object({

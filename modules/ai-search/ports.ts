@@ -58,4 +58,6 @@ export interface SearchCtx {
   viewerRole?: string | null;
   /** Provider keys for adapters that require them. */
   keys?: { exa?: string; tavily?: string };
+  /** Bypass read-through cache for explicit regeneration. */
+  bypassCache?: boolean;
 }

@@ -20,12 +20,14 @@ function ChatMessageBubble({
   onRetry,
   onFeedback,
   isLatest,
+  onRegenerate,
 }: {
   message: ChatMessage;
   onFollowUp: (q: string) => void;
   onRetry: (style: RetryStyle) => void;
   onFeedback: (type: FeedbackType, reason?: string) => void;
   isLatest: boolean;
+  onRegenerate?: () => void;
 }) {
   if (message.role === 'user') {
     return (
@@ -57,6 +59,7 @@ function ChatMessageBubble({
         fromHistory={true}
         onRetry={isLatest ? onRetry : undefined}
         onFeedback={isLatest ? onFeedback : undefined}
+        onRegenerate={isLatest && message.sessionId ? onRegenerate : undefined}
       />
 
           {isLatest && message.followUps && message.followUps.length > 0 && (
@@ -93,6 +96,7 @@ interface ChatMessageListProps {
   onNewSearch: () => void;
   onRetryLast?: () => void;
   onAbort?: () => void;
+  onRegenerate?: () => void;
 }
 
 export function ChatMessageList({
@@ -110,6 +114,7 @@ export function ChatMessageList({
   onNewSearch,
   onRetryLast,
   onAbort,
+  onRegenerate,
 }: ChatMessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
@@ -176,6 +181,7 @@ export function ChatMessageList({
             onRetry={onRetry}
             onFeedback={onFeedback}
             isLatest={msg.id === messages[messages.length - 1]?.id}
+            onRegenerate={onRegenerate}
           />
         ))}
 

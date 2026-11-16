@@ -32,10 +32,12 @@ function elapsedMs(start: number): number {
 }
 
 export async function readThroughCache(
-  store: SearchStore,
+  store: SearchStore | undefined,
   query: string,
-  expertise?: string
+  expertise?: string,
+  bypass?: boolean
 ): Promise<AISearchPipelineResult | null> {
+  if (!store || bypass) return null;
   try {
     const cached = await store.get(query, expertise);
     if (!cached) return null;
@@ -81,7 +83,7 @@ export async function executeAISearch(
   throwIfAborted(signal);
 
   if (ctx.store) {
-    const cached = await readThroughCache(ctx.store, query, ctx.expertise);
+    const cached = await readThroughCache(ctx.store, query, ctx.expertise, ctx.bypassCache);
     if (cached) return cached;
   }
 

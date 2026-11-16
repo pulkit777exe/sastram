@@ -98,6 +98,62 @@ export async function persistSearchSession(
   }
 }
 
+/** Append a regenerated result to an existing owned session. Best-effort. */
+export async function appendSearchResultToSession(
+  userId: string,
+  sessionId: string,
+  query: string,
+  synthesis: SynthesisResult,
+  sources: Source[],
+  followUps: string[],
+  opts: Pick<PersistOptions, 'timings'> = {}
+): Promise<boolean> {
+  try {
+    const queryHash = hashQuery(query);
+    const timings = opts.timings;
+    const updated = await prisma.aiSearchSession.updateMany({
+      where: { id: sessionId, userId, deletedAt: null },
+      data: {
+        queryType: synthesis.queryType,
+        processingMs: synthesis.processingTimeMs,
+        classifyMs: timings?.classifyMs ?? null,
+        searchMs: timings?.searchMs ?? null,
+        crossrefMs: timings?.crossrefMs ?? null,
+        synthesizeMs: timings?.synthesizeMs ?? null,
+        provider: timings?.provider ?? null,
+        tokenCostUsd: timings?.tokenCostUsd ?? null,
+      },
+    });
+    if (updated.count === 0) return false;
+
+    await prisma.aiSearchResult.create({
+      data: {
+        sessionId,
+        queryHash,
+        synthesis: synthesis.text,
+        citations: (synthesis.citations ?? []) as unknown as Prisma.InputJsonValue,
+        followUps: (followUps ?? []) as unknown as Prisma.InputJsonValue,
+        evidence: (synthesis.evidence ?? []) as unknown as Prisma.InputJsonValue,
+        confidence: Math.round(synthesis.confidence ?? 0),
+        sourceCount: sources.length,
+        conflictFound: synthesis.conflictData?.detected ?? false,
+        conflictData: (synthesis.conflictData ?? null) as unknown as Prisma.InputJsonValue,
+        sources: (sources ?? []) as unknown as Prisma.InputJsonValue,
+        expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000),
+      },
+    });
+
+    return true;
+  } catch (err: unknown) {
+    logger.error('[ai-search] Failed to append regenerated session result', {
+      error: err instanceof Error ? err.message : String(err),
+      userId,
+      sessionId,
+    });
+    return false;
+  }
+}
+
 const SESSION_CURSOR_SEPARATOR = '|';
 
 /**

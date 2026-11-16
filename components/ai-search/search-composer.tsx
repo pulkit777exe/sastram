@@ -108,7 +108,7 @@ function InputBar() {
 function MessageList() {
   const {
     state: { messages, streamingMessage, appState, currentStep, taskFailed, slowHint, errorMessage, isOffline, lastConfig },
-    actions: { run, newSearch, abort },
+    actions: { run, newSearch, abort, regenerate },
   } = useSearch();
 
   // Submitted queries live in messages; the composer draft lives in `query`.
@@ -145,6 +145,7 @@ function MessageList() {
       onNewSearch={() => newSearch('')}
       onRetryLast={handleRetryLast}
       onAbort={abort}
+      onRegenerate={regenerate}
     />
   );
 }
