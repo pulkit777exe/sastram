@@ -15,15 +15,16 @@ A thread is promoted only while **all** of these are true:
 - `resolutionScore > 85` — above `KNOWLEDGE_PROMOTION_THRESHOLD`.
 - `aiSummary` is non-empty after trimming. The thread name and description are
   never used as fallbacks; a page without a real synthesized answer is skipped.
+- No `DISPUTED` or `CONTESTED` claims on non-deleted messages (minimal claim-driven promotion gate).
 
 ## Flow
 
 1. `lib/services/knowledge-promotion.ts` `promoteThreadsToKnowledgePages()` first
    deletes pages whose thread no longer meets the eligibility rules above
    (demotion/unpublish). This includes threads that turned private, were deleted,
-   were marked outdated, lost verification, or dropped to/below the threshold.
+   were marked outdated, lost verification, dropped to/below the threshold, or have disputed/contested claims on non-deleted messages.
 2. It then queries `prisma.thread.findMany` with cursor batches of 100, ordered
-   by `id`, using the same eligibility predicates.
+   by `id`, using the same eligibility predicates (claim-ineligible threads excluded).
 3. For each candidate, `synthesizedContent = aiSummary.trim()`. Missing/blank
    summaries are skipped.
 4. An existing page with identical content is left untouched (`unchanged`), so

@@ -136,7 +136,19 @@ export async function getPublicThreadMessages(threadId: string, limit = 50): Pro
 export const getPublicKnowledgeBySlug = cache(async (slug: string) => {
   return prisma.knowledgePage.findFirst({
     where: {
-      thread: { slug, visibility: 'PUBLIC', deletedAt: null, isOutdated: false, verifiedAt: { not: null } },
+      thread: {
+        slug,
+        visibility: 'PUBLIC',
+        deletedAt: null,
+        isOutdated: false,
+        verifiedAt: { not: null },
+        messages: {
+          none: {
+            deletedAt: null,
+            claims: { some: { status: { in: ['DISPUTED', 'CONTESTED'] } } },
+          },
+        },
+      },
     },
     select: {
       id: true,

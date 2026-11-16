@@ -7,7 +7,8 @@ import {
   shouldSoftHidePublicThread,
 } from '@/lib/public-content/thread';
 import { ROUTES } from '@/lib/config/routes';
-import { explainResolution } from '@/lib/utils/resolution-explanation';
+import { explainResolution, summarizeClaimSignal } from '@/lib/utils/resolution-explanation';
+import { prisma } from '@/lib/infrastructure/prisma';
 
 export const revalidate = 300;
 
@@ -46,12 +47,18 @@ export default async function KnowledgePage({ params }: Props) {
   if (shouldSoftHidePublicThread(pendingReports)) notFound();
 
   const thread = page.thread as typeof page.thread & { isOutdated?: boolean | null; verifiedBy?: string | null };
+  const claimRows = await prisma.claim.findMany({
+    where: { message: { threadId: page.thread.id, deletedAt: null } },
+    select: { status: true },
+  });
+  const claimSignal = summarizeClaimSignal(claimRows);
   const trustExplanation = explainResolution({
     score: thread.resolutionScore,
     verifiedAt: thread.verifiedAt,
     verifiedBy: thread.verifiedBy ?? null,
     lastVerifiedAt: thread.lastVerifiedAt,
     isOutdated: thread.isOutdated ?? false,
+    claimSignal,
   });
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const canonical = `${siteUrl}/k/${page.thread.slug}`;

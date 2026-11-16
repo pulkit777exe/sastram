@@ -30,6 +30,17 @@ const EMPTY_RESULT: KnowledgePromotionResult = {
   skipped: 0,
 };
 
+const BLOCKING_CLAIM_STATUSES = ['DISPUTED', 'CONTESTED'] as ('DISPUTED' | 'CONTESTED')[];
+
+const HAS_BLOCKING_CLAIMS = {
+  messages: {
+    some: {
+      deletedAt: null,
+      claims: { some: { status: { in: BLOCKING_CLAIM_STATUSES } } },
+    },
+  },
+};
+
 const INELIGIBLE_PAGE_THREAD = {
   OR: [
     { deletedAt: { not: null } },
@@ -38,6 +49,7 @@ const INELIGIBLE_PAGE_THREAD = {
     { verifiedAt: null },
     { resolutionScore: null },
     { resolutionScore: { lte: KNOWLEDGE_PROMOTION_THRESHOLD } },
+    HAS_BLOCKING_CLAIMS,
   ],
 };
 
@@ -80,6 +92,7 @@ export async function promoteThreadsToKnowledgePages(): Promise<KnowledgePromoti
             isOutdated: false,
             visibility: 'PUBLIC',
             deletedAt: null,
+            NOT: HAS_BLOCKING_CLAIMS,
             ...(cursor ? { id: { gt: cursor } } : {}),
           },
           select: {

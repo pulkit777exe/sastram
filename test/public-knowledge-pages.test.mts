@@ -36,7 +36,19 @@ describe('public knowledge routes', () => {
     const result = await getPublicKnowledgeBySlug('private-thread');
     expect(result).to.equal(null);
     expect(capturedWhere).to.deep.equal({
-      thread: { slug: 'private-thread', visibility: 'PUBLIC', deletedAt: null, isOutdated: false, verifiedAt: { not: null } },
+      thread: {
+        slug: 'private-thread',
+        visibility: 'PUBLIC',
+        deletedAt: null,
+        isOutdated: false,
+        verifiedAt: { not: null },
+        messages: {
+          none: {
+            deletedAt: null,
+            claims: { some: { status: { in: ['DISPUTED', 'CONTESTED'] } } },
+          },
+        },
+      },
     });
   });
 

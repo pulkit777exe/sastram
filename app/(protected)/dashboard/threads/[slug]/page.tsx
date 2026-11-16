@@ -11,6 +11,7 @@ import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
 import { prisma } from '@/lib/infrastructure/prisma';
 import ThreadResolutionCard from '@/components/panels/ThreadResolutionCard';
+import { summarizeClaimSignal } from '@/lib/utils/resolution-explanation';
 import RelatedThreadsCard from '@/components/panels/RelatedThreadsCard';
 import ParticipantsCard from '@/components/panels/ParticipantsCard';
 import { ForkRelationCard } from '@/components/thread/ForkRelationCard';
@@ -154,6 +155,8 @@ async function ThreadSidebar({
   const MAX_VISIBLE_TOPICS = 4;
   const threadDna = parseThreadDna(thread.threadDna);
   const visibleTopics = threadDna ? threadDna.topics.slice(0, MAX_VISIBLE_TOPICS) : [];
+  const messages = (thread as unknown as { messages?: Array<{ claims?: Array<{ status: string }> }> }).messages ?? [];
+  const claimSignal = summarizeClaimSignal(messages.flatMap((m) => m.claims ?? []));
 
     return (
     <aside className="flex flex-col gap-4 p-5">
@@ -167,6 +170,7 @@ async function ThreadSidebar({
         verifiedAt={(thread as unknown as { verifiedAt?: Date | null }).verifiedAt ?? null}
         verifiedBy={(thread as unknown as { verifiedBy?: string | null }).verifiedBy ?? null}
         isOutdated={(thread as unknown as { isOutdated?: boolean | null }).isOutdated ?? null}
+        claimSignal={claimSignal}
       />
 
       <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} messageCount={thread._count.messages} />

@@ -36,12 +36,20 @@ describe('knowledge promotion', () => {
 
     const result = await promoteThreadsToKnowledgePages();
 
-    expect(candidateWhere).to.deep.include({
+    expect(candidateWhere).to.deep.equal({
       visibility: 'PUBLIC',
       isOutdated: false,
       deletedAt: null,
       verifiedAt: { not: null },
       resolutionScore: { gt: KNOWLEDGE_PROMOTION_THRESHOLD },
+      NOT: {
+        messages: {
+          some: {
+            deletedAt: null,
+            claims: { some: { status: { in: ['DISPUTED', 'CONTESTED'] } } },
+          },
+        },
+      },
     });
     expect(upserts).to.have.lengthOf(1);
     expect(upserts[0]).to.deep.equal({
@@ -161,6 +169,14 @@ describe('knowledge promotion', () => {
           { verifiedAt: null },
           { resolutionScore: null },
           { resolutionScore: { lte: KNOWLEDGE_PROMOTION_THRESHOLD } },
+          {
+            messages: {
+              some: {
+                deletedAt: null,
+                claims: { some: { status: { in: ['DISPUTED', 'CONTESTED'] } } },
+              },
+            },
+          },
         ],
       },
     });
