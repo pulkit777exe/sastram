@@ -42,7 +42,8 @@ and `skipped`.
 
 - `vercel.json` schedules `/api/cron/promote-knowledge` at `0 5 * * *` (daily 05:00 UTC).
 - Vercel invokes cron paths with `GET`; the route exports `GET`.
-- The standalone cron is the only trigger; `update-threads` does not run promotion.
+- The standalone cron is the primary/global reconciler; targeted best-effort reconciliation also runs for claim/promotion-relevant thread changes (e.g. claim votes, verification, summary/score updates, outdated transitions) to reduce convergence latency for affected threads.
+- `update-threads` does not run full promotion.
 - `verifyCronAuth` with `CRON_SECRET` Bearer `timingSafeEqual`.
 
 ## Thresholds
