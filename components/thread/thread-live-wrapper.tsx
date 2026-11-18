@@ -61,7 +61,7 @@ function EmptyThreadState({ title, onCreatePoll }: { title: string; onCreatePoll
             </button>
             <button type="button" onClick={onCreatePoll} className="text-left rounded-card border border-line bg-canvas hover:bg-hover p-3.5 transition-colors">
               <span className="text-[12.5px] font-semibold text-ink">Create a poll</span>
-              <span className="block text-[12px] leading-relaxed text-ink-2 mt-1.5">Use a poll when you need consensus — results feed the resolution score.</span>
+              <span className="block text-[12px] leading-relaxed text-ink-2 mt-1.5">Use a poll when you need consensus — results feed the AI-estimated resolution score.</span>
             </button>
           </div>
           <p className="text-[11px] text-ink-3 mt-4">Tip: first message determines the thread’s question type and read time. Be specific.</p>

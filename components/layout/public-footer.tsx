@@ -49,6 +49,15 @@ export function PublicFooter() {
               <Link href="/terms" className="block hover:text-white transition-colors">
                 Terms
               </Link>
+              <Link href="/cookies" className="block hover:text-white transition-colors">
+                Cookies
+              </Link>
+              <Link href="/ai-use" className="block hover:text-white transition-colors">
+                AI Use
+              </Link>
+              <Link href="/dmca" className="block hover:text-white transition-colors">
+                Copyright &amp; Takedown
+              </Link>
             </div>
           </div>
           <div>

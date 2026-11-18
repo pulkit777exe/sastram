@@ -127,11 +127,11 @@ export default async function CanvasPage({
   })();
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <main className="p-6 max-w-6xl mx-auto">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-serif-heading text-xl">Research Canvas</h1>
-          <p className="text-xs text-ink-3 mt-1">Compare two threads side-by-side. AI diff via <code>crossReference</code> tier sort + conflict detection.</p>
+          <p className="text-xs text-ink-3 mt-1">Compare two threads side-by-side. AI diff (AI-estimated) via <code>crossReference</code> tier sort + conflict detection.</p>
           <p className="text-xs text-ink-3 mt-1">
             Pick threads via <code>?left=&lt;id&gt;&amp;right=&lt;id&gt;</code> or <Link href="/dashboard/threads" className="underline hover:text-ink">browse threads</Link>.
           </p>
@@ -197,6 +197,6 @@ export default async function CanvasPage({
           <p className="text-xs font-medium text-ink-3">AI diff unavailable — check GEMINI key or try again.</p>
         </div>
       ) : null}
-    </div>
+    </main>
   );
 }

@@ -11,9 +11,11 @@ import { parseThreadDna } from '@/lib/schemas/thread-dna';
 import { ThreadSummaryCard } from '@/components/thread/thread-summary-card';
 import { prisma } from '@/lib/infrastructure/prisma';
 import ThreadResolutionCard from '@/components/panels/ThreadResolutionCard';
+import { summarizeClaimSignal } from '@/lib/utils/resolution-explanation';
 import RelatedThreadsCard from '@/components/panels/RelatedThreadsCard';
 import ParticipantsCard from '@/components/panels/ParticipantsCard';
 import { ForkRelationCard } from '@/components/thread/ForkRelationCard';
+import { ForkLineageBreadcrumb } from '@/components/thread/fork-lineage-breadcrumb';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThreadDetailsPanel } from '@/components/thread/thread-details-panel';
 import { DetailCard } from '@/components/ui/detail-card';
@@ -153,6 +155,8 @@ async function ThreadSidebar({
   const MAX_VISIBLE_TOPICS = 4;
   const threadDna = parseThreadDna(thread.threadDna);
   const visibleTopics = threadDna ? threadDna.topics.slice(0, MAX_VISIBLE_TOPICS) : [];
+  const messages = (thread as unknown as { messages?: Array<{ claims?: Array<{ status: string }> }> }).messages ?? [];
+  const claimSignal = summarizeClaimSignal(messages.flatMap((m) => m.claims ?? []));
 
     return (
     <aside className="flex flex-col gap-4 p-5">
@@ -165,6 +169,8 @@ async function ThreadSidebar({
         lastVerifiedAt={thread.lastVerifiedAt}
         verifiedAt={(thread as unknown as { verifiedAt?: Date | null }).verifiedAt ?? null}
         verifiedBy={(thread as unknown as { verifiedBy?: string | null }).verifiedBy ?? null}
+        isOutdated={(thread as unknown as { isOutdated?: boolean | null }).isOutdated ?? null}
+        claimSignal={claimSignal}
       />
 
       <ThreadSummaryCard threadId={thread.id} initialSummary={thread.aiSummary} messageCount={thread._count.messages} />
@@ -203,7 +209,11 @@ async function ThreadSidebar({
 
       <RelatedThreadsCard threadId={thread.id} />
 
-      <ForkRelationCard threadId={thread.id} />
+      <ForkRelationCard
+        threadId={thread.id}
+        currentUserId={session.user.id}
+        isParentOp={thread.createdBy === session.user.id}
+      />
 
       <ParticipantsCard threadId={thread.id} ownerId={thread.createdBy} />
 
@@ -229,6 +239,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ slug: s
   return (
     <div className="flex h-full w-full overflow-hidden">
       <main className="flex min-w-0 flex-1 flex-col">
+        <ForkLineageBreadcrumb threadId={thread.id} />
         <Suspense fallback={<ThreadContentSkeleton />}>
           <ThreadContent thread={thread} session={session} />
         </Suspense>

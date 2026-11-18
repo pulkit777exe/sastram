@@ -39,7 +39,7 @@ async function main() {
 
   // Probe tag for the tag-manager flow in thread-edit.spec.ts.
   // Fixed valid cuid id so the attach action passes Zod validation.
-  await prisma.threadTag.upsert({
+  const probeTag = await prisma.threadTag.upsert({
     where: { slug: 'e2eprobe' },
     update: {},
     create: {
@@ -48,6 +48,12 @@ async function main() {
       slug: 'e2eprobe',
       color: '#3736fc',
     },
+  });
+  // Attach to fixture thread so it appears in popular-tag suggestions (getPopularTags filters to tags on visible threads).
+  await prisma.threadTagRelation.upsert({
+    where: { threadId_tagId: { threadId: thread.id, tagId: probeTag.id } },
+    update: {},
+    create: { threadId: thread.id, tagId: probeTag.id },
   });
 
   console.log(`SEEDED THREAD: ${thread.id} ${FIXTURE_SLUG}`);

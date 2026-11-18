@@ -291,40 +291,27 @@ export function PreferencesForm({ user }: PreferencesFormProps) {
                 <SelectItem value="expert">Expert</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">Sai adjusts synthesis depth. Auto-inferred from your threads, override here.</p>
+            <p className="text-xs text-muted-foreground">Sai adjusts synthesis depth (AI-estimated/inferred from your threads). Override anytime.</p>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-base font-medium text-foreground">Deep Research</Label>
-              <p className="text-sm text-muted-foreground">Enable 3-5 min async 20+ source research.</p>
+              <p className="text-sm text-muted-foreground">Enable async multi-source research (quota-guarded on free tier).</p>
             </div>
             <Switch checked={(prefs as unknown as { deepResearchEnabled?: boolean }).deepResearchEnabled ?? true} onCheckedChange={(v) => void updatePreference('deepResearchEnabled' as keyof UserPreferences, v as unknown as UserPreferences[keyof UserPreferences])} />
           </div>
-        </div>
-      </div>
 
-      <div className="rounded-card border border-line bg-surface p-6 shadow-card">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-control bg-brand/10 text-brand">
-            <Shield className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Trust &amp; Provenance</h2>
-            <p className="text-sm text-muted-foreground">Verified resolution and source provenance are always visible to keep research trustworthy.</p>
-          </div>
-        </div>
-
-        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-base font-medium text-foreground">Challenge Mode</Label>
-              <p className="text-sm text-muted-foreground">Allow anyone to challenge claims with counter-sources.</p>
+              <p className="text-sm text-muted-foreground">Allow challenges with counter-sources to re-check AI-estimated signals.</p>
             </div>
             <Switch checked={(prefs as unknown as { challengeModeEnabled?: boolean }).challengeModeEnabled ?? true} onCheckedChange={(v) => void updatePreference('challengeModeEnabled' as keyof UserPreferences, v as unknown as UserPreferences[keyof UserPreferences])} />
           </div>
+
           <p className="text-xs text-ink-3 rounded-control bg-field border border-line px-3 py-2">
-            Collections, Graph explorer, Source provenance, and Verified resolution are always enabled — no toggle needed.
+            Collections, Graph explorer, Source provenance, and Verified resolution are always available. AI scores and summaries are AI-estimated unless human-verified.
           </p>
         </div>
       </div>

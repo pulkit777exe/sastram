@@ -4,9 +4,10 @@ import { logger } from '@/lib/infrastructure/logger';
 /**
  * KnowledgePage auto-promotion.
  *
- * KISS: query threads where resolutionScore > 85 and verifiedAt is not null,
- * then upsert a KnowledgePage with synthesizedContent from thread.aiSummary
- * (fallback to description / name). No complex versioning — version stays at 1.
+ * A thread is promotable only while it is public, live, verified, not stale,
+ * and above the resolution threshold. Pages that stop meeting those criteria
+ * are removed (unpublished) on the next run. Content is the AI summary only:
+ * the thread name/description is not a knowledge page.
  */
 
 export const KNOWLEDGE_PROMOTION_THRESHOLD = 85;
@@ -15,13 +16,130 @@ export type KnowledgePromotionResult = {
   candidates: number;
   created: number;
   updated: number;
+  unchanged: number;
+  demoted: number;
   skipped: number;
 };
+
+const EMPTY_RESULT: KnowledgePromotionResult = {
+  candidates: 0,
+  created: 0,
+  updated: 0,
+  unchanged: 0,
+  demoted: 0,
+  skipped: 0,
+};
+
+const BLOCKING_CLAIM_STATUSES = ['DISPUTED', 'CONTESTED'] as ('DISPUTED' | 'CONTESTED')[];
+
+const HAS_BLOCKING_CLAIMS = {
+  messages: {
+    some: {
+      deletedAt: null,
+      claims: { some: { status: { in: BLOCKING_CLAIM_STATUSES } } },
+    },
+  },
+};
+
+const INELIGIBLE_PAGE_THREAD = {
+  OR: [
+    { deletedAt: { not: null } },
+    { visibility: { not: 'PUBLIC' as const } },
+    { isOutdated: true },
+    { verifiedAt: null },
+    { resolutionScore: null },
+    { resolutionScore: { lte: KNOWLEDGE_PROMOTION_THRESHOLD } },
+    HAS_BLOCKING_CLAIMS,
+  ],
+};
+
+/**
+ * Remove pages whose thread is no longer a public, verified, current answer.
+ * The relation filter is one query and also covers rows whose thread was
+ * deleted (the FK cascade normally removes those first).
+ */
+async function demoteIneligiblePages(): Promise<number> {
+  const result = await prisma.knowledgePage.deleteMany({
+    where: { thread: INELIGIBLE_PAGE_THREAD },
+  });
+  return result.count;
+}
+
+/**
+ * Best-effort targeted reconciliation for a single thread.
+ * Reduces cron-convergence latency for claim/promotion-relevant changes.
+ */
+export async function reconcileKnowledgePageForThread(threadId: string): Promise<void> {
+  try {
+    const thread = await prisma.thread.findUnique({
+      where: { id: threadId },
+      select: {
+        id: true,
+        aiSummary: true,
+        visibility: true,
+        deletedAt: true,
+        isOutdated: true,
+        verifiedAt: true,
+        resolutionScore: true,
+        messages: {
+          where: { deletedAt: null, claims: { some: { status: { in: BLOCKING_CLAIM_STATUSES } } } },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+
+    const eligible =
+      !!thread &&
+      thread.visibility === 'PUBLIC' &&
+      thread.deletedAt === null &&
+      thread.isOutdated === false &&
+      thread.verifiedAt !== null &&
+      (thread.resolutionScore ?? 0) > KNOWLEDGE_PROMOTION_THRESHOLD &&
+      thread.messages.length === 0;
+
+    if (!eligible) {
+      await prisma.knowledgePage.deleteMany({ where: { threadId } });
+      return;
+    }
+
+    const synthesizedContent = thread.aiSummary?.trim() ?? '';
+    if (!synthesizedContent) {
+      await prisma.knowledgePage.deleteMany({ where: { threadId } });
+      return;
+    }
+
+    const existing = await prisma.knowledgePage.findUnique({
+      where: { threadId },
+      select: { id: true, synthesizedContent: true },
+    });
+    if (existing?.synthesizedContent === synthesizedContent) return;
+
+    await prisma.knowledgePage.upsert({
+      where: { threadId },
+      create: { threadId, synthesizedContent, version: 1 },
+      update: { synthesizedContent, version: { increment: 1 } },
+    });
+  } catch (error) {
+    logger.error('[knowledge-promotion] targeted reconcile failed', error, { threadId });
+  }
+}
 
 export async function promoteThreadsToKnowledgePages(): Promise<KnowledgePromotionResult> {
   // Best-effort: outer catch ensures never throws unhandled (KISS).
   try {
-    let threads: Array<{ id: string; name: string; aiSummary: string | null; description: string | null }>;
+    let demoted = 0;
+    try {
+      demoted = await demoteIneligiblePages();
+      if (demoted > 0) {
+        logger.info('[knowledge-promotion] demoted ineligible pages', { demoted });
+      }
+    } catch (error) {
+      // Demotion is best-effort too; promotion can still run.
+      logger.error('[knowledge-promotion] failed to demote ineligible pages', error);
+    }
+
+    let threads: Array<{ id: string; aiSummary: string | null }>;
     try {
       const batchSize = 100;
       threads = [];
@@ -31,14 +149,15 @@ export async function promoteThreadsToKnowledgePages(): Promise<KnowledgePromoti
           where: {
             resolutionScore: { gt: KNOWLEDGE_PROMOTION_THRESHOLD },
             verifiedAt: { not: null },
+            isOutdated: false,
+            visibility: 'PUBLIC',
             deletedAt: null,
+            NOT: HAS_BLOCKING_CLAIMS,
             ...(cursor ? { id: { gt: cursor } } : {}),
           },
           select: {
             id: true,
-            name: true,
             aiSummary: true,
-            description: true,
           },
           orderBy: { id: 'asc' },
           take: batchSize,
@@ -49,64 +168,56 @@ export async function promoteThreadsToKnowledgePages(): Promise<KnowledgePromoti
       }
     } catch (error) {
       logger.error('[knowledge-promotion] failed to fetch candidates', error);
-      return { candidates: 0, created: 0, updated: 0, skipped: 0 };
+      return { ...EMPTY_RESULT, demoted };
     }
 
-    // Handle missing threads (no candidates)
-    if (!threads || threads.length === 0) {
-      logger.info('[knowledge-promotion] no candidates', {
-        candidates: 0,
-        created: 0,
-        updated: 0,
-        skipped: 0,
-      });
-      return { candidates: 0, created: 0, updated: 0, skipped: 0 };
+    if (threads.length === 0) {
+      logger.info('[knowledge-promotion] no candidates', { ...EMPTY_RESULT, demoted });
+      return { ...EMPTY_RESULT, demoted };
     }
 
     let created = 0;
     let updated = 0;
+    let unchanged = 0;
     let skipped = 0;
 
     for (const thread of threads) {
       try {
-        // Handle missing thread object / missing id
         if (!thread || !thread.id) {
           logger.warn('[knowledge-promotion] skipped thread with missing id', { thread });
           skipped++;
           continue;
         }
 
-        // Handle missing aiSummary — log fallback usage (KISS)
-        const hasAiSummary = typeof thread.aiSummary === 'string' && thread.aiSummary.trim().length > 0;
-        if (!hasAiSummary) {
-          logger.info('[knowledge-promotion] thread missing aiSummary, using fallback', {
-            threadId: thread.id,
-          });
-        }
-
-        const synthesizedContent =
-          thread.aiSummary?.trim() || thread.description?.trim() || thread.name?.trim() || '';
-
+        // A real AI summary is required. Falling back to the thread name or
+        // description produced thin, low-value pages; skip instead.
+        const synthesizedContent = thread.aiSummary?.trim() ?? '';
         if (!synthesizedContent) {
-          logger.warn('[knowledge-promotion] skipped thread with empty content', {
+          logger.info('[knowledge-promotion] skipped thread without aiSummary', {
             threadId: thread.id,
           });
           skipped++;
           continue;
         }
 
-        // Idempotent check — DB errors per thread must not block others
-        let existing: { id: string } | null = null;
+        // Read the current page so version only advances on a real content change.
+        let existing: { id: string; synthesizedContent: string; version: number } | null = null;
         try {
           existing = await prisma.knowledgePage.findUnique({
             where: { threadId: thread.id },
-            select: { id: true },
+            select: { id: true, synthesizedContent: true, version: true },
           });
         } catch (error) {
           logger.error('[knowledge-promotion] failed to check existing page', error, {
             threadId: thread.id,
           });
-          // Best-effort: continue to upsert attempt; if upsert also fails we skip
+          skipped++;
+          continue;
+        }
+
+        if (existing && existing.synthesizedContent === synthesizedContent) {
+          unchanged++;
+          continue;
         }
 
         try {
@@ -119,6 +230,7 @@ export async function promoteThreadsToKnowledgePages(): Promise<KnowledgePromoti
             },
             update: {
               synthesizedContent,
+              version: { increment: 1 },
             },
           });
         } catch (error) {
@@ -144,18 +256,20 @@ export async function promoteThreadsToKnowledgePages(): Promise<KnowledgePromoti
       }
     }
 
-    logger.info('[knowledge-promotion]', {
+    const result = {
       candidates: threads.length,
       created,
       updated,
+      unchanged,
+      demoted,
       skipped,
-    });
-
-    return { candidates: threads.length, created, updated, skipped };
+    };
+    logger.info('[knowledge-promotion]', result);
+    return result;
   } catch (error) {
     // Absolute safety net — never throws unhandled
     logger.error('[knowledge-promotion] unexpected fatal error', error);
-    return { candidates: 0, created: 0, updated: 0, skipped: 0 };
+    return { ...EMPTY_RESULT };
   }
 }
 

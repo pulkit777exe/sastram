@@ -27,6 +27,7 @@ export enum AiCallPath {
   DAILY_DIGEST = 'daily_digest',
   QUERY_WARMING = 'query_warming',
   DEEP_RESEARCH = 'deep_research',
+  EMBEDDING = 'embedding',
 }
 
 export interface AiCostClassification {
@@ -43,6 +44,7 @@ export const CHEAP_PATHS: readonly AiCallPath[] = [
   AiCallPath.THREAD_DNA,
   AiCallPath.RESOLUTION_SCORE,
   AiCallPath.CONFLICT_DETECTION,
+  AiCallPath.EMBEDDING,
 ];
 
 export const EXPENSIVE_PATHS: readonly AiCallPath[] = [
@@ -74,6 +76,8 @@ const ESTIMATED_COST_USD: Record<AiCallPath, number> = {
   // and Tavily advanced retrieval, so it is deliberately estimated above the
   // $0.05 synth-only floor: ~$0.08/run keeps the $5 cap honest after ~60 runs.
   [AiCallPath.DEEP_RESEARCH]: 0.08,
+  // Gemini text-embedding-004 is effectively free-tier; keep a tiny estimate for spend-cap accounting.
+  [AiCallPath.EMBEDDING]: 0.0001,
 };
 
 const DEFAULT_ESTIMATED_COST_USD = 0.01;

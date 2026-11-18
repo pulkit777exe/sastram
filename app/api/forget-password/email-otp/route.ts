@@ -30,10 +30,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(fail('VALIDATION_ERROR', 'Invalid email address'), { status: HTTP_STATUS.BAD_REQUEST });
     }
 
-    // TODO(enumeration): Better Auth 1.7.x forgetPasswordEmailOTP returns success for unknown
-    // accounts; keep conservative generic responses here and avoid any change that could
-    // regress the reset flow or leak existence via timing/status differences.
-    const data = await auth.api.forgetPasswordEmailOTP({
+    // TODO(enumeration): Better Auth 1.7.x requestPasswordResetEmailOTP returns
+    // success for unknown accounts (it drops the pending OTP and responds
+    // { success: true }); keep conservative generic responses here and avoid any
+    // change that could regress the reset flow or leak existence via timing/status
+    // differences.
+    const data = await auth.api.requestPasswordResetEmailOTP({
       body: validation.data,
       headers: request.headers,
     });

@@ -6,7 +6,7 @@ import type { SSEPhase } from '@/components/ai-search/PhaseTracker';
 import type { HistoryItem } from '@/components/ai-search/sai-search-layout';
 import { getStoredApiKeys, type ApiKeyIssue } from '@/components/ai-search/ApiKeysModal';
 import { parseSSE } from '@/lib/utils/sse';
-import type { SearchConfig, Source, SynthesisResult, Citation } from '@/modules/ai-search/types';
+import type { SearchConfig, Source, SynthesisResult, Citation, ResearchEvidence } from '@/modules/ai-search/types';
 
 export interface ChatMessage {
   id: string;
@@ -19,6 +19,8 @@ export interface ChatMessage {
   conflictData?: SynthesisResult['conflictData'];
   queryType?: SynthesisResult['queryType'];
   sourceCount?: number;
+  sessionId?: string;
+  evidence?: ResearchEvidence[];
   timestamp: number;
 }
 
@@ -28,7 +30,7 @@ export const DEFAULT_CONFIG: SearchConfig = {
   exaMode: 'agentic',
   tavilyMode: 'search',
   sourceFilter: 'all',
-  searchMode: 'standard',
+  searchMode: 'pro',
 };
 
 export const SEARCH_PHASES: { id: string; label: string }[] = [
@@ -99,6 +101,7 @@ interface PendingSearch {
   query: string;
   config: SearchConfig;
   sessionId?: string;
+  forceRefresh?: boolean;
 }
 
 // ViewTransition in React 19 only animates async state changes.
@@ -139,7 +142,8 @@ export function buildRequestBody(
   config: SearchConfig,
   keys: Partial<{ exa: string; tavily: string; gemini: string }>,
   conversationHistory: { role: string; content: string }[],
-  sessionId?: string
+  sessionId?: string,
+  forceRefresh?: boolean
 ): Record<string, unknown> {
   const body: Record<string, unknown> = {
     query,
@@ -148,6 +152,7 @@ export function buildRequestBody(
     conversationHistory,
   };
   if (sessionId) body.sessionId = sessionId;
+  if (forceRefresh) body.forceRefresh = true;
   return body;
 }
 
@@ -171,7 +176,7 @@ export function handleStatusError(status: number, response: Response, ctx: { set
 
 export function buildFinalizedMessage(
   base: ChatMessage,
-  event: { synthesis?: SynthesisResult; sources?: Source[]; followUps?: string[] }
+  event: { synthesis?: SynthesisResult; sources?: Source[]; followUps?: string[]; sessionId?: string }
 ): ChatMessage {
   return {
     ...base,
@@ -182,6 +187,8 @@ export function buildFinalizedMessage(
     conflictData: event.synthesis?.conflictData,
     queryType: event.synthesis?.queryType,
     sourceCount: event.synthesis?.sourceCount,
+    sessionId: event.sessionId ?? base.sessionId,
+    evidence: event.synthesis?.evidence ?? base.evidence,
   };
 }
 
@@ -266,7 +273,15 @@ export function useSearchConversation(initialQuery: string = '') {
   }, [messages]);
 
   const run = useCallback(
-    async (q: string, config: SearchConfig, overrideSessionId?: string) => {
+    async (
+      q: string,
+      config: SearchConfig,
+      overrideSessionIdOrOptions?: string | { sessionId?: string; forceRefresh?: boolean }
+    ) => {
+      const runOptions =
+        typeof overrideSessionIdOrOptions === 'string'
+          ? { sessionId: overrideSessionIdOrOptions }
+          : overrideSessionIdOrOptions ?? {};
       const trimmed = validateQuery(q);
       if (!trimmed) return;
       const keys = getStoredApiKeys();
@@ -309,9 +324,10 @@ export function useSearchConversation(initialQuery: string = '') {
       armSlowTimer('searching');
 
       try {
-        const conversationHistory = buildConversationHistory(messagesRef.current);
-        const effectiveSessionId = overrideSessionId ?? sessionIdRef.current;
-        const body = buildRequestBody(trimmed, config, keys, conversationHistory, effectiveSessionId);
+        const forceRefresh = Boolean(runOptions.forceRefresh);
+        const conversationHistory = forceRefresh ? [] : buildConversationHistory(messagesRef.current);
+        const effectiveSessionId = runOptions.sessionId ?? sessionIdRef.current;
+        const body = buildRequestBody(trimmed, config, keys, conversationHistory, effectiveSessionId, forceRefresh);
 
         const response = await fetch('/api/ai/forum-search', {
           method: 'POST',
@@ -347,7 +363,7 @@ export function useSearchConversation(initialQuery: string = '') {
           if (apiError?.code === 'MISSING_API_KEYS' || apiError?.code === 'INVALID_API_KEYS') {
             // Keep the query pending, roll the optimistic bubbles back, and
             // let the key dialog retry once the user supplies valid keys.
-            pendingSearchRef.current = { query: trimmed, config, sessionId: effectiveSessionId };
+            pendingSearchRef.current = { query: trimmed, config, sessionId: effectiveSessionId, forceRefresh } as PendingSearch;
             setMessages((prev) => prev.filter((message) => message.id !== userMsg.id));
             streamingDataRef.current = null;
             setStreamingMessage(null);
@@ -427,7 +443,7 @@ export function useSearchConversation(initialQuery: string = '') {
       const pending = pendingSearchRef.current;
       if (!pending) return;
       pendingSearchRef.current = null;
-      void runRef.current(pending.query, pending.config, pending.sessionId);
+      void runRef.current(pending.query, pending.config, { sessionId: pending.sessionId, forceRefresh: pending.forceRefresh });
     };
     window.addEventListener('sastram:api-keys-saved', resumePendingSearch);
     return () => window.removeEventListener('sastram:api-keys-saved', resumePendingSearch);
@@ -491,6 +507,8 @@ export function useSearchConversation(initialQuery: string = '') {
         },
         queryType: (item.queryType as SynthesisResult['queryType']) || 'technical',
         sourceCount: item.sourceCount,
+        sessionId: item.id,
+        evidence: item.evidence ?? [],
         timestamp: new Date(item.createdAt).getTime(),
       };
       setMessages(() => [userMsg, assistantMsg]);
@@ -503,6 +521,14 @@ export function useSearchConversation(initialQuery: string = '') {
   const abort = useCallback(() => {
     abortRef.current?.abort();
   }, []);
+
+  const regenerate = useCallback(() => {
+    const lastAssistant = [...messagesRef.current].reverse().find((m) => m.role === 'assistant' && m.sessionId && m.query);
+    const sessionId = lastAssistant?.sessionId ?? sessionIdRef.current;
+    const queryText = lastAssistant?.query ?? [...messagesRef.current].reverse().find((m) => m.role === 'user')?.query;
+    if (!sessionId || !queryText || isStreaming) return;
+    void run(queryText, lastConfig, { sessionId, forceRefresh: true });
+  }, [isStreaming, lastConfig, run]);
 
   return {
     appState,
@@ -522,5 +548,6 @@ export function useSearchConversation(initialQuery: string = '') {
     newSearch,
     selectSession,
     abort,
+    regenerate,
   };
 }

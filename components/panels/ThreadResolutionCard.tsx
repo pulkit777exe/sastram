@@ -3,11 +3,12 @@
 // KISS: while the resolution score is pending, poll a lightweight GET
 // endpoint (one JSON row) instead of router.refresh() — the old approach
 // re-rendered the entire thread page every 4s just to catch one number.
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VerifyNowButton } from '@/components/thread/verify-now-button';
 import { computeConfidence } from '@/modules/threads/confidence-decay';
+import { explainResolution, type ResolutionClaimSignal } from '@/lib/utils/resolution-explanation';
 import { DetailCard } from '@/components/ui/detail-card';
 import { useNow } from '@/components/ui/use-now';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
@@ -18,6 +19,8 @@ interface ThreadResolutionCardProps {
   lastVerifiedAt: Date | string | null;
   verifiedAt?: Date | string | null;
   verifiedBy?: string | null;
+  isOutdated?: boolean | null;
+  claimSignal?: ResolutionClaimSignal | null;
 }
 
 function getLabel(score: number): string {
@@ -71,12 +74,14 @@ export default function ThreadResolutionCard({
   lastVerifiedAt,
   verifiedAt,
   verifiedBy,
+  isOutdated,
+  claimSignal,
 }: ThreadResolutionCardProps) {
   // Shared 30s tab clock (use-now) — was a per-card 60s interval.
   const now = useNow();
-  const { prefs } = useUserPreferences();
-  const verifiedEnabled = (prefs as unknown as { verifiedResolutionEnabled?: boolean }).verifiedResolutionEnabled !== false;
-  const decayEnabled = (prefs as unknown as { confidenceDecayEnabled?: boolean }).confidenceDecayEnabled !== false;
+  const { prefs: _prefs } = useUserPreferences();
+  const verifiedEnabled = true;
+  const decayEnabled = true;
   // Live values picked up by the poll; server props win until a poll lands.
   const [live, setLive] = useState<ScoreSnapshot | null>(null);
   const [timedOut, setTimedOut] = useState(false);
@@ -137,6 +142,19 @@ export default function ThreadResolutionCard({
   const isStale = confidence < 1;
   const effectiveScore = currentScore != null ? Math.round(currentScore * confidence) : null;
   const isVerified = !!currentVerifiedAt;
+  const explanation = useMemo(
+    () =>
+      explainResolution({
+        score: currentScore,
+        verifiedAt: currentVerifiedAt,
+        verifiedBy: currentVerifiedBy,
+        lastVerifiedAt: currentLastVerifiedAt,
+        isOutdated,
+        claimSignal,
+        now,
+      }),
+    [currentScore, currentVerifiedAt, currentVerifiedBy, currentLastVerifiedAt, isOutdated, claimSignal, now]
+  );
 
   if (currentScore === null) {
     if (!timedOut) {
@@ -197,7 +215,7 @@ export default function ThreadResolutionCard({
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-brand"><path d="M12 2l3.09 6.26L22 9.27l-5 5.14 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.12em] text-ink-3">Resolution</p>
+            <p className="text-xs uppercase tracking-[0.12em] text-ink-3">Resolution (AI-estimated)</p>
             <p className="text-xs text-ink-2 font-medium">{label}</p>
           </div>
         </div>
@@ -215,7 +233,7 @@ export default function ThreadResolutionCard({
         <div className="flex items-center gap-1.5">
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-            Verified
+            Human-verified
           </span>
           <span className="text-xs text-ink-3">
             by {currentVerifiedBy ? 'OP' : 'moderator'} {provenanceDays !== null ? `· ${provenanceDays}d ago` : ''}
@@ -224,13 +242,13 @@ export default function ThreadResolutionCard({
       )}
       {verifiedEnabled && !isVerified && provenanceDays !== null && (
         <p className="text-xs text-ink-3">
-          Last scored {provenanceDays}d ago · not yet verified
+          AI-estimated · last scored {provenanceDays}d ago · not yet human-verified
         </p>
       )}
 
       {decayEnabled && effectiveScore !== null && confidence < 1 && (
         <p className="text-xs text-ink-3">
-          Effective <span className="font-medium text-ink-2 tabular-nums">{effectiveScore}/100</span> at {Math.round(confidence * 100)}% confidence
+          Effective AI-estimated confidence <span className="font-medium text-ink-2 tabular-nums">{effectiveScore}/100</span> at {Math.round(confidence * 100)}%
         </p>
       )}
 
@@ -245,6 +263,40 @@ export default function ThreadResolutionCard({
           <VerifyNowButton threadId={threadId} />
         </div>
       )}
+
+      <div className="space-y-2 border-t border-line/60 pt-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Why this trust signal</p>
+        <ul className="space-y-1.5">
+          {explanation.factors.map((f) => (
+            <li key={f.key} className="text-xs leading-relaxed text-ink-2">
+              <span
+                className={
+                  f.tone === 'critical'
+                    ? 'font-medium text-sai-red'
+                    : f.tone === 'warning'
+                      ? 'font-medium text-sai-orange'
+                      : f.tone === 'positive'
+                        ? 'font-medium text-emerald-700'
+                        : 'font-medium text-ink'
+                }
+              >
+                {f.label}:
+              </span>{' '}
+              {f.detail}
+            </li>
+          ))}
+        </ul>
+        {explanation.hints.length > 0 && (
+          <div className="rounded-control bg-field px-2.5 py-2">
+            <p className="text-[11px] font-medium text-ink-3">How to strengthen trust</p>
+            <ul className="mt-1 space-y-0.5">
+              {explanation.hints.slice(0, 2).map((h) => (
+                <li key={h} className="text-xs text-ink-2">• {h}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </DetailCard>
   );
 }

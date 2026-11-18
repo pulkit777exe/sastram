@@ -25,7 +25,16 @@ const infraKvUrl = env.BETTER_AUTH_KV_URL ?? env.BETTER_AUTH_IDENTIFY_URL;
  * unexpected and must surface as a 500, not a client error.
  */
 export function isAuthApiError(error: unknown): error is APIError {
-  return error instanceof APIError;
+  if (error instanceof APIError) return true;
+  // Better Auth can be loaded through more than one module instance (CJS/ESM
+  // interop in tests, bundled server chunks). Fall back to the stable shape so
+  // expected client errors never become 500s in those cases.
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { name?: unknown }).name === 'APIError' &&
+    typeof (error as { statusCode?: unknown }).statusCode === 'number'
+  );
 }
 
 function buildSocialProviders() {

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Download, Trash2 } from 'lucide-react';
+import { signOut } from '@/lib/services/auth-client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,9 +62,15 @@ export function AccountDangerZone() {
         toast.error(result.error);
         return;
       }
-      toast.success('Account deleted. You will be redirected.');
+      toast.success('Account deleted. You will be signed out.');
       setShowDeleteDialog(false);
+      try {
+        await signOut();
+      } catch {
+        // Session is already invalidated server-side; continue redirect.
+      }
       router.push('/');
+      router.refresh();
     } catch {
       toast.error('Failed to delete account');
     } finally {

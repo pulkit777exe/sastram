@@ -2,15 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fail, HTTP_STATUS } from '@/lib/utils/api-response';
 import { guardAiRoute } from '@/lib/middleware/ai-guard-route';
 import { requireSessionOrThrow, type SessionPayload } from '@/modules/auth';
-import { AppError } from '@/lib/utils/errors';
 import { isAbortError } from '@/lib/utils/retry';
 import { AiCallPath } from '@/lib/services/ai-cost-classification';
 import { logger } from '@/lib/infrastructure/logger';
 import { executeAISearch } from '@/modules/ai-search/service';
 import { cacheResult } from '@/modules/ai-search/cache';
-import { searchWithExa, searchWithTavily } from '@/modules/ai-search/search-providers';
 import { createKeyedLlm } from '@/lib/ai/text';
-import { persistSearchSession } from '@/modules/ai-search/repository';
+import { appendSearchResultToSession, persistSearchSession } from '@/modules/ai-search/repository';
 import { sseChunk, sseEvent, sseHeaders } from '@/lib/utils/sse';
 import { getUserExpertiseLevel, refreshUserExpertise } from '@/lib/services/user-memory';
 import {
@@ -33,15 +31,8 @@ import {
 } from '@/modules/ai-search/route-helpers';
 
 export const maxDuration = 30;
-
-/** ~25s budget, below maxDuration (30s) so the stream can emit an error and close. */
 const AI_SEARCH_DEADLINE_MS = 25_000;
 
-/**
- * Route-level deadline: aborts on the caller's signal (SSE client close) or
- * after AI_SEARCH_DEADLINE_MS, whichever comes first. The signal stops the
- * remaining paid phases and in-flight provider fetches.
- */
 function createDeadline(request: NextRequest): { signal: AbortSignal; clear: () => void } {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_SEARCH_DEADLINE_MS);
@@ -60,15 +51,15 @@ function createDeadline(request: NextRequest): { signal: AbortSignal; clear: () 
   };
 }
 
-/** Session gate for the pre-guard preflight (cache/idempotency) paths. */
 async function requireSessionForPreflight(): Promise<
   { ok: true; session: SessionPayload } | { ok: false; response: NextResponse }
 > {
   try {
     return { ok: true, session: await requireSessionOrThrow() };
   } catch (error) {
-    if (AppError.isAppError(error) && error.code === 'AUTH_REQUIRED') {
-      // Mirror ai-guard-route's SSE unauthorized shape.
+    const code = (error as { code?: string } | null)?.code;
+    const status = (error as { statusCode?: number } | null)?.statusCode;
+    if (code === 'AUTH_REQUIRED' || status === HTTP_STATUS.UNAUTHORIZED) {
       return {
         ok: false,
         response: new NextResponse(sseEvent('error', { error: 'Unauthorized' }), {
@@ -81,9 +72,16 @@ async function requireSessionForPreflight(): Promise<
   }
 }
 
+function normalizeMode(mode: SearchRequest['config']['searchMode']): SearchRequest['config']['searchMode'] {
+  if (mode === 'standard' || mode === 'table') return 'pro';
+  if (mode === 'advanced') return 'deep';
+  if (mode === 'instant') return 'quick';
+  return mode;
+}
+
 function buildLiveStream(
   request: NextRequest,
-  session: { user: { id: string } },
+  session: { user: { id: string; role?: string } },
   params: {
     effectiveQuery: string;
     config: SearchRequest['config'];
@@ -95,6 +93,7 @@ function buildLiveStream(
     expertiseLevel?: string;
     signal: AbortSignal;
     clearDeadline: () => void;
+    forceRefresh?: boolean;
   }
 ): Response {
   const encoder = new TextEncoder();
@@ -117,11 +116,7 @@ function buildLiveStream(
 
       try {
         sendEvent({ phase: 'searching' });
-
-        // Expertise is pre-loaded by the caller when available; fall back
-        // to a load here so direct buildLiveStream callers keep working.
         const expertiseLevel = params.expertiseLevel ?? (await getUserExpertiseLevel(session.user.id));
-
         const searchKeys = {
           exa: params.keys.exaKey,
           tavily: params.keys.tavilyKey,
@@ -130,28 +125,14 @@ function buildLiveStream(
         };
         const result = await executeAISearch(params.effectiveQuery, params.config, {
           llm: createKeyedLlm({ gemini: searchKeys.gemini, openai: searchKeys.openai }),
-          search: {
-            exa: (query, classification, config) =>
-              searchWithExa(query, classification, searchKeys.exa, config, params.signal),
-            tavily: async (query, classification, config) => {
-              const { sources, answer } = await searchWithTavily(
-                query,
-                classification,
-                searchKeys.tavily,
-                config,
-                params.signal
-              );
-              return { sources, answer };
-            },
-          },
-          // No store: this route owns its read (tryGetCachedResult, above)
-          // and write (explicit cacheResult, below) with the same
-          // expertise key. Service-level read-through stays for
-          // store-bearing callers (workers, warming).
           store: undefined,
           history: params.conversationHistory,
           expertise: expertiseLevel,
           signal: params.signal,
+          viewerUserId: session.user.id,
+          viewerRole: session.user.role ?? null,
+          keys: { exa: searchKeys.exa || undefined, tavily: searchKeys.tavily || undefined },
+          bypassCache: params.forceRefresh,
         });
 
         sendEvent({ phase: 'reading', sources: result.sources });
@@ -163,31 +144,48 @@ function buildLiveStream(
             message: 'No results found for this query. Please try a different search.',
             errorCode: 'NO_RESULTS',
           });
-          controller.close();
+          safeClose();
           return;
         }
 
         sendEvent({ phase: 'synthesizing' });
 
-        let createdSessionId: string | undefined;
-        if (!params.hasHistory) {
-          createdSessionId = params.sessionId || crypto.randomUUID();
-          const sid = createdSessionId;
+        let emittedSessionId: string | undefined;
+        const regenerateExisting = Boolean(params.forceRefresh && params.sessionId);
+        if (regenerateExisting && params.sessionId) {
+          emittedSessionId = params.sessionId;
+          const appended = await appendSearchResultToSession(
+            session.user.id,
+            params.sessionId,
+            params.query,
+            result.synthesis,
+            result.sources,
+            result.followUps,
+            { timings: result.timings }
+          );
+          if (!appended) {
+            logger.warn('[forum-search] forced regeneration append skipped (session missing/not owned)', {
+              sessionId: params.sessionId,
+              userId: session.user.id,
+            });
+          }
+        } else if (!params.hasHistory) {
+          emittedSessionId = params.sessionId || crypto.randomUUID();
+          const sid = emittedSessionId;
           persistSearchSession(
             session.user.id,
             params.query,
             result.synthesis,
             result.sources,
             result.followUps,
-            {
-              id: sid,
-              title: deriveTitle(params.query),
-              timings: result.timings,
-            }
+            { id: sid, title: deriveTitle(params.query), timings: result.timings }
           ).catch((e) => logger.error('[forum-search] persist session failed', { error: e }));
         }
 
-        if (!params.hasHistory) {
+        // Avoid writing forced session regenerations to the shared query cache (explicit correction intent);
+        // normal/history-less runs still populate cache for read-through hits.
+        const shouldCacheResult = result.sources.length > 0 && !regenerateExisting && !params.forceRefresh;
+        if (shouldCacheResult) {
           cacheResult(params.query, result, result.synthesis.queryType, expertiseLevel).catch((e) =>
             logger.error('[forum-search] cache write failed', { error: e })
           );
@@ -201,7 +199,7 @@ function buildLiveStream(
           phase: 'done',
           synthesis: result.synthesis,
           followUps: result.followUps,
-          sessionId: createdSessionId,
+          sessionId: emittedSessionId,
           sources: result.sources,
         });
         safeClose();
@@ -232,18 +230,17 @@ export async function POST(request: NextRequest) {
     const contentTypeError = validateContentType(request);
     if (contentTypeError) return contentTypeError;
 
-    // Throwing helpers: VALIDATION_ERROR (400) surfaces via mapTopLevelError,
-    // which passes AppError statuses through instead of flattening to 500.
     const data = validateSearchBody(await parseSearchJsonBody(request));
-
     const keys = resolveApiKeys(data.keys);
-    const missingResponse = missingKeysResponse(keys);
-    if (missingResponse) return missingResponse;
+    const { query, config, sessionId, clientNonce, conversationHistory, forceRefresh } = data;
+    const normalizedMode = normalizeMode(config.searchMode);
+    const effectiveConfig = { ...config, searchMode: normalizedMode };
+    const allowWebKeyless = normalizedMode === 'quick';
 
+    const missingResponse = missingKeysResponse(keys, { allowWebKeyless });
+    if (missingResponse) return missingResponse;
     const invalidResponse = invalidKeysResponse(keys);
     if (invalidResponse) return invalidResponse;
-
-    const { query, config, sessionId, clientNonce, conversationHistory } = data;
 
     if (!query || query.trim().length < QUERY_MIN) {
       return NextResponse.json(
@@ -252,7 +249,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate conversationHistory total chars before burning quota
     if (conversationHistory) {
       const totalHistoryChars = conversationHistory.reduce((acc, m) => acc + (m.content?.length ?? 0), 0);
       if (totalHistoryChars > 10000) {
@@ -263,9 +259,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Replay/cache preflight BEFORE the guard: a replayed nonce or a synthesis
-    // cache hit must not consume quota/spend. A session is still required;
-    // rate limiting is intentionally skipped for cache hits (a cheap DB read).
     const preflight = await requireSessionForPreflight();
     if (!preflight.ok) return preflight.response;
     const session = preflight.session;
@@ -277,7 +270,7 @@ export async function POST(request: NextRequest) {
     const hasHistory = conversationHistory !== undefined && conversationHistory.length > 0;
     const expertiseLevel = await getUserExpertiseLevel(session.user.id);
 
-    if (!hasHistory) {
+    if (!hasHistory && !forceRefresh) {
       const cached = await tryGetCachedResult(query, expertiseLevel);
       if (cached) {
         return buildCachedStream(cached);
@@ -293,10 +286,9 @@ export async function POST(request: NextRequest) {
     if (!guard.ok) return guard.response;
 
     const deadline = createDeadline(request);
-
     return buildLiveStream(request, session, {
       effectiveQuery,
-      config,
+      config: effectiveConfig,
       keys,
       conversationHistory,
       query,
@@ -305,6 +297,7 @@ export async function POST(request: NextRequest) {
       expertiseLevel,
       signal: deadline.signal,
       clearDeadline: deadline.clear,
+      forceRefresh,
     });
   } catch (error) {
     return mapTopLevelError(error);

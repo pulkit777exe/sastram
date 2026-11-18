@@ -249,12 +249,10 @@ export const updateUserPreferencesAction = withValidation(
       data: { preferences: newPrefs },
     });
 
-    if ('collectionsEnabled' in incomingPrefs) {
-      try {
-        const { invalidateCollectionsEnabledCache } = await import('@/modules/collections/enabled');
-        invalidateCollectionsEnabledCache(session.user.id);
-      } catch {}
-    }
+    try {
+      const { invalidateCollectionsEnabledCache } = await import('@/modules/collections/enabled');
+      invalidateCollectionsEnabledCache(session.user.id);
+    } catch {}
 
     revalidateSettingsPaths();
     return actionSuccess(null);

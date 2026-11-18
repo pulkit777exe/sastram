@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased] — Architecture Refactor (Rounds 1–4)
 
+### Fixed (Phase 2: security and correctness hardening)
+
+- **Single promotion trigger:** removed the knowledge-promotion call from `update-threads`; the standalone daily `GET /api/cron/promote-knowledge` is now the only trigger, with route tests and a source guard.
+- **Digest access N+1:** the daily digest now loads one bounded thread/invitation snapshot per subscription page and makes exact per-recipient decisions via `canReadFromSnapshot`; `user.findMany` / `threadInvitation.findMany` are gone from the digest path.
+- **Password-reset truth:** documented that email + password is a supported sign-in method, kept the reset modal/API, marked the orphaned standalone pages noindex, and moved the wrapper to Better Auth `requestPasswordResetEmailOTP`.
+- **Prisma adapter trust:** `pgbouncer=true` is appended only for Neon/pooler URLs in production; startup now logs `PrismaNeon` vs `PrismaPg`; added adapter-selection unit tests and a CI readiness assertion for `"database":"ok"`.
+- **Deployment runbook:** corrected the Compose + Neon override (literal `environment:` values), documented the Docker socket prerequisite and Neon cold-start retry, and added `"database":"ok"` to the Docker CI probe.
+
+### Added/Changed (Phase 7: cleanup, a11y, labeling)
+
+- **Moat toggle/gating cleanup:** removed redundant always-on preference plumbing/gating for `collectionsEnabled`, `graphEnabled`, `sourceProvenanceEnabled`, `verifiedResolutionEnabled`, `confidenceDecayEnabled` while preserving backward-compatible parsing of legacy stored preference keys (ignored safely). Collections and graph routes/UI are always available; verified resolution/trust decay UI is always shown. `deepResearchEnabled` and `challengeModeEnabled` remain meaningful user gates.
+- **Compare surfaces:** retained Canvas and fork lineage/compare flows; no low-risk consolidation identified that would not risk behavior changes (Canvas compares thread summaries/AI diff, fork lineage is parent-child compare/supersede).
+- **AI-estimated labeling:** resolution scores, effective confidence/decay, provenance/source confidence, deep-research evidence confidence, and fact-check status badges now explicitly indicate AI-estimated/signal status unless human-verified.
+- **Docs:** updated `shared/ARCHITECTURE.md` and `UBIQUITOUS_LANGUAGE.md` to reflect always-on core capabilities and AI-estimated labeling; canonical docs aligned with implementation.
+
+### Added (Phase 5: Forking differentiator)
+
+- **Unified forking model**: `forkKind` (ASSUMPTION/CONTINUE/REMIX_AI/EXTERNAL) on `Thread` with lineage reuse of `Thread.forkedFromId` (no parallel lineage table). Forward-only/idempotent migration adds fork metadata and backfills legacy forked rows to `CONTINUE`.
+- **Carry-over snapshots**: fork-time `SUMMARY` (default), bounded `SELECTED_MESSAGES` (access-checked), or `NONE` stored as snapshot metadata; visibility never widens and carry-over is never live-synced.
+- **External forks (SSRF-safe)**: user-provided URL + title/short excerpt/attribution/premise only (no full third-party mirroring), validated via `isSafePublicUrl` and sanitized as untrusted input; rate-limited.
+- **Supersede flow**: fork-level propose/accept/decline state (parent OP or moderator/admin decides), surfaced in lineage/fork list with compare links; acceptance marks preferred continuation without merge/delete.
+- **Fork UX**: lineage breadcrumb and enhanced fork relation card (kind/status, compare links, supersede actions), unified fork dialog with kind/premise/carry-over/visibility, external fork payload fields, and fork tree view reusing graph via `/api/threads/[threadId]/fork/tree`.
+- **Safety/access**: read-access required to fork, server-side non-widening visibility enforcement, rate limits for fork creation/imports, single parent-OP notification per fork, moderation-consistent sanitization.
+
 ### Added
 
 - **Thread editing**: OP/moderators can rename a thread and edit its description via a pencil dialog in the thread header (`updateThreadAction` — slug is kept stable so existing links don't break); title/description update in place with no page refresh

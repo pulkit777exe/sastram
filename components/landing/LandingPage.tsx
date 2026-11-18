@@ -29,58 +29,59 @@ interface LandingPageProps {
 }
 
 const capabilities = [
+  'Ask with AI search',
+  'Cited AI synthesis',
+  'Community claim verification',
   'Threaded discussions',
   'Sai @-mentions',
-  'AI search',
   'Moderation',
-  'Polls & votes',
-  'Daily digests',
   'Bookmarks & follows',
 ];
 
 const featureRows = [
   {
-    title: 'Conversations that stay organized',
+    title: 'Ask and get a cited starting answer',
     description:
-      'Public, restricted, and private threads with nested replies, reactions, edits, and @mentions. Follow the threads you care about and pick up where you left off.',
+      'Ask in plain language and get an AI-synthesized response grounded in thread and message sources. It is a starting point for discussion, not a final authority.',
     link: '#features',
-    tag: 'Discussions',
-    visual: 'threads' as const,
-    quote: {
-      source: 'Thread controls',
-      text: 'Visibility, per-thread bans, tags, bookmarks, and invitations keep each discussion focused.',
-    },
-  },
-  {
-    title: 'Type @sai, get answers in-thread',
-    description:
-      'Mention @sai in any discussion and watch a cited, streaming response land directly in the conversation. No tab switching.',
-    link: '#features',
-    tag: 'Sai-native',
-    visual: 'ai' as const,
-    quote: {
-      source: 'Gemini & OpenAI',
-      text: 'Thread summaries, thread DNA, resolution scores, and inline replies — powered by the model you configure.',
-    },
-  },
-  {
-    title: 'Search that reads the whole conversation',
-    description:
-      'Sai search synthesizes results across threads and messages with citations. Background jobs generate summaries, digests, and freshness checks without blocking readers.',
-    link: '#features',
-    tag: 'Research',
+    tag: 'Ask',
     visual: 'search' as const,
     quote: {
-      source: 'Background jobs',
-      text: 'QStash handles thread summaries, digest emails, and stale-thread checks with AI spend caps in place.',
+      source: 'AI-assisted, source-aware',
+      text: 'Citations help readers inspect where an answer comes from before treating it as settled.',
+    },
+  },
+  {
+    title: 'Verify claims together in discussion',
+    description:
+      'Bring the question into threads where people can examine sources, add context, and work through claim-level verification as a community. AI output is labeled as AI-estimated where relevant.',
+    link: '#features',
+    tag: 'Verify',
+    visual: 'threads' as const,
+    quote: {
+      source: 'Community verification',
+      text: 'Discussion, replies, and moderation tools help keep evidence and context attached to each claim.',
+    },
+  },
+  {
+    title: 'Turn verified discussion into durable answers',
+    description:
+      'Keep questions, replies, and follow-ups organized so improved answers remain easy to find later. Mentions, summaries, and digests support the same ask → synthesis → verification loop.',
+    link: '#features',
+    tag: 'Resolve',
+    visual: 'ai' as const,
+    quote: {
+      source: 'Built for follow-through',
+      text: 'Threads, subscriptions, and AI-assisted tools help conversations stay useful over time.',
     },
   },
 ];
 
 const platformDetails = [
-  'Nested replies, reactions, edits, and read receipts',
-  'Polls, bookmarks, follows, and thread subscriptions',
-  'AI search with citations and inline @sai replies',
+  'AI-synthesized search answers with citations to inspect',
+  'Threaded discussions for community claim verification',
+  'Nested replies, reactions, mentions, polls, and bookmarks',
+  'Moderation, reports, appeals, and visibility controls',
   'Email invitations, digests, and password reset flows',
   'Open source under the MIT License',
 ];
@@ -107,8 +108,9 @@ const useCases = [
   {
     type: 'quote' as const,
     source: 'Use case · Research teams',
-    quote: 'Turn a long thread into a durable answer.',
-    author: 'Thread DNA, resolution scores, and summaries capture what was decided — not just who replied last.',
+    quote: 'Start with a question, then improve the answer together.',
+    author:
+      'Use AI-synthesized, cited responses as a starting point, then rely on community verification in discussion to make answers more durable.',
   },
   {
     type: 'stat' as const,
@@ -117,8 +119,8 @@ const useCases = [
   },
   {
     type: 'image' as const,
-    title: 'Built for teams that think in threads',
-    subtitle: 'Open source · MIT licensed',
+    title: 'Built for questions that need evidence',
+    subtitle: 'Ask · Synthesize · Verify · Open source',
   },
 ];
 
@@ -334,23 +336,32 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <FadeIn>
               <h1 className="text-4xl md:text-[3.5rem] leading-[1.08] tracking-tight text-foreground mb-5">
-                <SerifHeading>Think in threads. Resolve with AI.</SerifHeading>
+                <SerifHeading>Ask a question. Verify the answer together.</SerifHeading>
               </h1>
             </FadeIn>
             <FadeIn delay={0.08}>
               <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed">
-                Structured discussions, cited AI search, and moderation that keeps conversations
-                useful — all in one place.
+                Get an AI-synthesized answer with sources, then use community claim verification in
+                discussion to improve it into a durable answer. AI output is AI-estimated and meant
+                to be checked.
               </p>
             </FadeIn>
             <FadeIn delay={0.16}>
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-medium rounded-control hover:bg-primary/90 transition-all text-sm"
-              >
-                Start for free
-                <ArrowRight size={15} />
-              </Link>
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                <Link
+                  href="/login?redirect=%2Fdashboard%2Fsai-search"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-medium rounded-control hover:bg-primary/90 transition-all text-sm"
+                >
+                  Ask a question
+                  <ArrowRight size={15} />
+                </Link>
+                <Link
+                  href="#how-it-works"
+                  className="inline-flex items-center gap-2 px-6 py-3 border border-line text-foreground font-medium rounded-control hover:bg-muted/50 transition-all text-sm"
+                >
+                  See how it works
+                </Link>
+              </div>
             </FadeIn>
           </div>
 
@@ -380,7 +391,7 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="max-w-5xl mx-auto">
             <FadeIn className="mb-20 text-center">
               <h2 className="text-3xl md:text-4xl tracking-tight text-foreground mb-4">
-                <SerifHeading>Designed to make discussions useful</SerifHeading>
+                <SerifHeading>From a question to a verified, durable answer</SerifHeading>
               </h2>
             </FadeIn>
 
@@ -426,13 +437,25 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="bg-secondary text-secondary-foreground px-8 md:px-14 py-16 flex flex-col justify-center">
             <FadeIn>
               <h2 className="text-3xl md:text-4xl tracking-tight mb-8 leading-tight">
-                <SerifHeading>Everything a serious discussion needs</SerifHeading>
+                <SerifHeading>Built for answers that can be checked</SerifHeading>
               </h2>
               <div className="space-y-5">
                 {[
-                  { icon: MessageSquare, label: 'Structured threads', desc: 'Public, restricted, and private, with per-thread bans' },
-                  { icon: Sparkles, label: 'AI with guardrails', desc: 'Daily spend caps and per-user quotas' },
-                  { icon: Shield, label: 'Moderation built in', desc: 'Rules, reports, appeals, and ban management' },
+                  {
+                    icon: Search,
+                    label: 'Cited AI synthesis',
+                    desc: 'Ask a question and start from an AI-synthesized answer with sources to inspect.',
+                  },
+                  {
+                    icon: MessageSquare,
+                    label: 'Community verification',
+                    desc: 'Use threaded discussion to examine claims, add context, and improve the response.',
+                  },
+                  {
+                    icon: Shield,
+                    label: 'Moderation and controls',
+                    desc: 'Visibility settings, rules, reports, appeals, and AI guardrails help keep discussions useful.',
+                  },
                 ].map(({ icon: Icon, label, desc }) => (
                   <div key={label} className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-control bg-primary/10 flex items-center justify-center flex-none">
@@ -471,7 +494,7 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="max-w-5xl mx-auto">
             <FadeIn className="mb-14 text-center">
               <h2 className="text-3xl md:text-4xl tracking-tight text-foreground">
-                <SerifHeading>Built for teams that need more than a forum</SerifHeading>
+                <SerifHeading>Built for teams that need evidence, not just replies</SerifHeading>
               </h2>
             </FadeIn>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -513,28 +536,28 @@ export function LandingPage({ user }: LandingPageProps) {
           <div className="max-w-4xl mx-auto">
             <FadeIn className="mb-14 text-center">
               <h2 className="text-3xl md:text-4xl tracking-tight text-foreground mb-4">
-                <SerifHeading>From question to resolution in three steps</SerifHeading>
+                <SerifHeading>From question to a better answer in three steps</SerifHeading>
               </h2>
             </FadeIn>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 {
                   step: '01',
-                  icon: MessageSquare,
-                  title: 'Open a thread',
-                  desc: 'Choose visibility, add tags, and frame the question.',
+                  icon: Search,
+                  title: 'Ask a question',
+                  desc: 'Search or ask in plain language to get an AI-synthesized answer with sources.',
                 },
                 {
                   step: '02',
                   icon: Users,
-                  title: 'Discuss together',
-                  desc: 'Nested replies, reactions, polls, mentions, and subscriptions.',
+                  title: 'Verify claims together',
+                  desc: 'Discuss the response, inspect citations, and work through claim-level verification as a community.',
                 },
                 {
                   step: '03',
                   icon: Sparkles,
-                  title: 'Let Sai help',
-                  desc: 'Summaries, search, inline @sai answers, and daily digests.',
+                  title: 'Improve the answer',
+                  desc: 'Keep context in threads so AI-estimated answers can become clearer, more durable responses over time.',
                 },
               ].map((s, i) => (
                 <FadeIn key={s.step} delay={i * 0.08}>
@@ -585,16 +608,17 @@ export function LandingPage({ user }: LandingPageProps) {
         <section className="py-28 px-6 text-center">
           <FadeIn>
             <h2 className="text-3xl md:text-4xl tracking-tight text-foreground mb-4">
-              <SerifHeading>Discussions that end with an answer</SerifHeading>
+              <SerifHeading>Ask first. Verify together. Keep the answer.</SerifHeading>
             </h2>
             <p className="text-base text-muted-foreground mb-8 max-w-md mx-auto leading-relaxed">
-              Structured threads, cited AI search, and moderation — open source and free to use.
+              Start with an AI-synthesized, cited response, then use community claim verification in
+              discussion to build a more durable answer. Open source and free to use.
             </p>
             <Link
-              href="/login"
+              href="/login?redirect=%2Fdashboard%2Fsai-search"
               className="inline-flex items-center gap-2 px-7 py-3 bg-primary text-primary-foreground font-medium rounded-control hover:bg-primary/90 transition-all text-sm"
             >
-              Get started free
+              Ask a question
               <ArrowRight size={15} />
             </Link>
           </FadeIn>

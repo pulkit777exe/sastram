@@ -5,8 +5,8 @@ const enabledCache = new Map<string, { v: boolean; ts: number }>();
 const TTL_MS = 60_000;
 
 /**
- * Hobby-safe gate: collections is opt-out, never opt-in.
- * Returns true unless the user explicitly set collectionsEnabled === false.
+ * Collections is always enabled (Phase 7). Legacy stored `collectionsEnabled: false`
+ * is ignored safely; parsing remains backward-compatible for old preference blobs.
  * Cached 60s per user to avoid Prisma round-trip on every hover Save.
  */
 export async function isCollectionsEnabled(userId: string): Promise<boolean> {
@@ -14,10 +14,9 @@ export async function isCollectionsEnabled(userId: string): Promise<boolean> {
   if (hit && Date.now() - hit.ts < TTL_MS) return hit.v;
   try {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } });
-    const prefs = parseUserPreferences((user?.preferences as unknown) ?? {});
-    const v = (prefs as unknown as { collectionsEnabled?: boolean }).collectionsEnabled !== false;
-    enabledCache.set(userId, { v, ts: Date.now() });
-    return v;
+    parseUserPreferences((user?.preferences as unknown) ?? {});
+    enabledCache.set(userId, { v: true, ts: Date.now() });
+    return true;
   } catch {
     return true;
   }

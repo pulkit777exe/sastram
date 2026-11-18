@@ -26,7 +26,7 @@ export async function followUser(followerId: string, followingId: string) {
     // Already following — don't double-count
     if (existing) return false;
 
-    const follow = await tx.userFollow.create({
+    await tx.userFollow.create({
       data: { followerId, followingId },
     });
 

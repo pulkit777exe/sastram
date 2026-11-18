@@ -11,9 +11,13 @@ import {
   requireWriteOrThrow,
   requireManageOrThrow,
   filterReadableUserIds,
+  canReadFromSnapshot,
+  buildBatchVisibilityFilter,
   createThreadAccessPolicy,
   createFakeThreadAccessStore,
   type ThreadAccessContext,
+  type ThreadReadSnapshot,
+  type ThreadViewerSnapshot,
 } from '../lib/thread-access';
 import {
   canManageView,
@@ -196,6 +200,232 @@ describe('Thread Access', () => {
 
     it('returns an empty set for a private thread with no subscribers', async () => {
       expect(await filterReadableUserIds(privateThread, [])).to.deep.equal([]);
+    });
+  });
+
+  describe('canReadFromSnapshot', () => {
+    const snapshot = (overrides: Partial<ThreadReadSnapshot> = {}): ThreadReadSnapshot => ({
+      threadId: 'thread-1',
+      createdBy: 'user-1',
+      visibility: 'PRIVATE' as ThreadVisibility,
+      acceptedInvitations: [],
+      ...overrides,
+    });
+    const viewer = (overrides: Partial<ThreadViewerSnapshot> = {}): ThreadViewerSnapshot => ({
+      id: 'user-2',
+      email: 'viewer@example.com',
+      role: Role.USER,
+      ...overrides,
+    });
+
+    const matrix: Array<{
+      name: string;
+      visibility: ThreadVisibility;
+      viewer: ThreadViewerSnapshot | null;
+      invitations?: { inviteeId: string | null; email: string }[];
+      expected: boolean;
+    }> = [
+      { name: 'anonymous on PUBLIC', visibility: 'PUBLIC', viewer: null, expected: true },
+      { name: 'stranger on PUBLIC', visibility: 'PUBLIC', viewer: viewer(), expected: true },
+      { name: 'anonymous on PRIVATE', visibility: 'PRIVATE', viewer: null, expected: false },
+      { name: 'anonymous on RESTRICTED', visibility: 'RESTRICTED', viewer: null, expected: false },
+      { name: 'empty-id viewer on PRIVATE', visibility: 'PRIVATE', viewer: viewer({ id: '' }), expected: false },
+      { name: 'creator on PRIVATE', visibility: 'PRIVATE', viewer: viewer({ id: 'user-1' }), expected: true },
+      { name: 'creator on RESTRICTED', visibility: 'RESTRICTED', viewer: viewer({ id: 'user-1' }), expected: true },
+      {
+        name: 'moderator on PRIVATE',
+        visibility: 'PRIVATE',
+        viewer: viewer({ role: Role.MODERATOR }),
+        expected: true,
+      },
+      {
+        name: 'admin on RESTRICTED',
+        visibility: 'RESTRICTED',
+        viewer: viewer({ role: Role.ADMIN }),
+        expected: true,
+      },
+      {
+        name: 'invitee by id on PRIVATE',
+        visibility: 'PRIVATE',
+        viewer: viewer(),
+        invitations: [{ inviteeId: 'user-2', email: 'other@example.com' }],
+        expected: true,
+      },
+      {
+        name: 'invitee by email on PRIVATE',
+        visibility: 'PRIVATE',
+        viewer: viewer(),
+        invitations: [{ inviteeId: null, email: 'viewer@example.com' }],
+        expected: true,
+      },
+      {
+        name: 'invitee by email on RESTRICTED',
+        visibility: 'RESTRICTED',
+        viewer: viewer(),
+        invitations: [{ inviteeId: null, email: 'viewer@example.com' }],
+        expected: true,
+      },
+      {
+        name: 'email match is exact (case-sensitive)',
+        visibility: 'PRIVATE',
+        viewer: viewer(),
+        invitations: [{ inviteeId: null, email: 'Viewer@example.com' }],
+        expected: false,
+      },
+      {
+        name: 'viewer without email cannot match an email invitation',
+        visibility: 'PRIVATE',
+        viewer: viewer({ email: null }),
+        invitations: [{ inviteeId: null, email: 'viewer@example.com' }],
+        expected: false,
+      },
+      { name: 'stranger on PRIVATE', visibility: 'PRIVATE', viewer: viewer(), expected: false },
+      { name: 'stranger on RESTRICTED', visibility: 'RESTRICTED', viewer: viewer(), expected: false },
+    ];
+
+    for (const row of matrix) {
+      it(`${row.name}: ${row.expected}`, () => {
+        expect(
+          canReadFromSnapshot(
+            snapshot({ visibility: row.visibility, acceptedInvitations: row.invitations ?? [] }),
+            row.viewer
+          )
+        ).to.equal(row.expected);
+      });
+    }
+
+    it('denies when the thread row is missing (deleted thread)', () => {
+      expect(canReadFromSnapshot(null, viewer())).to.equal(false);
+      expect(canReadFromSnapshot(null, null)).to.equal(false);
+    });
+
+    it('only consults accepted invitations carried by the snapshot', () => {
+      expect(canReadFromSnapshot(snapshot(), viewer())).to.equal(false);
+      expect(
+        canReadFromSnapshot(
+          snapshot({ acceptedInvitations: [{ inviteeId: 'someone-else', email: 'other@example.com' }] }),
+          viewer()
+        )
+      ).to.equal(false);
+    });
+  });
+
+  describe('buildBatchVisibilityFilter', () => {
+    const viewer = (overrides: Partial<ThreadViewerSnapshot> = {}): ThreadViewerSnapshot => ({
+      id: 'user-2',
+      email: 'viewer@example.com',
+      role: Role.USER,
+      ...overrides,
+    });
+
+    type InvitationClause = {
+      status?: string;
+      OR?: Array<{ inviteeId?: { in: string[] }; email?: { in: string[] } }>;
+    };
+    type BatchFilter = {
+      id?: { in: string[] };
+      deletedAt?: null;
+      visibility?: string;
+      OR?: Array<{
+        visibility?: string;
+        createdBy?: { in: string[] };
+        invitations?: { some: InvitationClause };
+      }>;
+    };
+    const asBatchFilter = (filter: unknown): BatchFilter => filter as BatchFilter;
+    const invitationClause = (filter: BatchFilter): InvitationClause => {
+      const clause = filter.OR?.find((row) => row.invitations !== undefined)?.invitations?.some;
+      expect(clause).to.exist;
+      return clause!;
+    };
+
+    it('always scopes to the page thread ids and excludes deleted threads', () => {
+      const filter = asBatchFilter(buildBatchVisibilityFilter([viewer()], ['t1', 't2']));
+      expect(filter.id).to.deep.equal({ in: ['t1', 't2'] });
+      expect(filter.deletedAt).to.equal(null);
+    });
+
+    it('returns PUBLIC-only candidates when the page has no viewers', () => {
+      expect(buildBatchVisibilityFilter([], ['t1'])).to.deep.equal({
+        id: { in: ['t1'] },
+        deletedAt: null,
+        visibility: 'PUBLIC',
+      });
+    });
+
+    it('treats viewers without ids like no viewers', () => {
+      expect(buildBatchVisibilityFilter([viewer({ id: '' })], ['t1'])).to.deep.equal({
+        id: { in: ['t1'] },
+        deletedAt: null,
+        visibility: 'PUBLIC',
+      });
+    });
+
+    it('drops all visibility conditions when any viewer can moderate', () => {
+      const base = { id: { in: ['t1'] }, deletedAt: null };
+      expect(buildBatchVisibilityFilter([viewer({ role: Role.MODERATOR })], ['t1'])).to.deep.equal(base);
+      expect(buildBatchVisibilityFilter([viewer({ role: Role.ADMIN })], ['t1'])).to.deep.equal(base);
+      expect(
+        buildBatchVisibilityFilter([viewer(), viewer(), viewer({ role: Role.MODERATOR })], ['t1'])
+      ).to.deep.equal(base);
+    });
+
+    it('includes public, creator, and accepted-invitation candidates for regular viewers', () => {
+      const filter = asBatchFilter(
+        buildBatchVisibilityFilter(
+          [
+            viewer({ id: 'user-1', email: 'one@example.com' }),
+            viewer({ id: 'user-2', email: 'two@example.com' }),
+          ],
+          ['t1']
+        )
+      );
+      expect(filter.OR).to.have.lengthOf(3);
+      expect(filter.OR![0]).to.deep.equal({ visibility: 'PUBLIC' });
+      expect(filter.OR![1]).to.deep.equal({ createdBy: { in: ['user-1', 'user-2'] } });
+      expect(filter.OR![2]).to.deep.equal({
+        invitations: {
+          some: {
+            status: 'ACCEPTED',
+            OR: [
+              { inviteeId: { in: ['user-1', 'user-2'] } },
+              { email: { in: ['one@example.com', 'two@example.com'] } },
+            ],
+          },
+        },
+      });
+    });
+
+    it('deduplicates viewer ids and emails', () => {
+      const filter = asBatchFilter(
+        buildBatchVisibilityFilter(
+          [
+            viewer({ id: 'user-1', email: 'one@example.com' }),
+            viewer({ id: 'user-1', email: 'one@example.com' }),
+            viewer({ id: 'user-2', email: 'two@example.com' }),
+            viewer({ id: 'user-2', email: 'two@example.com' }),
+          ],
+          ['t1']
+        )
+      );
+
+      expect(filter.OR![1]).to.deep.equal({ createdBy: { in: ['user-1', 'user-2'] } });
+      expect(invitationClause(filter).OR).to.deep.equal([
+        { inviteeId: { in: ['user-1', 'user-2'] } },
+        { email: { in: ['one@example.com', 'two@example.com'] } },
+      ]);
+    });
+
+    it('omits null/empty emails from the invitation clause', () => {
+      const filter = asBatchFilter(
+        buildBatchVisibilityFilter(
+          [viewer({ id: 'user-1', email: null }), viewer({ id: 'user-2', email: '' })],
+          ['t1']
+        )
+      );
+
+      expect(invitationClause(filter).status).to.equal('ACCEPTED');
+      expect(invitationClause(filter).OR).to.deep.equal([{ inviteeId: { in: ['user-1', 'user-2'] } }]);
     });
   });
 

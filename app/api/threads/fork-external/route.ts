@@ -11,6 +11,10 @@ const bodySchema = z.object({
   url: z.string().url(),
   title: z.string().min(3).max(120).optional(),
   visibility: threadVisibilitySchema.optional().default('PUBLIC'),
+  excerpt: z.string().max(500).optional(),
+  attribution: z.string().max(200).optional(),
+  premise: z.string().max(500).optional(),
+  parentThreadId: z.string().cuid().optional(),
 });
 
 export const POST = withErrorHandling(async (request: NextRequest) => {
@@ -49,16 +53,23 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   }
   const safeTitle = sanitizeUserContent(title).sanitized.trim().slice(0, 120);
 
-  const description = `Forked from ${url}`;
-  const initialMessage = `Forked from ${url}\n\n@sai summarize this thread and extract key points from the source.`;
+  const safeExcerpt = body.excerpt ? sanitizeUserContent(body.excerpt).sanitized.trim().slice(0, 500) : undefined;
+  const safeAttribution = body.attribution ? sanitizeUserContent(body.attribution).sanitized.trim().slice(0, 200) : undefined;
+  const safePremise = body.premise ? sanitizeUserContent(body.premise).sanitized.trim().slice(0, 500) : undefined;
+  const initialMessage = `External source: ${url}\n\n@sai summarize this source using the provided excerpt/attribution and key points for discussion.`;
 
   // Single write: visibility (incl. RESTRICTED) is set inline at create time.
   const result = await createExternalForkDomain({
     title: safeTitle,
-    description: sanitizeUserContent(description).sanitized,
+    description: undefined,
     initialMessage: sanitizeUserContent(initialMessage).sanitized,
     visibility: body.visibility,
     userId: session.user.id,
+    sourceUrl: url,
+    excerpt: safeExcerpt,
+    attribution: safeAttribution,
+    forkPremise: safePremise,
+    parentThreadId: body.parentThreadId,
     sideEffects: infraThreadSideEffects,
   });
 

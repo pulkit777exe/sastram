@@ -15,9 +15,9 @@ interface SearchBoxProps {
 }
 
 const MODELS = [
-  { key: 'standard', name: 'Standard' },
-  { key: 'instant', name: 'Instant' },
-  { key: 'table', name: 'Table' },
+  { key: 'quick', name: 'Quick' },
+  { key: 'pro', name: 'Pro' },
+  { key: 'deep', name: 'Deep' },
 ];
 
 const COMMANDS = [
@@ -61,7 +61,7 @@ export function SearchBox({
   initialQuery = '',
 }: SearchBoxProps) {
   const [draft, setDraft] = useState(initialQuery);
-  const [model, setModel] = useState(MODELS[0]);
+  const [model, setModel] = useState(MODELS[1]);
   const [modelOpen, setModelOpen] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<SearchConfig['sourceFilter']>('all');
   const [sourceOpen, setSourceOpen] = useState(false);

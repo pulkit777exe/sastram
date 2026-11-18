@@ -214,6 +214,8 @@ export async function createReport(data: { messageId: string; category: string; 
     });
     revalidatePath(ROUTES.ADMIN_MODERATION);
     revalidatePath(ROUTES.ADMIN_REPORTS);
+    revalidatePath(`/q/${fetched.message.thread.slug}`);
+    revalidatePath(`/k/${fetched.message.thread.slug}`);
 
     await notifyModerators({
       reportId: report.id,
@@ -491,6 +493,11 @@ export async function updateReportStatusAction(reportId: string, status: 'RESOLV
       },
     });
 
+    const report = await prisma.report.findUnique({
+      where: { id: validation.data.reportId },
+      select: { message: { select: { thread: { select: { slug: true } } } } },
+    });
+
     await recordActivity({
       userId: session.user.id,
       type: 'REPORT_STATUS_UPDATED',
@@ -500,6 +507,10 @@ export async function updateReportStatusAction(reportId: string, status: 'RESOLV
     });
     revalidatePath(ROUTES.ADMIN_MODERATION);
     revalidatePath(ROUTES.ADMIN_REPORTS);
+    if (report?.message.thread.slug) {
+      revalidatePath(`/q/${report.message.thread.slug}`);
+      revalidatePath(`/k/${report.message.thread.slug}`);
+    }
 
     return actionSuccess(null);
   } catch (error) {
@@ -525,10 +536,22 @@ export async function resolveReport(data: {
   try {
     const session = await requireModerationRole();
 
+    const target = await prisma.report.findUnique({
+      where: { id: parsed.data.reportId },
+      select: { message: { select: { thread: { select: { slug: true } } } } },
+    });
+
     const result = await resolveReportService({
       ...parsed.data,
       resolverId: session.user.id,
     });
+
+    revalidatePath(ROUTES.ADMIN_MODERATION);
+    revalidatePath(ROUTES.ADMIN_REPORTS);
+    if (target?.message.thread.slug) {
+      revalidatePath(`/q/${target.message.thread.slug}`);
+      revalidatePath(`/k/${target.message.thread.slug}`);
+    }
 
     return actionSuccess({ message: result.message });
   } catch (error) {

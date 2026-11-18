@@ -8,4 +8,5 @@ export enum AIJobType {
   GENERATE_AI_INLINE = 'generate-ai-inline',
   STALENESS_CHECK = 'staleness-check',
   GENERATE_DEEP_RESEARCH = 'generate-deep-research',
+  GENERATE_EMBEDDINGS_BACKFILL = 'generate-embeddings-backfill',
 }

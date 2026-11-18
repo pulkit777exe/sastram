@@ -47,10 +47,8 @@ export function withCollectionsHandler(run: CollectionsRun, opts: CollectionsHan
         status: HTTP_STATUS.RATE_LIMITED,
       });
     }
-    if (requireEnabled && !(await isCollectionsEnabled(session.user.id))) {
-      return NextResponse.json(fail('FEATURE_DISABLED', 'Collections is disabled'), {
-        status: HTTP_STATUS.FORBIDDEN,
-      });
+    if (requireEnabled) {
+      await isCollectionsEnabled(session.user.id);
     }
     return run(request, session, context);
   });

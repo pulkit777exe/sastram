@@ -6,6 +6,7 @@ import { getEnv } from '@/lib/config/env';
 import { rateLimit } from '@/lib/services/rate-limit';
 import { getRequestIp } from '@/lib/utils/request-ip';
 import { normalizeRequestId } from '@/lib/infrastructure/logger';
+import { CODE_SANDBOX_CSP, CODE_SANDBOX_PATH } from '@/lib/config/code-sandbox';
 
 const PUBLIC_PATHS = [
   '/',
@@ -16,6 +17,9 @@ const PUBLIC_PATHS = [
   '/forgot-password',
   '/manifest.webmanifest',
   '/banned',
+  '/q',
+  '/k',
+  '/sitemap',
   '/api/auth',
   '/api/email-otp',
   '/api/sign-in',
@@ -23,9 +27,12 @@ const PUBLIC_PATHS = [
   '/api/cron',
   '/api/health',
   '/api/csp-report',
+  '/api/search',
   '/api/jobs',
   '/api/link-preview',
   '/api/upload',
+  // Sandboxed code-runner document (no session required; opaque-origin iframe).
+  CODE_SANDBOX_PATH,
   // Sentry tunnel (next.config.ts rewrites /monitoring -> Sentry ingest).
   '/monitoring',
 ];
@@ -67,11 +74,9 @@ export function buildCsp(nonce: string): string {
     "default-src 'self'",
     scriptSrcElem,
     scriptSrc,
-    // Code-runner executes snippet output in a blob: Worker sandbox. Without
-    // an explicit worker-src, blob workers fall back to script-src and are
-    // blocked in prod (no blob: listed) — silently downgrading execution to
-    // the main thread with full DOM access. Pin the sandbox explicitly.
-    "worker-src 'self' blob:",
+    // Code-runner embeds the same-origin /code-sandbox document; that
+    // document carries its own opaque-origin CSP (connect-src 'none').
+    "frame-src 'self'",
     "object-src 'none'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https://*.blob.vercel-storage.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
@@ -97,11 +102,15 @@ const PRODUCTION_HEADERS = {
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
 };
 
-function applySecurityHeaders(response: NextResponse, nonce: string): NextResponse {
-  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+function applySecurityHeaders(response: NextResponse, nonce: string, pathname: string): NextResponse {
+  const isCodeSandbox = pathname === CODE_SANDBOX_PATH;
+  const securityHeaders = isCodeSandbox
+    ? { ...SECURITY_HEADERS, 'X-Frame-Options': 'SAMEORIGIN' }
+    : SECURITY_HEADERS;
+  for (const [key, value] of Object.entries(securityHeaders)) {
     response.headers.set(key, value);
   }
-  const csp = buildCsp(nonce);
+  const csp = isCodeSandbox ? CODE_SANDBOX_CSP : buildCsp(nonce);
   response.headers.set(
     CSP_REPORT_ONLY ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy',
     csp
@@ -133,7 +142,7 @@ export default async function proxy(request: NextRequest) {
     if (!success) {
       const response = NextResponse.json({ error: 'Too Many Requests' }, { status: HTTP_STATUS.RATE_LIMITED });
       response.headers.set('x-request-id', requestId);
-      return applySecurityHeaders(response, nonce);
+      return applySecurityHeaders(response, nonce, pathname);
     }
   }
 
@@ -144,7 +153,7 @@ export default async function proxy(request: NextRequest) {
     if (!success) {
       const response = NextResponse.json({ error: 'Too Many Requests' }, { status: HTTP_STATUS.RATE_LIMITED });
       response.headers.set('x-request-id', requestId);
-      return applySecurityHeaders(response, nonce);
+      return applySecurityHeaders(response, nonce, pathname);
     }
   }
 
@@ -154,7 +163,7 @@ export default async function proxy(request: NextRequest) {
     loginUrl.searchParams.set('redirect', `${pathname}${search}`);
     const response = NextResponse.redirect(loginUrl);
     response.headers.set('x-request-id', requestId);
-    return applySecurityHeaders(response, nonce);
+    return applySecurityHeaders(response, nonce, pathname);
   }
 
   // NOTE: The /login → /dashboard redirect was removed because proxy.ts
@@ -219,7 +228,7 @@ export default async function proxy(request: NextRequest) {
 
   let response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('x-request-id', requestId);
-  response = applySecurityHeaders(response, nonce);
+  response = applySecurityHeaders(response, nonce, pathname);
   return response;
 }
 

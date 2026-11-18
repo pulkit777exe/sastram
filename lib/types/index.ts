@@ -45,6 +45,22 @@ export interface Message {
   readReceipts?: ReadReceipt[];
   replies?: Message[];
   poll?: Poll | null;
+  claims?: Claim[];
+}
+
+export interface Claim {
+  id: string;
+  messageId: string;
+  position: number;
+  text: string;
+  status: 'OPEN' | 'CONFIRMED' | 'DISPUTED' | 'CONTESTED';
+  sourceLabel: string | null;
+  sourceUrl: string | null;
+  excerpt: string | null;
+  confidence: number | null;
+  confirmCount: number;
+  disputeCount: number;
+  net?: number;
 }
 
 export interface Poll {

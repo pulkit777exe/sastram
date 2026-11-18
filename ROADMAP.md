@@ -1,0 +1,39 @@
+# Roadmap
+
+Sastram is built in small, reviewable phases. Each phase ships behind its own
+branch/PR and stops for review. This is a product roadmap, not a promise of
+dates; `shared/ARCHITECTURE.md` describes what exists today.
+
+**Current focus:** close the remaining security/correctness gaps before opening
+more public surfaces or adding new product mechanics.
+
+## Status
+
+| Area | Status | Notes |
+|---|---|---|
+| Truth repair and canonical docs | **Done** | `shared/ARCHITECTURE.md` is canonical; `docs/DOC-MISMATCHES.md` records verified drift. |
+| Security and correctness hardening | **Done (one environment check blocked)** | Audit C1–C11 are closed; digest access is one bounded snapshot per page; knowledge promotion has one trigger; password reset is documented and noindexed; Prisma adapter selection is explicit. Live Docker + Neon still needs a user with `docker` group access — see `docs/DEPLOYMENT.md`. |
+| Public, indexable knowledge | **Shipped** | Server-rendered `/q/[slug]` and `/k/[slug]`, canonical URLs, sitemap, robots, OG images, QAPage JSON-LD, noindex rules. |
+| Retrieval foundation | **Shipped** | pgvector embeddings, hybrid lexical/vector search, reciprocal-rank fusion, cached search, kNN-derived thread relations. |
+| Multi-source search | **Shipped** | Source registry with Sastram, web, community, code, and academic sources; per-source timeouts; canonical dedupe; Quick/Pro/Deep modes. |
+| Forking | **Shipped** | Unified `forkKind`, lineage, carry-over snapshots, external imports, supersede proposals, fork tree. |
+| Legal, abuse protection, moderation | **In progress** | Draft legal pages for privacy/terms/cookies/AI-use/copyright-takedown (not legal advice), report-threshold public noindex (`>=1`) and soft-hide/restricted rendering (`>=2`) on public surfaces with moderator review path, and basic in-app new-account write limits (no paid services/captcha; write checks fail closed when account-age evaluation is unavailable). Still planned: broader abuse tooling/appeals UX hardening, Turnstile/captcha evaluation if needed, end-user in-thread report UI completeness, and fuller legal review/process maturity. |
+| Claim-level trust loop (minimal) | **In progress** | Persisted AI-search `evidence`, `Claim`/`ClaimVote` schema, structured verification threads from owned search sessions, confirm/dispute voting with status thresholds, dashboard/public `/q` claim rendering, and read-only resolution trust signals (dashboard + public `/q`/`/k`). Added minimal correction/regeneration: owner-triggered AI search regeneration (`forceRefresh`) bypasses cache read and appends fresh results to the same owned session (forced session regenerations do not populate shared query cache), with derived “needs correction/review” on disputed/contested claims (no propagation, no schema/migrations). Added minimal topic-scoped credibility: derived, read-only, on-demand/request-cached per-tag credibility on dashboard tag pages from existing visible thread/claim signals (heuristic, no schema/migrations, no user expertise). Added minimal claim-driven promotion: knowledge promotion/demotion and public `/k` eligibility block threads with disputed/contested claims on non-deleted messages, with read-time guards plus targeted best-effort per-thread reconciliation on claim-relevant changes and cron/global reconciliation, with claim-aware trust surfacing on `/k`/dashboard (no schema/migrations). |
+| First-run experience and seeded content | **In progress** | Ask-first landing CTA/copy, Sai-search verify guidance and structured-verify prominence, idempotent base seed, and curated verification-starter seed script (`bun run db:seed:starters`). Still planned: richer onboarding, broader curated corpus, and deeper guided flows. |
+| Cost control and fairness | **Planned** | BYOK path, per-user slice of the global AI cap, graceful degradation, conditional polling, backups. |
+| UX polish | **Planned** | Command palette, mobile bottom sheet, composer slash commands, naming cleanup, notifications, WCAG AA, i18n-ready strings. |
+| Observability and quality | **Planned** | Privacy-friendly analytics, AI quality dashboard, Playwright coverage for the core loop. |
+| Money | **Gated** | Do not start without explicit approval and a reviewed `docs/PAYMENTS-PLAN.md`. Payments are not allowed on the Vercel Hobby plan. |
+| Simplify | **Ongoing** | Propose cuts/merges; wait for approval before deleting behavior or data. |
+
+## Constraints
+
+- Free tiers only until the money phase explicitly starts.
+- No paid services, no payment code, and no plan upgrades without approval.
+- Respect API terms and attribution; do not scrape sites that forbid it.
+- Legal text is a draft for lawyer review.
+- Forward-only, idempotent migrations; never edit an applied migration.
+
+## How to help
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md), especially “Good first issues”.

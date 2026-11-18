@@ -35,7 +35,7 @@ const OPTIONS: Option[] = [
     short: 'Reorder from cone_king · 7-day lead',
     signal: 3,
     tone: 'var(--green)',
-    label: 'High confidence',
+    label: 'High confidence (AI-est.)',
     cta: 'Accept',
     ctaStyle: 'bg-sai-accent text-white',
   },

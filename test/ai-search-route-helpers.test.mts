@@ -41,6 +41,14 @@ describe('ai-search route helpers', () => {
       expect(validateSearchBody(structuredClone(baseBody)).query).to.be.a('string');
     });
 
+    it('defaults forceRefresh to false and accepts true', () => {
+      const base = { query: 'how do ai search modes work', config: baseBody.config };
+      const parsed = validateSearchBody(base) as { forceRefresh?: boolean };
+      expect(parsed.forceRefresh).to.equal(false);
+      const forced = validateSearchBody({ ...base, forceRefresh: true }) as { forceRefresh?: boolean };
+      expect(forced.forceRefresh).to.equal(true);
+    });
+
     it('accepts an empty keys object so server env keys can be used', () => {
       const parsed = validateSearchBody({ ...structuredClone(baseBody), keys: {} });
       expect(parsed.keys).to.deep.equal({});
@@ -115,8 +123,10 @@ describe('ai-search route helpers', () => {
       expect(mapped.errorCode).to.equal('PROVIDER_QUOTA');
     });
 
-    it('429 message maps to a quota message', () => {
-      expect(mapStreamError(new Error('429 RESOURCE_EXHAUSTED')).message).to.contain('quota');
+    it('429 message maps to PROVIDER_QUOTA with the friendly demand copy', () => {
+      const mapped = mapStreamError(new Error('429 RESOURCE_EXHAUSTED'));
+      expect(mapped.errorCode).to.equal('PROVIDER_QUOTA');
+      expect(mapped.message).to.contain('high demand');
     });
   });
 

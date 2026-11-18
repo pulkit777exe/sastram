@@ -93,6 +93,8 @@ const handler = withErrorHandling(async (req: NextRequest) => {
 
   if (updated.count === 0) {
     logger.info(`[resolution-score] Skipped write for ${threadId} — score was updated concurrently`);
+  } else {
+    void (await import('@/lib/services/knowledge-promotion')).reconcileKnowledgePageForThread(threadId).catch(() => undefined);
   }
 
   return NextResponse.json(ok({ score }));

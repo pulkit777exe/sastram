@@ -6,6 +6,8 @@ import {
   neuteredNames,
   mainThreadExtraNames,
 } from '@/components/thread/sandbox-prelude';
+import { GET as getCodeSandbox } from '@/app/code-sandbox/route';
+import { CODE_SANDBOX_CSP } from '@/lib/config/code-sandbox';
 
 const mockConsole = {
   log: () => {},
@@ -83,5 +85,20 @@ describe('snippet sandbox prelude', () => {
     expect(() => probeInSandbox(buildSandboxPrelude(), 'const fetch = 1; return fetch;')).to.throw(
       SyntaxError
     );
+  });
+});
+
+describe('code-runner iframe document', () => {
+  it('is served with an opaque-origin sandbox policy that blocks network access', async () => {
+    const response = getCodeSandbox();
+    const html = await response.text();
+
+    expect(response.headers.get('Content-Security-Policy')).to.equal(CODE_SANDBOX_CSP);
+    expect(CODE_SANDBOX_CSP).to.contain("connect-src 'none'");
+    expect(CODE_SANDBOX_CSP).to.contain("'unsafe-eval'");
+    expect(CODE_SANDBOX_CSP).to.contain("frame-ancestors 'self'");
+    expect(html).to.contain("event.source !== window.parent");
+    expect(html).to.contain("data.type !== 'run'");
+    expect(html).to.contain('new Function');
   });
 });

@@ -154,7 +154,8 @@ export function ThreadSummaryCard({ threadId, initialSummary, messageCount, clas
               size="icon"
               className="h-6 w-6"
               onClick={() => void requestSummary()}
-              aria-label="Refresh summary"
+              aria-label="Regenerate summary"
+              title="Regenerate summary"
             >
               <RefreshCw size={12} />
             </Button>
@@ -205,7 +206,7 @@ export function ThreadSummaryCard({ threadId, initialSummary, messageCount, clas
                   onClick={() => void requestSummary()}
                 >
                   <RefreshCw size={12} className="mr-2" />
-                  Try Again
+                  Regenerate summary
                 </Button>
               </div>
             ) : (

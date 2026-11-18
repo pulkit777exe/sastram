@@ -4,6 +4,7 @@ import { ok, fail, errorCodeToStatus, HTTP_STATUS } from '@/lib/utils/api-respon
 import { requireSessionOrThrow } from '@/modules/auth';
 import { requireWriteOrThrow } from '@/lib/thread-access';
 import { rateLimit } from '@/lib/services/rate-limit';
+import { enforceNewAccountWriteLimitOrThrow } from '@/lib/services/new-account-limits';
 import { trackNeonRequest } from '@/lib/services/usage-check';
 import { AppError } from '@/lib/utils/errors';
 import { logger } from '@/lib/infrastructure/logger';
@@ -101,9 +102,6 @@ export async function POST(request: NextRequest) {
   try {
     const session = await authenticateRequest();
 
-    const rateLimitResponse = await checkRateLimitOrThrow(session);
-    if (rateLimitResponse) return rateLimitResponse;
-
     // Reject oversized multipart bodies before formData() buffers them — the
     // parsed file list is re-checked below, this only bounds memory usage.
     const contentLength = request.headers.get('content-length');
@@ -115,6 +113,15 @@ export async function POST(request: NextRequest) {
     const validated = validateFormInputs(formData);
     if (validated instanceof NextResponse) return validated;
     const { threadId, rawContent, files } = validated;
+
+    await enforceNewAccountWriteLimitOrThrow({
+      userId: session.user.id,
+      role: session.user.role,
+      action: 'message',
+    });
+
+    const rateLimitResponse = await checkRateLimitOrThrow(session);
+    if (rateLimitResponse) return rateLimitResponse;
 
     if (files.length > 0) {
       const uploadLimit = await rateLimit({ key: `upload:${session.user.id}`, type: 'upload' });

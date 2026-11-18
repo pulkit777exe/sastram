@@ -10,12 +10,13 @@ export const userPreferencesSchema = z.object({
   aiSummaryEnabled: z.boolean(),
   expertiseLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).optional(),
   deepResearchEnabled: z.boolean().optional(),
+  challengeModeEnabled: z.boolean().optional(),
+  // Legacy always-on moat toggles — accepted for backward-compatible parsing only.
   collectionsEnabled: z.boolean().optional(),
   graphEnabled: z.boolean().optional(),
   sourceProvenanceEnabled: z.boolean().optional(),
   verifiedResolutionEnabled: z.boolean().optional(),
   confidenceDecayEnabled: z.boolean().optional(),
-  challengeModeEnabled: z.boolean().optional(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;
@@ -30,12 +31,12 @@ const DEFAULTS: UserPreferences = {
   aiSummaryEnabled: true,
   expertiseLevel: undefined as unknown as UserPreferences['expertiseLevel'],
   deepResearchEnabled: true,
+  challengeModeEnabled: true,
   collectionsEnabled: true,
   graphEnabled: true,
   sourceProvenanceEnabled: true,
   verifiedResolutionEnabled: true,
   confidenceDecayEnabled: true,
-  challengeModeEnabled: true,
 };
 
 const THEMES = ['light', 'dark', 'system'] as const;

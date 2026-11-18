@@ -209,6 +209,7 @@ jobs:
           echo "$body"
           echo "$body" | grep -q '"status":"degraded"'
           echo "$body" | grep -q '"redis":"error"'
+          echo "$body" | grep -q '"database":"ok"'
       - if: always()
         run: docker rm -f sastram-ci || true
 

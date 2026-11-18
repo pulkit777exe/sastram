@@ -8,7 +8,7 @@ import {
 import { z } from 'zod';
 import { withValidation } from '@/lib/utils/server-action';
 import { actionSuccess } from '@/lib/utils/server-action';
-import { requireSession } from '@/modules/auth';
+import { getSession } from '@/modules/auth';
 
 const searchSchema = z.object({
   query: z.string().min(1).max(200),
@@ -20,20 +20,20 @@ const searchMessagesSchema = searchSchema.extend({
   threadId: z.string().optional(),
 });
 
-// The repositories already swallow and log their own failures, returning empty
-// result sets; createServerAction covers anything that escapes.
+// Public/read-only search: logged-out visitors see only public content; signed-in
+// users keep their existing visibility scope.
 export const searchThreadsAction = withValidation(
   searchSchema,
   'searchThreads',
   async ({ query, limit, offset }) => {
-    const session = await requireSession();
+    const session = await getSession();
     const result = await searchThreadsRepo(
       query,
       limit,
       offset,
       undefined,
-      session.user.id,
-      session.user.role
+      session?.user.id,
+      session?.user.role
     );
     return actionSuccess(result);
   }
@@ -43,14 +43,14 @@ export const searchMessagesAction = withValidation(
   searchMessagesSchema,
   'searchMessages',
   async ({ query, threadId, limit, offset }) => {
-    const session = await requireSession();
+    const session = await getSession();
     const result = await searchMessagesRepo(
       query,
       threadId,
       limit,
       offset,
-      session.user.id,
-      session.user.role
+      session?.user.id,
+      session?.user.role
     );
     return actionSuccess(result);
   }
@@ -60,8 +60,8 @@ export const searchUsersAction = withValidation(
   searchSchema,
   'searchUsers',
   async ({ query, limit, offset }) => {
-    const session = await requireSession(false);
-    const result = await searchUsersRepo(query, limit, offset, session.user.id);
+    const session = await getSession();
+    const result = await searchUsersRepo(query, limit, offset, session?.user.id);
     return actionSuccess(result);
   }
 );

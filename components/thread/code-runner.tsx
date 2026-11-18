@@ -4,9 +4,10 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/cn';
 import { Play, Loader2, X } from 'lucide-react';
-import { buildSandboxPrelude, buildMainThreadPrelude } from '@/components/thread/sandbox-prelude';
+import { buildMainThreadPrelude } from '@/components/thread/sandbox-prelude';
+import { CODE_SANDBOX_PATH } from '@/lib/config/code-sandbox';
 
-// Runnable language sets — KISS: JS-family is executable via new Function, Python is placeholder
+// Runnable language sets — KISS: JS-family runs in the sandboxed iframe; Python is placeholder-only
 export const JS_LANGS = new Set([
   'js',
   'javascript',
@@ -35,151 +36,93 @@ export function isRunnable(lang: string): boolean {
 
 const MAX_OUTPUT_CHARS = 4000;
 
-function stringifyValue(v: unknown): string {
-  if (v === null) return 'null';
-  if (v === undefined) return 'undefined';
-  if (typeof v === 'string') return v;
-  if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
-  try {
-    return JSON.stringify(v, null, 2) ?? String(v);
-  } catch {
-    return String(v);
-  }
-}
-
 function truncateOutput(text: string): string {
   if (text.length <= MAX_OUTPUT_CHARS) return text;
   return text.slice(0, MAX_OUTPUT_CHARS) + '\n… [truncated]';
 }
 
+const EXECUTION_TIMEOUT_MS = 3000;
+
+function createRunToken(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 /**
- * Execute JS code in a Worker sandbox to avoid blocking the main thread.
- * - No unsafe-eval on main thread; user code runs inside Worker via new Function.
- * - Snippet scope is neutered (see sandbox-prelude): network, global
- *   escape hatches, completion forgery, and nested constructors are undefined.
- * - Captures console output via postMessage.
- * - 3s timeout terminates Worker to prevent infinite loops.
- * - Falls back to main-thread execution if Worker unavailable.
+ * Execute JS in a sandboxed iframe served from `/code-sandbox`.
+ *
+ * The iframe has `sandbox="allow-scripts"` only, so it runs in an opaque origin
+ * with no access to the app's DOM, cookies, or storage. The document's CSP sets
+ * `connect-src 'none'` and the prelude shadows network/global escape hatches.
+ * The parent accepts results only from that iframe window and only with the
+ * per-run token, so snippet code cannot forge output. A 3s timer removes the
+ * iframe if the snippet never settles.
  */
 export async function executeJs(code: string): Promise<{ output: string; error: string | null }> {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
     return { output: '', error: 'Execution unavailable (no window)' };
   }
 
-  function fallbackSync(): { output: string; error: string | null } {
-    const logs: string[] = [];
-    const mockConsole = {
-      log: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
-      warn: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
-      error: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
-      info: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
-      debug: (...args: unknown[]) => logs.push(args.map(stringifyValue).join(' ')),
-    };
-    try {
-      // Main-thread fallback shares the page DOM: neuter DOM/storage too.
-      const fn = new Function('console', `${buildMainThreadPrelude()}\n${code}`);
-      const result = fn(mockConsole);
-      if (result !== undefined) logs.push(stringifyValue(result));
-      return { output: truncateOutput(logs.join('\n')), error: null };
-    } catch (e) {
-      return { output: truncateOutput(logs.join('\n')), error: e instanceof Error ? e.message : String(e) };
-    }
-  }
-
-  if (typeof Worker === 'undefined') {
-    return fallbackSync();
-  }
-
-  let worker: Worker | null = null;
-  let url: string | null = null;
-
-  try {
-    // Bake the neuter prelude into the worker source as a string literal —
-    // blob workers cannot import the module, so the policy travels inline.
-    const preludeLiteral = JSON.stringify(buildSandboxPrelude());
-    const workerCode = `
-const logs=[];
-function stringifyValue(v){
-  if(v===null)return'null';
-  if(v===undefined)return'undefined';
-  if(typeof v==='string')return v;
-  if(typeof v==='number'||typeof v==='boolean'||typeof v==='bigint')return String(v);
-  try{return JSON.stringify(v,null,2)??String(v);}catch{return String(v);}
-}
-const mockConsole={
-  log(...a){logs.push(a.map(stringifyValue).join(' '))},
-  warn(...a){logs.push(a.map(stringifyValue).join(' '))},
-  error(...a){logs.push(a.map(stringifyValue).join(' '))},
-  info(...a){logs.push(a.map(stringifyValue).join(' '))},
-  debug(...a){logs.push(a.map(stringifyValue).join(' '))},
-};
-self.onmessage=async(e)=>{
-  const code=e.data&&e.data.code||'';
-  try{
-    const fn=new Function('console',${preludeLiteral}+'\\n'+code);
-    const result=fn(mockConsole);
-    const awaited=result&&typeof result.then==='function'?await result:result;
-    if(awaited!==undefined)logs.push(stringifyValue(awaited));
-    self.postMessage({output:logs.join('\\n'),error:null});
-  }catch(err){
-    self.postMessage({output:logs.join('\\n'),error:err&&err.message?err.message:String(err)});
-  }
-};
-`;
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    url = URL.createObjectURL(blob);
-    worker = new Worker(url);
-  } catch {
-    if (url) {
-      try {
-        URL.revokeObjectURL(url);
-      } catch {}
-    }
-    return fallbackSync();
-  }
-
   return new Promise((resolve) => {
+    const token = createRunToken();
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('sandbox', 'allow-scripts');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.setAttribute('tabindex', '-1');
+    iframe.style.display = 'none';
+    iframe.src = CODE_SANDBOX_PATH;
+
     let settled = false;
 
     const cleanup = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      if (worker) {
-        try {
-          worker.terminate();
-        } catch {}
-        worker = null;
-      }
-      if (url) {
-        try {
-          URL.revokeObjectURL(url);
-        } catch {}
-        url = null;
-      }
+      clearTimeout(timeoutId);
+      window.removeEventListener('message', onMessage);
+      iframe.remove();
     };
 
-    const done = (res: { output: string; error: string | null }) => {
+    const done = (result: { output: string; error: string | null }) => {
       if (settled) return;
       settled = true;
       cleanup();
-      resolve({ output: truncateOutput(res.output), error: res.error });
+      resolve({ output: truncateOutput(result.output), error: result.error });
     };
 
+    function onMessage(event: MessageEvent) {
+      if (event.source !== iframe.contentWindow) return;
+      const data = event.data as
+        | { type?: string; token?: string; output?: string; error?: string | null }
+        | null;
+      if (!data) return;
+
+      if (data.type === 'ready') {
+        iframe.contentWindow?.postMessage(
+          {
+            type: 'run',
+            token,
+            prelude: buildMainThreadPrelude(),
+            code,
+          },
+          '*'
+        );
+        return;
+      }
+
+      if (data.type === 'result' && data.token === token) {
+        done({ output: data.output ?? '', error: data.error ?? null });
+      }
+    }
+
+    window.addEventListener('message', onMessage);
     const timeoutId = setTimeout(() => {
       done({ output: '', error: 'Execution timeout (3s)' });
-    }, 3000);
-
-    worker!.onmessage = (e: MessageEvent<{ output: string; error: string | null }>) => {
-      done({ output: e.data?.output ?? '', error: e.data?.error ?? null });
-    };
-
-    worker!.onerror = (e: ErrorEvent) => {
-      done({ output: '', error: e.message || 'Worker error' });
-    };
+    }, EXECUTION_TIMEOUT_MS);
 
     try {
-      worker!.postMessage({ code });
-    } catch (e) {
-      done({ output: '', error: e instanceof Error ? e.message : String(e) });
+      document.body.appendChild(iframe);
+    } catch (error) {
+      done({ output: '', error: error instanceof Error ? error.message : String(error) });
     }
   });
 }
@@ -226,103 +169,6 @@ interface CodeRunnerProps {
   code: string;
 }
 
-let cachedPyodide: unknown = null;
-let pyodideLoadPromise: Promise<unknown> | null = null;
-
-async function loadPyodideSafely(): Promise<unknown> {
-  if (cachedPyodide) return cachedPyodide;
-  if (pyodideLoadPromise) return pyodideLoadPromise;
-  if (typeof window === 'undefined') throw new Error('No window');
-  const existing = (window as unknown as { loadPyodide?: () => Promise<unknown> }).loadPyodide;
-  if (existing) {
-    pyodideLoadPromise = existing().then((p) => {
-      cachedPyodide = p;
-      return p;
-    });
-    return pyodideLoadPromise;
-  }
-  pyodideLoadPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/pyodide/v0.28.0/full/pyodide.js';
-    script.async = true;
-    const timeout = setTimeout(() => {
-      script.remove();
-      reject(new Error('Pyodide load timeout'));
-    }, 15000);
-    script.onload = async () => {
-      clearTimeout(timeout);
-      try {
-        const loader = (window as unknown as { loadPyodide?: () => Promise<unknown> }).loadPyodide;
-        if (!loader) throw new Error('loadPyodide not found after script load');
-        const py = await loader();
-        cachedPyodide = py;
-        resolve(py);
-      } catch (e) {
-        reject(e);
-      }
-    };
-    script.onerror = () => {
-      clearTimeout(timeout);
-      reject(new Error('Failed to load Pyodide script'));
-    };
-    document.head.appendChild(script);
-  });
-  try {
-    const result = await pyodideLoadPromise;
-    return result;
-  } catch (e) {
-    pyodideLoadPromise = null;
-    throw e;
-  }
-}
-
-async function executePython(code: string): Promise<{ output: string; error: string | null }> {
-  const timeoutMs = 8000;
-  function withTimeout<T>(p: Promise<T>): Promise<T> {
-    return Promise.race([p, new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Python execution timeout (8s)')), timeoutMs))]);
-  }
-  try {
-    const py = (await withTimeout(loadPyodideSafely())) as {
-      runPythonAsync: (c: string) => Promise<unknown>;
-      setStdout?: (opts: { batched: (s: string) => void }) => void;
-      setStderr?: (opts: { batched: (s: string) => void }) => void;
-    };
-    const logs: string[] = [];
-    try {
-      py.setStdout?.({ batched: (s: string) => logs.push(s) });
-      py.setStderr?.({ batched: (s: string) => logs.push(s) });
-    } catch {
-      // ignore if not supported
-    }
-    let result: unknown = null;
-    try {
-      // Remove the Python→JS bridge: snippets are other users' code, and
-      // `import js` would expose fetch/DOM to them. Best-effort — older
-      // Pyodide builds without unregisterJsModule keep the click gate only.
-      try {
-        (py as { unregisterJsModule?: (name: string) => void }).unregisterJsModule?.('js');
-      } catch {
-        // bridge stays; snippet still needs an explicit Run click
-      }
-      result = await withTimeout(py.runPythonAsync(code) as Promise<unknown>);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      const out = truncateOutput(logs.join('\n'));
-      return { output: out, error: msg };
-    }
-    const captured = logs.join('\n');
-    const extra = result !== undefined && result !== null ? stringifyValue(result) : '';
-    const combined = [captured, extra].filter(Boolean).join('\n');
-    return { output: truncateOutput(combined), error: null };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes('timeout') || msg.includes('Failed to load')) {
-      return { output: '', error: `Python unavailable: ${msg}. Check network and try again.` };
-    }
-    return { output: '', error: msg };
-  }
-}
-
 export function CodeRunner({ lang, code }: CodeRunnerProps) {
   const [copied, setCopied] = React.useState(false);
   const [output, setOutput] = React.useState('');
@@ -351,10 +197,12 @@ export function CodeRunner({ lang, code }: CodeRunnerProps) {
     setTimeout(async () => {
       try {
         if (support === 'python') {
-          setIsPythonPlaceholder(false);
-          const result = await executePython(code);
-          setOutput(result.output);
-          setError(result.error);
+          // Python needs Pyodide's network-loaded WASM runtime, which cannot
+          // meet the sandbox CSP (connect-src 'none'). Keep the affordance and
+          // explain the limitation instead of executing outside the sandbox.
+          setOutput('');
+          setError(null);
+          setIsPythonPlaceholder(true);
           setHasRun(true);
           setIsRunning(false);
           return;
@@ -492,10 +340,10 @@ export function CodeRunner({ lang, code }: CodeRunnerProps) {
             {isPythonPlaceholder ? (
               <div className="space-y-1">
                 <p className="text-xs leading-relaxed text-ink-2">
-                  Python execution is not yet supported in this preview.
+                  Python execution is not available in this sandbox.
                 </p>
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Coming soon via Pyodide (WASM). For now, only JavaScript is runnable client-side.
+                  The runner blocks network access, and Pyodide needs to load its WASM runtime from a CDN. For now, only JavaScript is runnable client-side.
                 </p>
               </div>
             ) : error ? (

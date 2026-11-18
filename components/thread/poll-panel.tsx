@@ -175,7 +175,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
         aria-expanded={!isCollapsed}
       >
         <div className="flex items-center gap-2">
-          {/* SAI green for active poll — feeds resolution score */}
+          {/* SAI green for active poll — feeds the AI-estimated resolution score */}
           <span
             className={cn(
               'h-1.5 w-1.5 rounded-full shrink-0',
@@ -329,7 +329,7 @@ export function PollPanel({ threadId, initialPoll, canManagePoll, pollResults, p
                 <div className="flex flex-col items-center py-5 gap-2.5 text-center">
                   <p className="text-sm font-medium text-ink">No poll yet</p>
                   <p className="text-xs leading-relaxed text-ink-2 max-w-72">
-                    Polls collect consensus and feed the thread’s resolution score. Add one when you need a clear decision.
+                    Polls collect consensus and feed the thread’s AI-estimated resolution score. Add one when you need a clear decision.
                   </p>
                   {canManagePoll && (
                     <Button

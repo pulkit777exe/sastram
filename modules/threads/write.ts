@@ -95,7 +95,21 @@ export async function updateThreadDetails(
   return { slug: updated.slug };
 }
 
-export async function forkThread(payload: { name: string; description?: string | null; slug: string; createdBy: string; forkedFromId: string; visibility?: ThreadVisibility }) {
+export async function forkThread(payload: {
+  name: string;
+  description?: string | null;
+  slug: string;
+  createdBy: string;
+  forkedFromId: string | null;
+  visibility?: ThreadVisibility;
+  forkKind?: 'ASSUMPTION' | 'CONTINUE' | 'REMIX_AI' | 'EXTERNAL';
+  forkPremise?: string | null;
+  carryOverMode?: 'SUMMARY' | 'SELECTED_MESSAGES' | 'NONE' | null;
+  carryOverSnapshot?: string | null;
+  externalSourceUrl?: string | null;
+  externalExcerpt?: string | null;
+  externalAttribution?: string | null;
+}) {
   const forked = await prisma.thread.create({
     data: {
       name: payload.name,
@@ -104,9 +118,14 @@ export async function forkThread(payload: { name: string; description?: string |
       createdBy: payload.createdBy,
       forkedFromId: payload.forkedFromId,
       visibility: payload.visibility ?? 'PUBLIC',
+      forkKind: payload.forkKind ?? (payload.forkedFromId ? 'CONTINUE' : null),
+      forkPremise: payload.forkPremise ?? null,
+      carryOverMode: payload.carryOverMode ?? null,
+      carryOverSnapshot: payload.carryOverSnapshot ?? null,
+      externalSourceUrl: payload.externalSourceUrl ?? null,
+      externalExcerpt: payload.externalExcerpt ?? null,
+      externalAttribution: payload.externalAttribution ?? null,
     },
   });
-  // Tag copy lives in mutations.ts forkThreadDomain via
-  // ThreadSideEffectsPort.copyThreadTags (keeps this repository thin).
   return forked;
 }
