@@ -102,15 +102,6 @@ export async function POST(request: NextRequest) {
   try {
     const session = await authenticateRequest();
 
-    await enforceNewAccountWriteLimitOrThrow({
-      userId: session.user.id,
-      role: session.user.role,
-      action: 'message',
-    });
-
-    const rateLimitResponse = await checkRateLimitOrThrow(session);
-    if (rateLimitResponse) return rateLimitResponse;
-
     // Reject oversized multipart bodies before formData() buffers them — the
     // parsed file list is re-checked below, this only bounds memory usage.
     const contentLength = request.headers.get('content-length');
@@ -122,6 +113,15 @@ export async function POST(request: NextRequest) {
     const validated = validateFormInputs(formData);
     if (validated instanceof NextResponse) return validated;
     const { threadId, rawContent, files } = validated;
+
+    await enforceNewAccountWriteLimitOrThrow({
+      userId: session.user.id,
+      role: session.user.role,
+      action: 'message',
+    });
+
+    const rateLimitResponse = await checkRateLimitOrThrow(session);
+    if (rateLimitResponse) return rateLimitResponse;
 
     if (files.length > 0) {
       const uploadLimit = await rateLimit({ key: `upload:${session.user.id}`, type: 'upload' });

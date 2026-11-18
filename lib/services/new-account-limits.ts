@@ -66,8 +66,13 @@ export async function enforceNewAccountWriteLimit(params: {
       message: `New accounts have a temporary posting limit to reduce spam. Please try again in about ${minutesLeft} minute${minutesLeft === 1 ? '' : 's'} or post more gradually.`,
     };
   } catch {
-    // Fail-open on lookup errors to avoid breaking legitimate writes in degraded/test environments.
-    return { ok: true };
+    // Fail closed for abuse-prone write paths when account-age checks cannot be evaluated.
+    return {
+      ok: false,
+      code: 'RATE_LIMITED',
+      message:
+        'Temporary posting protection is active and account checks are unavailable right now. Please try again shortly.',
+    };
   }
 }
 

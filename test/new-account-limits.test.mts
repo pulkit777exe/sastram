@@ -58,4 +58,11 @@ describe('new-account write limits', () => {
     expect(result.ok).to.equal(false);
     if (!result.ok) expect(result.code).to.equal('RATE_LIMITED');
   });
+
+  it('fails closed when account-age checks are unavailable', async () => {
+    findUniqueStub.rejects(new Error('db down'));
+    const result = await enforceNewAccountWriteLimit({ userId: 'u1', role: 'USER', action: 'thread' });
+    expect(result.ok).to.equal(false);
+    if (!result.ok) expect(result.code).to.equal('RATE_LIMITED');
+  });
 });

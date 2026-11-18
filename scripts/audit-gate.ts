@@ -27,6 +27,11 @@ const ALLOWLIST: Record<string, AllowlistEntry> = {
       'dev-only chain (eslint-config-next > fast-glob > micromatch > braces): never bundled, never imported at runtime, lint inputs are repo files. No published fix (bun audit fix: 0 of 1 fixable).',
     reviewBy: '2027-04-13',
   },
+  'picomatch::GHSA-FC5Q-39XC-VJPF': {
+    reason:
+      'Transitive dev/build/tooling dependency (lint-staged/rollup/tinyglobby chains); no runtime user-input globbing path identified. No fixed version available in-range per `bun audit fix` at time of triage; revisit when upstream fix is published or dependency graph changes.',
+    reviewBy: '2027-01-31',
+  },
 };
 
 const FAIL_SEVERITIES = new Set(['high', 'critical']);
