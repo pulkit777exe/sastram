@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Pin, Loader2 } from 'lucide-react';
 import TimeAgo from '@/components/ui/TimeAgo';
 import { editMessage, pinMessage, deleteMessage } from '@/modules/messages';
+import { createReport } from '@/modules/reports/actions';
 import { toggleReaction } from '@/modules/reactions/actions';
 import { toasts } from '@/lib/utils/toast';
 import type { Message, MessageReaction } from '@/lib/types/index';
@@ -251,7 +252,12 @@ const MessageRow = React.memo(function MessageRow({
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportCategory, setReportCategory] = useState('SPAM');
+  const [reportDetails, setReportDetails] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
   const deleteDialogLabelId = useId();
+  const reportFormId = useId();
   const deleteDialogDescId = useId();
   const deleteCancelRef = useRef<HTMLButtonElement | null>(null);
 
@@ -295,6 +301,7 @@ const MessageRow = React.memo(function MessageRow({
     userRole: currentUser.role ?? 'USER',
     deletedAt: message.deletedAt,
   });
+  const canReport = Boolean(currentUser?.id) && !isOwnMessage && !isDeleted;
 
   const aiStatus = aiInlineStatus[message.id];
 
@@ -597,6 +604,7 @@ const MessageRow = React.memo(function MessageRow({
               onReply={() => onReply(message.id)}
               onEdit={canEdit ? () => setIsEditing(true) : undefined}
               onReact={handleToggleReaction}
+              onReport={canReport ? () => setShowReportForm((v) => !v) : undefined}
               onPin={canPin ? async () => {
                 const wasPinned = message.isPinned;
                 onMessageUpdate(message.id, { isPinned: !wasPinned });
@@ -611,6 +619,7 @@ const MessageRow = React.memo(function MessageRow({
               canPin={canPin}
               canDelete={canDelete}
               canEdit={canEdit}
+              canReport={canReport}
             />
           </div>
         )}
@@ -651,6 +660,75 @@ const MessageRow = React.memo(function MessageRow({
             >
               Cancel
             </Button>
+          </div>
+        )}
+
+        {showReportForm && (
+          <div
+            id={reportFormId}
+            role="dialog"
+            aria-label="Report message"
+            className="absolute right-4 top-10 z-30 w-[min(20rem,calc(100vw-2rem))] space-y-2 rounded-control border border-line bg-surface p-3 text-xs shadow-linear-lg"
+          >
+            <p className="font-medium text-ink">Report message</p>
+            <label className="block space-y-1">
+              <span className="text-ink-3">Reason</span>
+              <select
+                className="h-8 w-full rounded-control border border-line bg-canvas px-2 text-xs text-ink"
+                value={reportCategory}
+                onChange={(e) => setReportCategory(e.target.value)}
+                disabled={isReporting}
+              >
+                <option value="SPAM">Spam</option>
+                <option value="HARASSMENT">Harassment</option>
+                <option value="MISINFORMATION">Misinformation</option>
+                <option value="ADULT_CONTENT">Adult content</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </label>
+            <label className="block space-y-1">
+              <span className="text-ink-3">Details (optional)</span>
+              <Textarea
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                className="min-h-16 text-xs"
+                placeholder="Add context for moderators"
+                disabled={isReporting}
+              />
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setShowReportForm(false)} disabled={isReporting}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={isReporting}
+                onClick={async () => {
+                  setIsReporting(true);
+                  try {
+                    const res = await createReport({
+                      messageId: message.id,
+                      category: reportCategory,
+                      details: reportDetails.trim() || undefined,
+                    });
+                    if (res?.ok) {
+                      toasts.success('Report submitted for moderator review');
+                      setShowReportForm(false);
+                      setReportDetails('');
+                      setReportCategory('SPAM');
+                    } else {
+                      toasts.error(res?.error || 'Failed to submit report');
+                    }
+                  } catch {
+                    toasts.error('Failed to submit report');
+                  } finally {
+                    setIsReporting(false);
+                  }
+                }}
+              >
+                {isReporting ? 'Submitting…' : 'Submit report'}
+              </Button>
+            </div>
           </div>
         )}
       </div>

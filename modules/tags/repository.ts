@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { logger } from '@/lib/infrastructure/logger';
 import { slugify } from '@/lib/utils/slug';
@@ -248,11 +249,19 @@ export function deriveTopicCredibility(input: {
   };
 }
 
-export async function getTagCredibilitySummary(
+const CREDIBILITY_TTL_MS = 60_000;
+const credibilityCache = new Map<string, { value: TagCredibilitySummary; expiresAt: number }>();
+
+export const getTagCredibilitySummary = cache(async (
   tagId: string,
   viewerId?: string,
   viewerRole?: Role | null
-): Promise<TagCredibilitySummary> {
+): Promise<TagCredibilitySummary> => {
+  const cacheKey = `${tagId}:${viewerId ?? 'anon'}:${viewerRole ?? 'none'}`;
+  const now = Date.now();
+  const cached = credibilityCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) return cached.value;
+
   try {
     const filter = await visibilityFilter(viewerId, viewerRole);
     const threads = await prisma.thread.findMany({
@@ -302,7 +311,7 @@ export async function getTagCredibilitySummary(
     }
     const totalClaims = byStatus.OPEN + byStatus.CONFIRMED + byStatus.DISPUTED + byStatus.CONTESTED;
 
-    return {
+    const value = {
       ...deriveTopicCredibility({ threadCount, resolvedThreadCount, byStatus }),
       threadCount,
       resolvedThreadCount,
@@ -311,10 +320,12 @@ export async function getTagCredibilitySummary(
       confirmVotes: agg._sum.confirmCount ?? 0,
       disputeVotes: agg._sum.disputeCount ?? 0,
     };
+    credibilityCache.set(cacheKey, { value, expiresAt: now + CREDIBILITY_TTL_MS });
+    return value;
   } catch (error) {
     logger.error('[getTagCredibilitySummary]', error);
     const byStatus: Record<ClaimStatus, number> = { OPEN: 0, CONFIRMED: 0, DISPUTED: 0, CONTESTED: 0 };
-    return {
+    const value = {
       ...deriveTopicCredibility({ threadCount: 0, resolvedThreadCount: 0, byStatus }),
       threadCount: 0,
       resolvedThreadCount: 0,
@@ -323,5 +334,7 @@ export async function getTagCredibilitySummary(
       confirmVotes: 0,
       disputeVotes: 0,
     };
+    credibilityCache.set(cacheKey, { value, expiresAt: now + 10_000 });
+    return value;
   }
-}
+});

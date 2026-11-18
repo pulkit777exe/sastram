@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { CornerUpLeft, SmilePlus, Pin, Trash2, Edit2 } from 'lucide-react';
+import { CornerUpLeft, SmilePlus, Pin, Trash2, Edit2, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmojiPickerPopover } from '@/components/ui/emoji-picker-popover';
 import { cn } from '@/lib/utils/cn';
@@ -12,10 +12,12 @@ interface MessageActionsProps {
   onReact?: (emoji: string) => void;
   onDelete?: () => void;
   onEdit?: () => void;
+  onReport?: () => void;
   isPinned?: boolean;
   canPin?: boolean;
   canDelete?: boolean;
   canEdit?: boolean;
+  canReport?: boolean;
   className?: string;
 }
 
@@ -25,13 +27,15 @@ export function MessageActions({
   onReact,
   onDelete,
   onEdit,
+  onReport,
   isPinned = false,
   canPin = false,
   canDelete = false,
   canEdit = false,
+  canReport = false,
   className,
 }: MessageActionsProps) {
-  const hasAdminActions = (canPin && onPin) || (canDelete && onDelete);
+  const hasAdminActions = (canPin && onPin) || (canDelete && onDelete) || (canReport && onReport);
 
   return (
     <div className={cn("flex items-center gap-0", className)}>
@@ -90,6 +94,17 @@ export function MessageActions({
           className="hover:bg-destructive/10 hover:text-destructive"
         >
           <Trash2 size={12} />
+        </ActionBtn>
+      )}
+
+      {/* Report */}
+      {canReport && onReport && (
+        <ActionBtn
+          title="Report message"
+          onClick={onReport}
+          className="hover:bg-amber-500/10 hover:text-amber-700"
+        >
+          <Flag size={12} />
         </ActionBtn>
       )}
     </div>

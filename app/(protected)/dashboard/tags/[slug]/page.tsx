@@ -57,7 +57,8 @@ export default async function TagDetailPage({ params }: { params: { slug: string
           <div>
             <h2 className="text-sm font-semibold text-ink">Topic credibility</h2>
             <p className="mt-1 text-xs text-ink-3">
-              Derived from existing visible thread and claim signals (AI/community-derived, not authoritative or user expertise).
+              Derived on demand from existing visible thread and claim signals (AI/community-derived, heuristic, not
+              authoritative and not user expertise). Values can change as threads, claims, or votes change.
             </p>
           </div>
           <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${credibilityTone}`}>
