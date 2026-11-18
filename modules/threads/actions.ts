@@ -34,6 +34,7 @@ import { rateLimit } from '@/lib/services/rate-limit';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { enforceNewAccountWriteLimitOrThrow } from '@/lib/services/new-account-limits';
 import { buildClaimRowsFromEvidence, computeClaimStatus, toClaimSummary } from '@/modules/claims';
+import { reconcileKnowledgePageForThread } from '@/lib/services/knowledge-promotion';
 import type { ResearchEvidence, Source } from '@/modules/ai-search/types';
 
 const PAGE_SIZE = 50;
@@ -210,6 +211,7 @@ export const markThreadVerified = createServerAction(
     await requireManageOrThrow(threadId, session.user.id, session.user.role);
 
     await updateThreadVerified(threadId, session.user.id);
+    void reconcileKnowledgePageForThread(threadId).catch(() => undefined);
 
     return actionSuccess({ ok: true });
   }
@@ -503,7 +505,9 @@ export const voteClaimAction = createServerAction(
       return saved;
     });
 
+    const threadId = claim.message.threadId;
     const threadSlug = claim.message.thread?.slug;
+    void reconcileKnowledgePageForThread(threadId).catch(() => undefined);
     if (threadSlug) {
       revalidatePath(`/q/${threadSlug}`);
       revalidatePath(`/k/${threadSlug}`);

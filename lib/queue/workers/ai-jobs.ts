@@ -6,6 +6,7 @@
  */
 
 import { logger } from '@/lib/infrastructure/logger';
+import { reconcileKnowledgePageForThread } from '@/lib/services/knowledge-promotion';
 import { prisma } from '@/lib/infrastructure/prisma';
 import { aiService } from '@/lib/ai';
 import { enqueueJob } from '@/lib/services/queue';
@@ -112,6 +113,7 @@ async function generateThreadSummary(threadId: string, messages: JobMessageData[
   if (!result.ok) return { summary: null, skipped: true };
   const { sanitized: summary } = sanitizeUserContent(result.value);
   await prisma.thread.update({ where: { id: threadId }, data: { aiSummary: summary } });
+  void reconcileKnowledgePageForThread(threadId).catch(() => undefined);
   return { summary };
 }
 
@@ -162,6 +164,7 @@ async function calculateResolutionScore(threadId: string, messages: JobMessageDa
     where: { id: threadId },
     data: { resolutionScore: score, lastVerifiedAt: new Date() },
   });
+  void reconcileKnowledgePageForThread(threadId).catch(() => undefined);
   return score;
 }
 
@@ -218,6 +221,7 @@ async function detectConflicts(threadId: string, messages: JobMessageData[], alr
       where: { id: threadId },
       data: { isOutdated: true },
     });
+    void reconcileKnowledgePageForThread(threadId).catch(() => undefined);
   }
   return { conflictResult };
 }
@@ -392,6 +396,7 @@ export async function handleStalenessCheckJob(data: StalenessCheckJobData) {
       where: { id: threadId! },
       data: { isOutdated: true },
     });
+    void reconcileKnowledgePageForThread(threadId!).catch(() => undefined);
     logger.info(`[worker:ai] Thread ${threadId} marked as outdated`);
     return { handled: true, checked: 1, updated: 1 };
   }

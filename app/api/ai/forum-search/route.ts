@@ -182,7 +182,10 @@ function buildLiveStream(
           ).catch((e) => logger.error('[forum-search] persist session failed', { error: e }));
         }
 
-        if ((!params.hasHistory || regenerateExisting) && result.sources.length > 0) {
+        // Avoid writing forced session regenerations to the shared query cache (explicit correction intent);
+        // normal/history-less runs still populate cache for read-through hits.
+        const shouldCacheResult = result.sources.length > 0 && !regenerateExisting && !params.forceRefresh;
+        if (shouldCacheResult) {
           cacheResult(params.query, result, result.synthesis.queryType, expertiseLevel).catch((e) =>
             logger.error('[forum-search] cache write failed', { error: e })
           );

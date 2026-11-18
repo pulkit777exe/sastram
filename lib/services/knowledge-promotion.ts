@@ -65,6 +65,66 @@ async function demoteIneligiblePages(): Promise<number> {
   return result.count;
 }
 
+/**
+ * Best-effort targeted reconciliation for a single thread.
+ * Reduces cron-convergence latency for claim/promotion-relevant changes.
+ */
+export async function reconcileKnowledgePageForThread(threadId: string): Promise<void> {
+  try {
+    const thread = await prisma.thread.findUnique({
+      where: { id: threadId },
+      select: {
+        id: true,
+        aiSummary: true,
+        visibility: true,
+        deletedAt: true,
+        isOutdated: true,
+        verifiedAt: true,
+        resolutionScore: true,
+        messages: {
+          where: { deletedAt: null, claims: { some: { status: { in: BLOCKING_CLAIM_STATUSES } } } },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+
+    const eligible =
+      !!thread &&
+      thread.visibility === 'PUBLIC' &&
+      thread.deletedAt === null &&
+      thread.isOutdated === false &&
+      thread.verifiedAt !== null &&
+      (thread.resolutionScore ?? 0) > KNOWLEDGE_PROMOTION_THRESHOLD &&
+      thread.messages.length === 0;
+
+    if (!eligible) {
+      await prisma.knowledgePage.deleteMany({ where: { threadId } });
+      return;
+    }
+
+    const synthesizedContent = thread.aiSummary?.trim() ?? '';
+    if (!synthesizedContent) {
+      await prisma.knowledgePage.deleteMany({ where: { threadId } });
+      return;
+    }
+
+    const existing = await prisma.knowledgePage.findUnique({
+      where: { threadId },
+      select: { id: true, synthesizedContent: true },
+    });
+    if (existing?.synthesizedContent === synthesizedContent) return;
+
+    await prisma.knowledgePage.upsert({
+      where: { threadId },
+      create: { threadId, synthesizedContent, version: 1 },
+      update: { synthesizedContent, version: { increment: 1 } },
+    });
+  } catch (error) {
+    logger.error('[knowledge-promotion] targeted reconcile failed', error, { threadId });
+  }
+}
+
 export async function promoteThreadsToKnowledgePages(): Promise<KnowledgePromotionResult> {
   // Best-effort: outer catch ensures never throws unhandled (KISS).
   try {
